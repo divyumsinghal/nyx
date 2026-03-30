@@ -1,0 +1,81 @@
+# ==================================================================
+# cargo-deny configuration for the nyx monorepo
+# Run with: cargo deny check
+# ==================================================================
+
+[graph]
+# Target platforms your services will run on
+targets = [
+    { triple = "x86_64-unknown-linux-gnu" },  # Linux x86_64 servers
+    { triple = "aarch64-unknown-linux-gnu" }, # ARM64 servers
+    { triple = "wasm32-unknown-unknown" },    # WebAssembly for website
+]
+all-features = false
+no-default-features = false
+
+[output]
+feature-depth = 1
+
+# ==================================================================
+# Security Advisories
+# ==================================================================
+[advisories]
+ignore = [
+    # Add advisories here temporarily while waiting for fixes
+    # Example: { id = "RUSTSEC-2024-0395", reason = "Waiting for crate update" }
+]
+
+# ==================================================================
+# License Compliance
+# ==================================================================
+[licenses]
+# Allowed licenses for dependencies
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",                    # For unicode-ident and similar
+    "MPL-2.0",                        # Some crates use Mozilla Public License
+    "Zlib",                           # For compression crates
+]
+confidence-threshold = 0.8
+
+[licenses.private]
+ignore = true # Ignore workspace crates (they're yours, not third-party)
+
+# ==================================================================
+# Bans and Duplicate Detection
+# ==================================================================
+[bans]
+# Prevent multiple versions of the same crate
+multiple-versions = "warn"
+
+# Ban wildcard dependencies (like `rand = "*"`)
+wildcards = "deny"
+
+highlight = "all"
+workspace-default-features = "allow"
+external-default-features = "allow"
+
+# Ban specific problematic crates
+deny = [
+    # Example: { crate = "chrono", reason = "Use time crate instead (chrono has security advisories)" }
+]
+
+# Skip duplicates that you can't easily fix (temporary)
+skip = [
+    # { crate = "old-crate@0.1.0", reason = "Waiting for upstream update" }
+]
+
+# ==================================================================
+# Source Restrictions
+# ==================================================================
+[sources]
+# Only allow crates from crates.io
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

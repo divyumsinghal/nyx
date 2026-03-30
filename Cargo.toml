@@ -1,0 +1,90 @@
+[package]
+name = "nyx"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/nyx-platform/nyx"
+rust-version = "1.85"
+
+[workspace]
+resolver = "2"
+members = ["platform/*", "apps/Anteros", "apps/Themis", "apps/Uzume"]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP framework
+axum = { version = "0.8", features = ["ws", "multipart"] }
+axum-extra = { version = "0.10", features = ["typed-header", "cookie"] }
+tower = { version = "0.5", features = ["full"] }
+tower-http = { version = "0.6", features = [
+    "cors",
+    "trace",
+    "compression-gzip",
+    "limit",
+    "timeout",
+] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Database
+sqlx = { version = "0.8", features = [
+    "runtime-tokio",
+    "tls-rustls",
+    "postgres",
+    "uuid",
+    "chrono",
+    "json",
+    "migrate",
+] }
+
+# Cache (Redis protocol — works with DragonflyDB)
+fred = { version = "10", features = ["subscriber-client", "serde-json"] }
+
+# Event bus
+async-nats = "0.39"
+
+# Object storage (S3-compatible)
+rust-s3 = { version = "0.36", features = ["tokio-rustls-tls"] }
+
+# Search
+meilisearch-sdk = "0.28"
+
+# HTTP client (for calling Kratos, Gorush, etc.)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+
+# Auth
+jsonwebtoken = "9"
+
+# IDs
+uuid = { version = "1", features = ["v7", "serde"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Tracing & observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry = "0.28"
+opentelemetry = "0.27"
+
+# Config
+config = "0.14"
+
+# Validation
+validator = { version = "0.19", features = ["derive"] }
+
+# API docs
+utoipa = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+# Testing
+tokio-test = "0.4"
+testcontainers = "0.24"

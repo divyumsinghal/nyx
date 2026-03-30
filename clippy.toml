@@ -1,0 +1,20 @@
+# Thresholds for code complexity
+cognitive-complexity-threshold = 15
+too-many-lines-threshold = 100
+too-many-arguments-threshold = 5
+
+# Enforce proper API patterns across the monorepo
+disallowed-methods = [
+    # Use proper error handling instead of panicking
+    { path = "std::panic::panic_any", reason = "Use proper Result error handling" },
+    { path = "std::process::exit", reason = "Use Result propagation and let main handle exit codes" },
+
+    # Use logging framework instead of printing to stdout
+    { path = "println", reason = "Use the tracing or log crate for structured logging" },
+    { path = "eprintln", reason = "Use the tracing or log crate for structured logging" },
+
+    # Use proper error propagation instead of unwrapping
+    { path = "Option::unwrap", reason = "Use proper error handling with ? operator or match" },
+    { path = "Result::unwrap", reason = "Use proper error handling with ? operator or match" },
+    { path = "Result::expect", reason = "Use proper error handling with ? operator" },
+]
