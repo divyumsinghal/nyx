@@ -256,3 +256,315 @@ cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'
 - Locked invariants cover: app-scoped alias visibility default, fail-closed link/revoke semantics (`revoked` default + revoked non-applicability), and chronological feed default guard (`FeedMode::default() == Chronological`).
 - Added deterministic drift fixture `tests/contracts/step1-compat-drift.fixture.lock` to ensure guardrails fail on semantic drift.
 - Wired gate into local/CI-equivalent flow: new `just gate-step1-compat` and included in `just ci`; CI workflow invokes `just gate-step1-compat` explicitly before parity bundle.
+
+## Step 2 Task 3 Exploration: Monad/Oya + Monad/events (2026-03-31)
+
+### Crate Status Summary
+
+| Crate | Status | Implementation |
+|-------|--------|-----------------|
+| Monad/Oya | SPEC-ONLY | README.md only - no src/ |
+| Monad/events | SPEC-ONLY | README.md only - no src/ |
+
+### Event Pattern (from events README)
+
+**Event Envelope** (line 6):
+```rust
+NyxEvent<T> { id, subject, app, timestamp, payload: T }
+```
+
+**Subject Convention** (line 21):
+```
+{app_or_nyx}.{entity}.{action}
+```
+
+**Existing Story Subjects** (line 34):
+- `Uzume.story.created` - defined
+
+### Media Processing Pipeline (from Oya README)
+
+**Flow**: NATS subscriber on `*.media.uploaded` → process → store in MinIO → emit `*.media.processed`
+
+**State Transition Implied**:
+1. `accepted` - initial upload (via upload presigned URL)
+2. `processing` - Oya worker picks up `*.media.uploaded` event
+3. `ready` - variants generated, `*.media.processed` emitted
+
+### Available Foundation from Nun (IMPLEMENTED)
+
+| Pattern | File | Lines | Notes |
+|---------|------|-------|-------|
+| Error with HTTP mapping | Monad/Nun/src/error.rs | 51-280 | `ErrorKind` maps to status codes |
+| Pagination | Monad/Nun/src/pagination.rs | 39-294 | Cursor-based, fetch-one-extra |
+| Timestamp + TTL | Monad/Nun/src/time.rs | 32-66 | `Timestamp = DateTime<Utc>`, `ttl::STORY = 24h` |
+| Typed IDs | Monad/Nun/src/id.rs | 49-93 | `Id<T>` over UUIDv7 |
+| App enum | Monad/Nun/src/types/app.rs | 3-10 | `NyxApp` non-exhaustive |
+
+### Extension Points for Task 3
+
+1. **Event payload typing**: Add `MediaUploadedPayload`, `MediaProcessedPayload` in events crate
+2. **State enum**: Define `MediaStatus { Accepted, Processing, Ready }` in Nun or domain
+3. **Idempotency**: Use job_id/media_id in payload - check before processing (pattern documented in Task 0 learnings)
+4. **Retry safety**: NATS JetStream acknowledgment semantics
+
+### Contract Lock Relevance
+
+From `contracts/step1-compat.lock`:
+- No direct media/lifecycle locks yet
+- Pattern: lock at implementation time similar to Task 1
+
+### Recommended Test Commands (when implemented)
+
+```bash
+# Test Nun foundation
+cargo test -p nun --lib
+
+# Build events crate (will fail - SPEC-ONLY)
+cargo build -p nyx-events
+
+# Build Oya crate (will fail - SPEC-ONLY)
+cargo build -p oya
+```
+
+### Gap Analysis for Task 3
+
+- **Monad/events**: No implementation - needs `envelope.rs`, `subjects.rs`, `publisher.rs`, `subscriber.rs`
+- **Monad/Oya**: No implementation - needs `lib.rs`, `worker.rs`, `image.rs`, `video.rs`, `pipeline.rs`, `config.rs`
+- **Missing from Nun**: Media status enum, media-specific ID markers, media TTL constants
+
+## Step 2 Task 3: Event-Driven Idempotent Consumer & State Machine Patterns (2026-03-31)
+
+### 1. Concrete Deduplication Strategy: Inbox Pattern via Persistence
+A highly reliable pattern to handle duplicate message delivery natively in Rust without relying on the event provider's specific constraints (avoiding lock-in).
+**Pattern:** Inbox Table / Idempotency Key Tracking with `ON CONFLICT DO NOTHING`.
+**Mechanism:** 
+- The event payload includes a globally unique `idempotency_key` (or `job_id`).
+- Before processing the event, a database transaction is initiated to insert the `idempotency_key` into an `inbox` (or `idempotency`) table.
+- If `n_inserted_rows == 0`, the consumer knows this is a duplicate delivery and can safely acknowledge the message to the broker and skip execution, optionally returning the cached response.
+**Tradeoffs:**
+- *Pros:* Decouples idempotency from the message broker (works with NATS, RabbitMQ, Kafka). Extremely high reliability. Ensures exactly-once *processing* side-effects.
+- *Cons:* Adds database round-trip overhead before processing. Requires DB connection per worker.
+**Reference:** `LukeMathWalker/zero-to-production` (Chapter 10: Idempotency). [Persistence Code Reference](https://github.com/LukeMathWalker/zero-to-production/blob/main/src/idempotency/persistence.rs).
+
+### 2. Provider-Agnostic Event Emitting: Transactional Outbox
+To ensure events are published reliably *only* if the DB state transition succeeds, avoiding "ghost events" or "missed events".
+**Pattern:** Transactional Outbox.
+**Mechanism:**
+- Within the same PostgreSQL transaction where you update `MediaStatus` from `Accepted` -> `Processing`, you insert an `OutboxEvent` record.
+- A separate async worker polls/tails the `outbox` table and publishes the event to NATS/RabbitMQ.
+- **Provider Lock-in Avoided:** The core service doesn't know about NATS JetStream semantics. It just writes to the `outbox` table.
+**Reference:** [Meteroid OSS Outbox Pattern](https://github.com/meteroid-oss/meteroid/blob/main/modules/meteroid/crates/meteroid-store/src/repositories/outbox.rs).
+
+### 3. Deterministic State Machines under Retries
+To ensure safe `Accepted -> Processing -> Ready` lifecycles, encode the state transitions using Rust's `Typestate` pattern or explicit `enum` State Machines.
+**Pattern:** Typestate / State Machine Enums with Strict Transitions.
+**Mechanism:**
+- Do not use a generic `status: String` or generic `status: Status` mutator.
+- Implement explicit structs for each state (`struct AcceptedMedia`, `struct ProcessingMedia`, `struct ReadyMedia`).
+- Define transition methods that consume `self` (taking ownership), preventing double-processing: 
+  `impl AcceptedMedia { pub fn start_processing(self) -> ProcessingMedia { ... } }`
+- **Under Retries:** If a worker crashes during `Processing`, the retry will fetch the DB record. If the record is already marked `Processing`, the worker must know how to safely resume or reset to `Accepted`. The state machine ensures no step can be skipped (e.g., cannot jump from `Accepted` straight to `Ready`).
+**Reference:** [Rust Typestate Pattern (oneuptime.com, 2026)](https://oneuptime.com/blog/post/2026-01-30-rust-type-state-pattern/view) & `state-machines` crate patterns.
+
+### 4. Verification Checklist for Local Testing (Task 3)
+- [ ] Send duplicate `*.media.uploaded` event -> assert second event is dropped via Inbox constraint.
+- [ ] Mock worker crash after `Accepted -> Processing` update -> assert outbox event is successfully published later by outbox relay.
+- [ ] Send unexpected `media.processed` event while in `Accepted` state -> assert compile/runtime error rejecting the invalid state transition.
+
+### Pre-signed S3 URL Security (Rust/Task 2)
+*   **Presigned PUT vs POST:** `aws-sdk-rust` lacks native `generate_presigned_post` support (Issue #863). To enforce upload constraints natively in Rust using `aws-sdk-s3`, use **Presigned PUT** and strictly lock down the headers during generation.
+*   **Strict Upload Contracts (Size & Integrity):** Require the client to provide `Content-MD5` (or `checksum_sha256`) and the *exact* `content_length` in their pre-flight request. The backend validates the size (`size <= MAX_SIZE`), and includes `content_length` and `checksum` in the `put_object()` builder. If the client alters the payload size or content, S3 rejects the request with `SignatureDoesNotMatch` or `InvalidDigest`.
+*   **MIME Constraints:** Include `content_type("...")` in the presigned PUT builder. The client MUST use that exact MIME type, preventing bypassing type restrictions.
+*   **Key Naming Strategy:** To prevent path traversal and object overwrites, the server MUST generate opaque, randomized object keys (e.g., UUIDs). Clients should only use an `upload_id` reference and never control the raw S3 key.
+*   **Expiration Controls:** Keep `expires_in` tight (e.g., 60-120 seconds).
+*   **Validation Strategy (Quarantine Pipeline):** Direct uploads to a `quarantine/` prefix. The client must call a `POST /finalize` endpoint after upload. The backend then verifies the object size/existence and optionally scans it before moving it to a `published/` prefix. 
+*   **Download Safety:** Generate presigned GET URLs with `response_content_disposition("attachment")` and `response_content_type_options("nosniff")` to prevent Stored XSS via inline HTML/SVG rendering.
+
+**Sources:**
+- S3 Pre-signed URLs: Security Guide & Threat Model (https://newsletter.securepatterns.dev/p/pre-signed-urls-the-secure-implementation-guide)
+- Enforcing Upload Contracts with S3 Presigned URLs (https://medium.com/codetodeploy/enforcing-upload-contracts-with-s3-presigned-urls-45be8cc1437c)
+- Securing Amazon S3 presigned URLs for serverless applications (https://aws.amazon.com/blogs/compute/securing-amazon-s3-presigned-urls-for-serverless-applications/)
+- AWS SDK Rust Docs (https://docs.aws.amazon.com/sdk-for-rust/latest/dg/presigned-urls.html)
+
+## Step 2 Task 2: Storage/Object Lifecycle/Presign Implementation Patterns (2026-03-31)
+
+### Crate Implementation Status for Task 2
+
+| Crate | Status | Source Files | Notes |
+|-------|--------|--------------|-------|
+| Monad/Akash | SPEC-ONLY | README only | Storage patterns defined, needs implementation |
+| Monad/Nun | IMPLEMENTED | Yes (src/) | Foundation types, config, validation |
+| Monad/Oya | SPEC-ONLY | README only | Media processing patterns defined |
+| Monad/Lethe | SPEC-ONLY | README only | Cache key patterns defined |
+| Monad/events | SPEC-ONLY | README only | Event patterns defined |
+| Monad/Mnemosyne | SPEC-ONLY | README only | DB patterns defined |
+| Monad/api | SPEC-ONLY | README only | Middleware patterns defined |
+
+### Akash Storage Patterns (SPEC-ONLY - needs implementation)
+
+**Path Convention** (Akash/README.md line 24-36):
+```
+{app}/{entity}/{id}/{variant}.{ext}
+Examples:
+Uzume/stories/{story_id}/original.mp4
+Uzume/stories/{story_id}/1080.jpg
+Uzume/stories/{story_id}/640.jpg
+Uzume/avatars/{user_id}/150.jpg
+```
+
+**API Surface to Implement** (Akash/README.md line 10):
+- `put_object` - Store object in MinIO/S3
+- `get_object` - Retrieve object from MinIO/S3
+- `presigned_upload_url` - Generate upload URL with expiration
+- `presigned_download_url` - Generate download URL with expiration
+
+**Module Structure** (Akash/README.md line 13-21):
+```
+Akash/
+├── src/
+│   ├── lib.rs
+│   ├── client.rs          # StorageClient (wraps rust-s3 Bucket), connection config
+│   ├── upload.rs           # Upload helpers: put_object, presigned_upload_url
+│   ├── download.rs         # Download helpers: get_object, presigned_download_url
+│   └── paths.rs            # Path convention: {app}/{entity}/{id}/{variant}.{ext}
+```
+
+### Reusable Patterns from Nun (IMPLEMENTED)
+
+#### 1. StorageConfig (Nun/config.rs line 252-273)
+```rust
+pub struct StorageConfig {
+    pub endpoint: String,           // e.g., http://localhost:9000
+    pub region: String,              // default: us-east-1
+    pub bucket: String,              // default: nyx
+    pub access_key: Sensitive<String>,
+    pub secret_key: Sensitive<String>,
+}
+```
+**Line**: 252-273
+**Usage**: Acquired via `NyxConfig::load()` → `config.storage`
+
+#### 2. Validation (Nun/validation.rs)
+- **Phone** (line 38-68): E.164 format validation
+- **Email** (line 77-120): Basic format check
+- **Alias** (line 138-203): 3-30 chars, lowercase alphanumeric + underscore
+- **Display name** (line 218-246): 1-50 chars, no control chars
+- **Hashtag** (line 260-298): 1-100 chars, alphanumeric + underscore
+
+**Test Command**: `cargo test -p nun --lib validation`
+
+#### 3. Error Handling (Nun/error.rs)
+- **Pattern**: `NyxError::bad_request()`, `NyxError::validation()`, `NyxError::not_found()`
+- **Line**: 51-280 (constructors), 404-463 (ErrorKind enum)
+- **HTTP Mapping**: ErrorKind → HTTP status code
+
+**Test Command**: `cargo test -p nun --lib error`
+
+#### 4. TTL Constants (Nun/time.rs line 32-66)
+- `ttl::STORY` = 24 hours (line 38)
+- `ttl::SESSION_CACHE` = 15 minutes
+- `ttl::FEED_CACHE` = 10 minutes
+
+**Test Command**: `cargo test -p nun --lib time`
+
+### Presigned URL Security Patterns (Research 2026)
+
+**Strict Upload Contract**:
+1. **Content-Length**: Backend validates size constraint, includes in presigned URL
+2. **Content-MD5**: Client provides checksum, S3 validates integrity
+3. **Content-Type**: Lock MIME type in presigned URL, prevents bypass
+4. **Key Naming**: Server generates opaque UUID keys, no client path control
+5. **Expiration**: Keep expires_in tight (60-120 seconds)
+
+**Quarantine Pattern**:
+- Upload to `quarantine/{upload_id}/{filename}`
+- Client calls `POST /finalize` after upload
+- Backend verifies size/existence before moving to `published/`
+
+**Download Safety**:
+- `response_content_disposition("attachment")`
+- `response_content_type_options("nosniff")`
+
+### Typed Path/Key Construction Patterns
+
+**Stories Paths**:
+```
+Uzume/stories/{story_id}/original.{ext}     # Original upload
+Uzume/stories/{story_id}/1080.{ext}         # Processed variant
+Uzume/stories/{story_id}/640.{ext}           # Processed variant
+Uzume/stories/{story_id}/320.{ext}          # Processed variant
+Uzume/stories/{story_id}/thumb.jpg          # Thumbnail
+```
+
+**Highlight Paths**:
+```
+Uzume/highlights/{highlight_id}/cover.jpg  # Cover image
+```
+
+**Cache Keys** (Lethe pattern):
+```
+Uzume:stories:feed:{user_id}                # User's stories feed
+Uzume:story:{id}:viewers                    # Story viewers list
+Uzume:story:{id}:interactions               # Story interactions
+```
+
+### Fail-Closed Validation Errors
+
+**Pattern from Nun/error.rs**:
+```rust
+Err(NyxError::bad_request(
+    "invalid_media_type",
+    "Only image/jpeg, image/png, video/mp4 allowed",
+))
+```
+
+**Test Cases to Implement**:
+- Invalid MIME type → 400 Bad Request
+- Oversize file → 400 Bad Request with max size info
+- Invalid key format → 400 Bad Request
+- Expired presigned URL → 400/403 depending on implementation
+
+### Deterministic Tests for Accept/Reject Cases
+
+**Happy Path**:
+- Valid JPEG upload → presigned URL generated → PUT succeeds → 200 OK
+
+**Reject Cases**:
+- Wrong MIME type → 400 with "invalid_media_type"
+- Oversize → 400 with "file_too_large"  
+- Path traversal attempt → 400 with "invalid_key"
+- Expired URL → 403 with "presigned_url_expired"
+
+### Implement First Checklist (Task 2)
+
+1. **Akash/Cargo.toml** - Create with Nun dependency, rust-s3
+2. **Akash/src/client.rs** - StorageClient wrapping rust-s3 Bucket
+3. **Akash/src/paths.rs** - Path builders for stories/highlights
+4. **Akash/src/upload.rs** - put_object + presigned_upload_url with validation
+5. **Akash/src/download.rs** - get_object + presigned_download_url
+6. **Akash/tests/presign.rs** - Validate accept/reject cases
+7. **Akash/tests/validation.rs** - MIME/size validation tests
+8. **Nun/src/types/media.rs** - MediaType, MediaVariant enums (if not already present)
+
+### Verification Commands
+
+```bash
+# Test Nun foundation (already implemented)
+cargo test -p nun --lib
+
+# Build Akash crate (will fail - SPEC-ONLY)
+cargo build -p akash
+
+# List storage config usage
+grep -r "StorageConfig" --include="*.rs" Monad/
+
+# Check path convention usage
+grep -r "Uzume/stories" --include="*.rs" .
+```
+
+### Gap Analysis for Task 2
+
+- **Akash**: No implementation - needs all src/ files
+- **Nun**: May need MediaType/MediaVariant enums in types/media.rs
+- **Validation**: Need media-specific validators (MIME whitelist, size limits)
+- **Key naming**: Need stories-specific path builders
