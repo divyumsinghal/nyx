@@ -1,0 +1,118 @@
+# =============================================================================
+# prometheus.yml — Prometheus scrape configuration
+# =============================================================================
+# CHANGE FOR PRODUCTION:
+#   - Replace localhost scrape targets with internal service hostnames
+#   - Add remote_write block to push metrics to Grafana Cloud / Thanos
+#   - Enable TLS on scrape targets and configure bearer_token_file
+#   - Add alerting rules in a separate rules/ directory
+# =============================================================================
+
+global:
+  scrape_interval:     15s   # how often to scrape
+  evaluation_interval: 15s   # how often to evaluate rules
+  scrape_timeout:      10s
+  external_labels:
+    environment: "${ENVIRONMENT:-dev}"
+    cluster:     "nyx-single"
+
+# ── Alertmanager (add when alerting is configured) ────────────────────────────
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ["alertmanager:9093"]
+
+# ── Rule files ────────────────────────────────────────────────────────────────
+# rule_files:
+#   - "/etc/prometheus/rules/*.yml"
+
+# ── Scrape configs ─────────────────────────────────────────────────────────────
+scrape_configs:
+
+  # Prometheus itself
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+    # postgres_exporter is not in infra.yml yet; add when needed:
+    # docker run -e DATA_SOURCE_NAME="postgresql://..." quay.io/prometheuscommunity/postgres-exporter
+
+  - job_name: dragonfly
+    static_configs:
+      - targets: ["dragonfly:6379"]
+    # DragonflyDB exposes Prometheus metrics at :6379/metrics when enabled.
+    # Add --proactor_threads flag and scrape the metrics port.
+
+  - job_name: nats
+    static_configs:
+      - targets: ["nats:8222"]
+    metrics_path: /varz
+    # NATS monitoring endpoint returns JSON; use nats-exporter for Prometheus format:
+    # https://github.com/nats-io/prometheus-nats-exporter
+
+  - job_name: minio
+    metrics_path: /minio/v2/metrics/cluster
+    scheme: http
+    static_configs:
+      - targets: ["minio:9000"]
+    bearer_token: "${MINIO_PROMETHEUS_TOKEN}"
+
+  - job_name: meilisearch
+    static_configs:
+      - targets: ["meilisearch:7700"]
+    metrics_path: /metrics
+    bearer_token: "${MEILI_MASTER_KEY}"
+
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
+    metrics_path: /metrics
+
+  # ── Nyx platform services ────────────────────────────────────────────────────
+  # Each service exposes /metrics (via NyxServer builder) on its HTTP port.
+  # Ports are assigned in CLAUDE.md service table.
+
+  - job_name: heimdall
+    static_configs:
+      - targets: ["heimdall:3000"]
+    metrics_path: /metrics
+
+  - job_name: uzume-profiles
+    static_configs:
+      - targets: ["uzume-profiles:3001"]
+    metrics_path: /metrics
+
+  - job_name: uzume-feed
+    static_configs:
+      - targets: ["uzume-feed:3002"]
+    metrics_path: /metrics
+
+  - job_name: uzume-stories
+    static_configs:
+      - targets: ["uzume-stories:3003"]
+    metrics_path: /metrics
+
+  - job_name: uzume-reels
+    static_configs:
+      - targets: ["uzume-reels:3004"]
+    metrics_path: /metrics
+
+  - job_name: uzume-discover
+    static_configs:
+      - targets: ["uzume-discover:3005"]
+    metrics_path: /metrics
+
+  - job_name: oya-worker
+    static_configs:
+      - targets: ["oya:9091"]   # workers expose metrics on a separate port
+    metrics_path: /metrics
+
+  - job_name: ushas-worker
+    static_configs:
+      - targets: ["ushas:9092"]
+    metrics_path: /metrics

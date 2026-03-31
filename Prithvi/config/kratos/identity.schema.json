@@ -1,0 +1,69 @@
+{
+  "$id": "https://nyx.com/identity.schema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NyxIdentity",
+  "description": "Identity schema for all Nyx platform accounts. Every user must supply email, phone, and username at registration. Any one of the three can be used as the login identifier, matching the UX of Instagram/Reddit.",
+  "type": "object",
+  "properties": {
+    "traits": {
+      "type": "object",
+      "properties": {
+
+        "email": {
+          "type": "string",
+          "format": "email",
+          "title": "Email address",
+          "minLength": 6,
+          "maxLength": 320,
+          "ory.sh/kratos": {
+            "credentials": {
+              "password": { "identifier": true },
+              "code":     { "identifier": true, "via": "email" }
+            },
+            "recovery":     { "via": "email" },
+            "verification": { "via": "email" }
+          }
+        },
+
+        "phone": {
+          "type": "string",
+          "format": "tel",
+          "title": "Phone number (E.164 format, e.g. +14155552671)",
+          "pattern": "^\\+[1-9]\\d{7,14}$",
+          "ory.sh/kratos": {
+            "credentials": {
+              "password": { "identifier": true },
+              "code":     { "identifier": true, "via": "sms" }
+            },
+            "verification": { "via": "sms" }
+          }
+        },
+
+        "username": {
+          "type": "string",
+          "title": "Username",
+          "description": "Unique, case-insensitive handle. 3–30 characters. Letters, digits, underscores, and dots only. No consecutive dots. Cannot start or end with a dot.",
+          "minLength": 3,
+          "maxLength": 30,
+          "pattern": "^(?!\\.)(?!.*\\.\\.)[a-zA-Z0-9_.]+(?<!\\.)$",
+          "ory.sh/kratos": {
+            "credentials": {
+              "password": { "identifier": true }
+            }
+          }
+        },
+
+        "display_name": {
+          "type": "string",
+          "title": "Display name",
+          "description": "Public name shown in the UI. Not used for login. Can contain any characters.",
+          "minLength": 1,
+          "maxLength": 100
+        }
+
+      },
+      "required": ["email", "phone", "username"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,117 @@
+# =============================================================================
+# dev.yml — Development overrides
+# Layered on top of infra.yml + platform.yml + uzume.yml.
+#
+# What this adds/changes:
+#   - DEBUG log level for all services
+#   - Verbose Postgres query logging (all statements)
+#   - Kratos --dev flag is already on in infra.yml
+#   - Mailhog for local email capture (no real SMTP needed)
+#   - MinIO console always accessible
+#   - Grafana anonymous access enabled
+#   - No restart policies (fail-fast is useful in dev)
+#   - All monitoring ports exposed (Prometheus, Loki, etc.)
+#
+# Usage:
+#   docker compose \
+#     -f Prithvi/compose/infra.yml \
+#     -f Prithvi/compose/platform.yml \
+#     -f Prithvi/compose/uzume.yml \
+#     -f Prithvi/compose/dev.yml \
+#     up -d
+#
+# Or use:  just dev-infra
+# =============================================================================
+
+name: nyx
+
+services:
+
+  # ── Debug logging for Postgres ────────────────────────────────────────────
+  postgres:
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - wal_level=replica
+      - -c
+      - log_min_duration_statement=0    # log ALL queries in dev
+      - -c
+      - log_statement=all
+      - -c
+      - log_line_prefix=%t [%p] %u@%d
+      - -c
+      - log_timezone=UTC
+      - -c
+      - timezone=UTC
+
+  # ── Verbose NATS ──────────────────────────────────────────────────────────
+  nats:
+    command:
+      - "--config=/etc/nats/nats-server.conf"
+      - "-V"    # verbose: log every client message
+
+  # ── Mailhog (local SMTP + web UI) ─────────────────────────────────────────
+  # Captures all emails sent by Kratos. Open http://localhost:8025 to view.
+  # CHANGE: Remove in prod. Set SMTP_CONNECTION_URI to a real SMTP provider.
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: nyx-mailhog
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI
+    networks:
+      - nyx
+
+  # ── Kratos: point SMTP at Mailhog ─────────────────────────────────────────
+  kratos:
+    environment:
+      SMTP_CONNECTION_URI:   "smtp://mailhog:1025/?skip_ssl_verify=true"
+      SESSION_COOKIE_SECURE: "false"
+
+  # ── Application services: debug logging ───────────────────────────────────
+  heimdall:
+    environment:
+      RUST_LOG: "debug,hyper=info,tower_http=debug"
+  oya:
+    environment:
+      RUST_LOG: "debug"
+  ushas:
+    environment:
+      RUST_LOG: "debug"
+  uzume-profiles:
+    environment:
+      RUST_LOG: "debug,sqlx=info"
+  uzume-feed:
+    environment:
+      RUST_LOG: "debug,sqlx=info"
+  uzume-stories:
+    environment:
+      RUST_LOG: "debug,sqlx=info"
+  uzume-reels:
+    environment:
+      RUST_LOG: "debug,sqlx=info"
+  uzume-discover:
+    environment:
+      RUST_LOG: "debug,sqlx=info"
+
+  # ── Grafana: allow anonymous viewer access in dev ─────────────────────────
+  grafana:
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED:  "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Editor"   # can edit dashboards in dev
+      GF_LOG_LEVEL:               "warn"
+
+# ── External network ──────────────────────────────────────────────────────────
+networks:
+  nyx:
+    external: true

@@ -1,0 +1,71 @@
+# =============================================================================
+# gorush/config.yml — Push notification gateway
+# https://github.com/appleboy/gorush
+# =============================================================================
+# CHANGE FOR PRODUCTION:
+#   - Set ios.key_path to your APNs .p8 key (from Apple Developer portal)
+#   - Set ios.key_id / team_id / bundle_id for each app (Uzume, Anteros, …)
+#   - Set android.apikey to your FCM server key (or FCM v1 credentials)
+#   - Enable ios.enabled and android.enabled
+#   - Set a strong api_key for the Gorush HTTP API
+#   - Set redis.addr to your DragonflyDB instance for queue persistence
+#   - Tune worker_num and queue_num for throughput
+# =============================================================================
+
+core:
+  enabled:             true
+  address:             "0.0.0.0"
+  port:                "8088"
+  # API auth — Ushas worker must supply this header: Authorization: Bearer <key>
+  # Set via GORUSH_CORE_API_KEY env var. Never commit the real value.
+  api_key:             "${GORUSH_API_KEY}"
+  max_notification:    1000
+  worker_num:          8
+  queue_num:           8192
+  # Graceful shutdown timeout
+  shutdown_timeout:    30
+
+# ── iOS / APNs ────────────────────────────────────────────────────────────────
+# Uses APNs token-based auth (.p8 key), not certificate-based.
+ios:
+  enabled:     false   # ← set true in prod
+  key_path:    "/certs/apns/AuthKey.p8"
+  key_id:      "${APNS_KEY_ID}"
+  team_id:     "${APNS_TEAM_ID}"
+  # Per-app bundle IDs. Add one entry per app (Uzume, Anteros, …).
+  bundle_id:   "${APNS_BUNDLE_ID_UZUME}"
+  production:  true    # false = sandbox (TestFlight)
+  max_retry:   3
+
+# ── Android / FCM ─────────────────────────────────────────────────────────────
+# Using FCM HTTP v1 API (Legacy API deprecated 2024-07-22).
+# Provide a service-account JSON file via GOOGLE_APPLICATION_CREDENTIALS or
+# inline the credentials below.
+android:
+  enabled:  false   # ← set true in prod
+  apikey:   "${FCM_API_KEY}"
+  max_retry: 3
+
+# ── Queue persistence (DragonflyDB / Redis) ───────────────────────────────────
+# If Gorush restarts, queued notifications survive in Redis.
+# CHANGE: point to internal DragonflyDB hostname in prod.
+redis:
+  enabled:    true
+  addr:       "${DRAGONFLY_HOST:-dragonfly}:6379"
+  password:   "${DRAGONFLY_PASSWORD}"
+  db:         1          # separate DB index from app cache (DB 0)
+  pool_size:  10
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+log:
+  format:      "json"
+  access_log:  true
+  level:       "warn"   # info in dev, warn in prod
+
+# ── Metrics ───────────────────────────────────────────────────────────────────
+stat:
+  engine: "redis"
+  redis:
+    addr:     "${DRAGONFLY_HOST:-dragonfly}:6379"
+    password: "${DRAGONFLY_PASSWORD}"
+    db:       2

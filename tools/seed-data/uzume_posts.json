@@ -1,0 +1,192 @@
+[
+  {
+    "id": "019524c6-0002-7000-8000-000000000001",
+    "author_username": "alice.nyx",
+    "caption": "Golden hour never gets old ✨ Shot this on my walk home through the Mission. The light was absolutely unreal today.",
+    "hashtags": ["photography", "goldenhour", "sanfrancisco", "streetphotography"],
+    "location_name": "Mission District, San Francisco",
+    "media": [
+      { "type": "image", "placeholder": "golden_hour_sf_1080.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000002",
+    "author_username": "alice.nyx",
+    "caption": "Third cup of coffee and I'm finally feeling human again. My espresso setup took 2 years to dial in. Worth every hour.",
+    "hashtags": ["coffee", "espresso", "homebarista", "morningroutine"],
+    "location_name": "Home",
+    "media": [
+      { "type": "image", "placeholder": "espresso_closeup.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000003",
+    "author_username": "bob_codes",
+    "caption": "Finally released v1.0 of my open source CLI tool after 6 months of evenings and weekends. The bug in line 847 of the parser haunted my dreams. It's done. It ships. 🎉\n\nRepo link in bio.",
+    "hashtags": ["opensource", "rust", "cli", "buildinpublic", "programming"],
+    "media": [
+      { "type": "image", "placeholder": "terminal_screenshot.png" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000004",
+    "author_username": "bob_codes",
+    "caption": "Late night jam session. Working on a riff I've had stuck in my head for three weeks. It finally clicked tonight at 2am.",
+    "hashtags": ["music", "guitar", "latenightvibes", "original"],
+    "media": [
+      { "type": "video", "placeholder": "guitar_riff_15s.mp4" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000005",
+    "author_username": "carla.creates",
+    "caption": "New illustration series: 'Liminal Spaces'. This is piece 1 of 12. Each one explores the feeling of being between two places — physically and emotionally.\n\nDM for print info.",
+    "hashtags": ["illustration", "art", "digitalart", "liminalspaces", "design"],
+    "media": [
+      { "type": "image", "placeholder": "liminal_01.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000006",
+    "author_username": "carla.creates",
+    "caption": "Process video: from sketch to final illustration. I use a 6-layer system that took years to develop. Sharing the full breakdown in my newsletter this week.",
+    "hashtags": ["processvideo", "illustration", "howto", "art", "design"],
+    "media": [
+      { "type": "video", "placeholder": "illustration_process_30s.mp4" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000007",
+    "author_username": "dkim_runs",
+    "caption": "22 miles on Mt. Tam this morning. Legs are cooked. Heart is full. The fog was sitting perfectly in the valley — photos don't do it justice but I tried.",
+    "hashtags": ["trailrunning", "ultrarunning", "mttam", "bayarea", "running"],
+    "location_name": "Mount Tamalpais, CA",
+    "media": [
+      { "type": "image", "placeholder": "mt_tam_fog_trail.jpg" },
+      { "type": "image", "placeholder": "mt_tam_summit_view.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000008",
+    "author_username": "dkim_runs",
+    "caption": "New PR at the Oakland Half Marathon: 1:21:43! 3 minutes off my previous best. The training block from Lydiard base training finally clicked.\n\nFull race report on my Substack.",
+    "hashtags": ["halfmarathon", "running", "personalrecord", "raceday", "training"],
+    "location_name": "Oakland, CA",
+    "media": [
+      { "type": "image", "placeholder": "race_finish_line.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000009",
+    "author_username": "eva.eats",
+    "caption": "Brown butter miso pasta with crispy capers. The combination of umami from the miso and nuttiness from the brown butter is borderline criminal.\n\nFull recipe in the comments ↓",
+    "hashtags": ["pasta", "recipe", "foodphotography", "homecooking", "miso"],
+    "media": [
+      { "type": "image", "placeholder": "miso_pasta_overhead.jpg" },
+      { "type": "image", "placeholder": "miso_pasta_detail.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000010",
+    "author_username": "eva.eats",
+    "caption": "Market haul from the Ferry Building today. Spring produce is finally here — I've been dreaming about English peas and fava beans for months.",
+    "hashtags": ["farmersmarket", "seasonal", "spring", "produce", "foodie"],
+    "location_name": "Ferry Building Marketplace, SF",
+    "media": [
+      { "type": "image", "placeholder": "market_haul_spring.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000011",
+    "author_username": "gina.p",
+    "caption": "Monstera deliciosa update: she put out three new leaves this month after I switched to rainwater. Plants know.",
+    "hashtags": ["plantmom", "monstera", "houseplants", "plantcare", "urbanjungle"],
+    "media": [
+      { "type": "image", "placeholder": "monstera_new_leaves.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000012",
+    "author_username": "gina.p",
+    "caption": "60 minutes of yin yoga this morning and I feel like I've been wrung out like a wet towel — in the best way. Tension I didn't know I was holding.",
+    "hashtags": ["yoga", "yinyoga", "mindfulness", "movement", "wellness"],
+    "media": [
+      { "type": "image", "placeholder": "yoga_morning_mat.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000013",
+    "author_username": "hiro.builds",
+    "caption": "One year of building this project in public. Thread on what I learned ↓\n\n1/ Ship before you feel ready. I waited 4 months too long on v0.1.",
+    "hashtags": ["buildinpublic", "indie", "startup", "lessons", "software"],
+    "media": [
+      { "type": "image", "placeholder": "one_year_stats_screenshot.png" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000014",
+    "author_username": "hiro.builds",
+    "caption": "My desk setup after the big reorganization. Finally got the cable chaos under control. The monitor arm made a ridiculous difference in how spacious the desk feels.",
+    "hashtags": ["desksetup", "workfromhome", "battlestation", "productivity"],
+    "media": [
+      { "type": "image", "placeholder": "desk_setup_clean.jpg" },
+      { "type": "image", "placeholder": "desk_setup_detail_cables.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000015",
+    "author_username": "iris.ko",
+    "caption": "Shot this for a brand campaign last week. The brief was 'controlled chaos' and I think we nailed it. Grateful for a team that trusts the process.",
+    "hashtags": ["photography", "campaignshoot", "advertising", "behindthescenes"],
+    "media": [
+      { "type": "image", "placeholder": "brand_campaign_bts.jpg" },
+      { "type": "image", "placeholder": "brand_campaign_final.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000016",
+    "author_username": "iris.ko",
+    "caption": "Portrait study series no. 7. Available light only. No reflectors. Just a window and patience.",
+    "hashtags": ["portraitphotography", "naturallight", "studyseries", "film", "analog"],
+    "media": [
+      { "type": "image", "placeholder": "portrait_study_7.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000017",
+    "author_username": "jwright_reads",
+    "caption": "Finished 'The Remains of the Day' at 2am last night. I've been staring at the ceiling since. Stevens is the most devastating portrait of self-deception in fiction and I can't shake it.",
+    "hashtags": ["books", "reading", "fiction", "bookreview", "kazuoishiguro"],
+    "media": [
+      { "type": "image", "placeholder": "book_remains_of_day.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000018",
+    "author_username": "jwright_reads",
+    "caption": "My 'currently reading' pile for the month. Yes, I read them simultaneously. No, I don't feel bad about it.",
+    "hashtags": ["currentlyreading", "bookstack", "books", "tbr", "nonfiction"],
+    "media": [
+      { "type": "image", "placeholder": "book_stack_april.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000019",
+    "author_username": "alice.nyx",
+    "caption": "Fog rolling into the bay from Twin Peaks. This is why I moved to San Francisco ten years ago and still haven't left.",
+    "hashtags": ["sanfrancisco", "fog", "twinpeaks", "bayarea", "landscape"],
+    "location_name": "Twin Peaks, San Francisco",
+    "media": [
+      { "type": "image", "placeholder": "sf_fog_bay_view.jpg" }
+    ]
+  },
+  {
+    "id": "019524c6-0002-7000-8000-000000000020",
+    "author_username": "carla.creates",
+    "caption": "Piece 2 of 12 in the Liminal Spaces series: 'Departure Lounge at 4am'. There's something about airports at that hour that feels like a pause between lives.",
+    "hashtags": ["illustration", "art", "liminalspaces", "digitalart", "series"],
+    "media": [
+      { "type": "image", "placeholder": "liminal_02_airport.jpg" }
+    ]
+  }
+]

@@ -1,0 +1,92 @@
+# =============================================================================
+# Dockerfile.service — Multi-stage Rust microservice image
+# Builder: rust:1.85 + cargo-chef (layer-cached dependency compilation)
+# Runtime: gcr.io/distroless/cc-debian12:nonroot (minimal attack surface)
+#
+# Build args:
+#   BINARY_NAME    — name of the binary crate (e.g. uzume-profiles, heimdall)
+#   BUILD_PROFILE  — "release" (default) or "debug"
+#
+# Usage from project root:
+#   docker build \
+#     --build-arg BINARY_NAME=uzume-profiles \
+#     -f Prithvi/docker/Dockerfile.service \
+#     -t ghcr.io/divyumsinghal/nyx/uzume-profiles:latest \
+#     .
+#
+# Or via justfile:
+#   just docker-build uzume-profiles
+# =============================================================================
+
+# syntax=docker/dockerfile:1.7
+
+# ── Stage 0: Chef base ────────────────────────────────────────────────────────
+# Installs cargo-chef once; shared by planner and builder stages via BuildKit cache.
+FROM rust:1.85-slim-bookworm AS chef
+
+# Build-time dependencies: ssl headers (for reqwest rustls), pg headers (for sqlx)
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        pkg-config \
+        libssl-dev \
+        libpq-dev \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install cargo-chef --locked
+
+WORKDIR /build
+
+# ── Stage 1: Recipe planner ───────────────────────────────────────────────────
+# cargo-chef prepare scans the workspace and records which crates + features
+# need to be compiled. The output (recipe.json) is the cache key — if only
+# src/ files change but Cargo.toml files are unchanged, the builder cache hits.
+FROM chef AS planner
+
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+# ── Stage 2: Builder ──────────────────────────────────────────────────────────
+FROM chef AS builder
+
+ARG BINARY_NAME
+ARG BUILD_PROFILE=release
+
+# Restore cached dependencies first (this layer only invalidates when Cargo.toml
+# or Cargo.lock changes, not when src/ changes).
+COPY --from=planner /build/recipe.json recipe.json
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/build/target \
+    cargo chef cook --profile "${BUILD_PROFILE}" --recipe-path recipe.json
+
+# Copy source and compile the target binary
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/build/target \
+    cargo build --profile "${BUILD_PROFILE}" --bin "${BINARY_NAME}" && \
+    # Copy out of cache-mounted target directory before the mount disappears
+    cp "target/${BUILD_PROFILE}/${BINARY_NAME}" /build/output && \
+    strip /build/output
+
+# ── Stage 3: Runtime ──────────────────────────────────────────────────────────
+# distroless/cc contains only glibc + libssl — nothing else.
+# :nonroot runs as uid=65532 (user "nonroot") with no shell.
+# An attacker who breaks out of the app has no shell, no package manager,
+# no coreutils — drastically reduces post-exploitation capability.
+FROM gcr.io/distroless/cc-debian12:nonroot AS runtime
+
+ARG BINARY_NAME
+
+# Copy the stripped binary from the builder
+COPY --from=builder /build/output /usr/local/bin/service
+
+# The binary reads config from environment variables (see NyxConfig in Nun).
+# No config files are baked into the image.
+
+EXPOSE 3000
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/usr/local/bin/service"]

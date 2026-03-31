@@ -1,0 +1,180 @@
+# =============================================================================
+# platform.yml — Nyx platform processes (gateway + workers)
+# Requires infra.yml to be running.
+#
+# Run:
+#   docker compose \
+#     -f Prithvi/compose/infra.yml \
+#     -f Prithvi/compose/platform.yml \
+#     up -d
+# =============================================================================
+
+name: nyx
+
+x-env: &env
+  env_file:
+    - path: ../../.env
+      required: false
+    - path: ../../.env.local
+      required: false
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+x-restart: &restart
+  restart: "no"
+
+# ── Shared service template ───────────────────────────────────────────────────
+x-nyx-service: &nyx-service
+  <<: [*env, *restart]
+  image: "ghcr.io/divyumsinghal/nyx/${SERVICE_NAME:-unknown}:${NYX_VERSION:-latest}"
+  # Images are built by CI: .github/workflows/release.yml
+  # Build locally: just docker-build
+  networks:
+    - nyx
+  depends_on:
+    - postgres-check
+    - dragonfly-check
+    - nats-check
+  logging: *logging
+
+services:
+
+  # ── Dependency probes ────────────────────────────────────────────────────────
+  # These probe-only containers verify that infra is up before starting platform
+  # services. They exit immediately; they exist only for depends_on ordering.
+  postgres-check:
+    <<: *env
+    image: postgres:17.4-alpine
+    command: ["sh", "-c", "until pg_isready -h postgres -U postgres; do sleep 1; done; echo ready"]
+    networks:   [nyx]
+    restart:    "no"
+
+  dragonfly-check:
+    <<: *env
+    image: redis:7-alpine
+    command: ["sh", "-c", "until redis-cli -h dragonfly -a $${DRAGONFLY_PASSWORD} ping | grep -q PONG; do sleep 1; done; echo ready"]
+    networks:   [nyx]
+    restart:    "no"
+
+  nats-check:
+    <<: *env
+    image: curlimages/curl:latest
+    command: ["sh", "-c", "until curl -sf http://nats:8222/healthz; do sleep 1; done; echo ready"]
+    networks:   [nyx]
+    restart:    "no"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Heimdall — API gateway (reverse proxy)
+  # Routes: /api/nyx/* → Kratos/aliases, /api/uzume/* → Uzume services
+  # See CLAUDE.md "Gateway routing" for full route table.
+  # ────────────────────────────────────────────────────────────────────────────
+  heimdall:
+    <<: [*env, *restart]
+    image: "ghcr.io/divyumsinghal/nyx/heimdall:${NYX_VERSION:-latest}"
+    container_name: nyx-heimdall
+    environment:
+      SERVICE_NAME:           heimdall
+      RUST_LOG:               "${RUST_LOG:-warn}"
+      DATABASE_URL:           "postgres://nyx_app:${NYX_APP_DB_PASSWORD}@postgres:5432/nyx"
+      REDIS_URL:              "redis://:${DRAGONFLY_PASSWORD}@dragonfly:6379"
+      NATS_URL:               "nats://${NYX_NATS_USER}:${NYX_NATS_PASSWORD}@nats:4222"
+      JWT_SECRET:             "${JWT_SECRET}"
+      KRATOS_PUBLIC_URL:      "http://kratos:4433"
+      KRATOS_ADMIN_URL:       "http://kratos:4434"
+      MATRIX_SERVER_URL:      "http://continuwuity:8008"
+      # Upstream URLs for proxying
+      UZUME_PROFILES_URL:     "http://uzume-profiles:3001"
+      UZUME_FEED_URL:         "http://uzume-feed:3002"
+      UZUME_STORIES_URL:      "http://uzume-stories:3003"
+      UZUME_REELS_URL:        "http://uzume-reels:3004"
+      UZUME_DISCOVER_URL:     "http://uzume-discover:3005"
+      OTEL_SERVICE_NAME:      heimdall
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
+    ports:
+      - "${HEIMDALL_PORT:-3000}:3000"
+    networks:
+      - nyx
+    depends_on:
+      postgres-check:
+        condition: service_completed_successfully
+      dragonfly-check:
+        condition: service_completed_successfully
+      nats-check:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/healthz | grep -q ok"]
+      interval: 15s
+      timeout:  5s
+      retries:  5
+      start_period: 10s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Oya — media processing worker
+  # Subscribes to: Uzume.media.uploaded (NATS)
+  # Produces: resized images (1080/640/320/150px), HLS video variants
+  # Stores results in MinIO; emits Uzume.media.processed
+  # ────────────────────────────────────────────────────────────────────────────
+  oya:
+    <<: [*env, *restart]
+    image: "ghcr.io/divyumsinghal/nyx/oya:${NYX_VERSION:-latest}"
+    container_name: nyx-oya
+    environment:
+      SERVICE_NAME:       oya
+      RUST_LOG:           "${RUST_LOG:-warn}"
+      NATS_URL:           "nats://${NYX_NATS_USER}:${NYX_NATS_PASSWORD}@nats:4222"
+      MINIO_ENDPOINT:     "http://minio:9000"
+      MINIO_ACCESS_KEY:   "${MINIO_ROOT_USER}"
+      MINIO_SECRET_KEY:   "${MINIO_ROOT_PASSWORD}"
+      MINIO_BUCKET:       nyx-media
+      DATABASE_URL:       "postgres://nyx_app:${NYX_APP_DB_PASSWORD}@postgres:5432/nyx"
+      OTEL_SERVICE_NAME:  oya
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
+      # Worker metrics port (scraped by Prometheus)
+      METRICS_PORT:       9091
+    networks:
+      - nyx
+    depends_on:
+      postgres-check:
+        condition: service_completed_successfully
+      nats-check:
+        condition: service_completed_successfully
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Ushas — notification worker
+  # Subscribes to interaction events (NATS), groups + dispatches push notifs
+  # via Gorush, and stores in-app notifications in PostgreSQL.
+  # ────────────────────────────────────────────────────────────────────────────
+  ushas:
+    <<: [*env, *restart]
+    image: "ghcr.io/divyumsinghal/nyx/ushas:${NYX_VERSION:-latest}"
+    container_name: nyx-ushas
+    environment:
+      SERVICE_NAME:       ushas
+      RUST_LOG:           "${RUST_LOG:-warn}"
+      NATS_URL:           "nats://${NYX_NATS_USER}:${NYX_NATS_PASSWORD}@nats:4222"
+      DATABASE_URL:       "postgres://nyx_app:${NYX_APP_DB_PASSWORD}@postgres:5432/nyx"
+      REDIS_URL:          "redis://:${DRAGONFLY_PASSWORD}@dragonfly:6379"
+      GORUSH_URL:         "http://gorush:8088"
+      GORUSH_API_KEY:     "${GORUSH_API_KEY}"
+      OTEL_SERVICE_NAME:  ushas
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
+      METRICS_PORT:       9092
+    networks:
+      - nyx
+    depends_on:
+      postgres-check:
+        condition: service_completed_successfully
+      nats-check:
+        condition: service_completed_successfully
+    logging: *logging
+
+# ── External network (created by infra.yml) ───────────────────────────────────
+networks:
+  nyx:
+    external: true

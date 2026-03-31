@@ -1,0 +1,490 @@
+# =============================================================================
+# infra.yml — Nyx infrastructure services
+# All stateful backing services. No application code here.
+#
+# Run from project root:
+#   docker compose -f Prithvi/compose/infra.yml up -d
+#   docker compose -f Prithvi/compose/infra.yml -f Prithvi/compose/dev.yml up -d
+#
+# Paths are relative to this file's directory (Prithvi/compose/).
+# =============================================================================
+
+name: nyx
+
+# ── Shared environment ────────────────────────────────────────────────────────
+x-env: &env
+  env_file:
+    - path: ../../.env
+      required: false
+    - path: ../../.env.local
+      required: false
+
+# ── Shared logging driver ────────────────────────────────────────────────────
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+    labels: "service,project"
+
+# ── Shared restart policy (overridden in prod.yml) ───────────────────────────
+x-restart: &restart
+  restart: "no"   # dev default; prod.yml sets unless-stopped
+
+services:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # PostgreSQL 17 — primary data store
+  # One instance, two databases:  nyx (app data) | kratos (auth data)
+  # ────────────────────────────────────────────────────────────────────────────
+  postgres:
+    <<: [*env, *restart]
+    image: postgres:17.4-alpine
+    container_name: nyx-postgres
+    shm_size: 256mb
+    environment:
+      POSTGRES_DB:       nyx
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: "${POSTGRES_ROOT_PASSWORD}"
+      # Tune for a single-node server (Oracle Always-Free: 4 vCPU, 24 GB RAM)
+      POSTGRES_INITDB_ARGS: "--data-checksums --encoding=UTF8 --locale=en_US.utf8"
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - wal_level=replica
+      - -c
+      - log_min_duration_statement=200   # log queries >200ms
+      - -c
+      - log_line_prefix=%t [%p] %u@%d
+      - -c
+      - log_timezone=UTC
+      - -c
+      - timezone=UTC
+    volumes:
+      - nyx-postgres-data:/var/lib/postgresql/data
+      # Init scripts run once on first startup (alphabetical order)
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nyx"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 30s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # DragonflyDB — Redis-protocol cache + rate limiting + session store
+  # Drop-in Redis replacement; faster and more memory-efficient.
+  # ────────────────────────────────────────────────────────────────────────────
+  dragonfly:
+    <<: [*env, *restart]
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.27.0
+    container_name: nyx-dragonfly
+    ulimits:
+      memlock: -1     # DragonflyDB uses mmap; needs unlimited locked memory
+    command:
+      - "--requirepass=${DRAGONFLY_PASSWORD}"
+      - "--maxmemory=2gb"
+      - "--maxmemory-policy=allkeys-lru"
+      - "--hz=30"
+      - "--save="            # disable RDB snapshots (volatile cache; no persistence needed)
+      - "--tcp-backlog=511"
+    volumes:
+      - nyx-dragonfly-data:/data
+    ports:
+      - "${DRAGONFLY_PORT:-6379}:6379"
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${DRAGONFLY_PASSWORD} ping | grep -q PONG"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 10s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # NATS — event bus with JetStream (at-least-once pub/sub)
+  # Streams (NYX, UZUME) are created by nyx-xtask at startup, not here.
+  # ────────────────────────────────────────────────────────────────────────────
+  nats:
+    <<: [*env, *restart]
+    image: nats:2.10.24-alpine
+    container_name: nyx-nats
+    command:
+      - "--config=/etc/nats/nats-server.conf"
+    volumes:
+      - nyx-nats-data:/data/jetstream
+      - ../config/nats/nats-server.conf:/etc/nats/nats-server.conf:ro
+    ports:
+      - "${NATS_CLIENT_PORT:-4222}:4222"
+      - "${NATS_MONITOR_PORT:-8222}:8222"   # HTTP monitoring (Prometheus scrapes /varz)
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz | grep -q '\"status\":\"ok\"'"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 10s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # MinIO — S3-compatible object storage (media, attachments)
+  # One bucket: nyx-media — paths: {app}/{entity}/{id}/{variant}.{ext}
+  # ────────────────────────────────────────────────────────────────────────────
+  minio:
+    <<: [*env, *restart]
+    image: minio/minio:RELEASE.2025-02-28T09-55-16Z
+    container_name: nyx-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER:       "${MINIO_ROOT_USER}"
+      MINIO_ROOT_PASSWORD:   "${MINIO_ROOT_PASSWORD}"
+      # Production: set these for proper TLS termination
+      # MINIO_SERVER_URL:    "https://storage.nyx.com"
+      # MINIO_BROWSER_REDIRECT_URL: "https://storage-console.nyx.com"
+    volumes:
+      - nyx-minio-data:/data
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"   # MinIO web console
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "mc ready local 2>/dev/null || curl -sf http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 20s
+    logging: *logging
+
+  # ── MinIO initialiser ──────────────────────────────────────────────────────
+  # Creates the nyx-media bucket and sets a deny-public-access policy.
+  # Runs once and exits; subsequent starts are idempotent.
+  minio-init:
+    image: minio/mc:latest
+    container_name: nyx-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER:     "${MINIO_ROOT_USER}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD}"
+    entrypoint: >
+      /bin/sh -c "
+        set -e;
+        mc alias set nyx http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD};
+        mc mb --ignore-existing nyx/nyx-media;
+        mc anonymous set none nyx/nyx-media;
+        echo 'MinIO bucket nyx-media ready.';
+      "
+    networks:
+      - nyx
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Meilisearch — full-text search engine
+  # Indexes: Uzume_posts, Uzume_profiles, Uzume_reels (managed by Brizo crate)
+  # ────────────────────────────────────────────────────────────────────────────
+  meilisearch:
+    <<: [*env, *restart]
+    image: getmeili/meilisearch:v1.12.0
+    container_name: nyx-meilisearch
+    environment:
+      MEILI_ENV:         "${MEILI_ENV:-development}"
+      MEILI_MASTER_KEY:  "${MEILI_MASTER_KEY}"
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_DB_PATH:     "/meili_data"
+      MEILI_HTTP_ADDR:   "0.0.0.0:7700"
+    volumes:
+      - nyx-meili-data:/meili_data
+    ports:
+      - "${MEILI_PORT:-7700}:7700"
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:7700/health | grep -q available"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+      start_period: 15s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Ory Kratos — identity & auth management
+  # Runs two processes: migrate (exits) then serve (long-running).
+  # ────────────────────────────────────────────────────────────────────────────
+  kratos-migrate:
+    image: oryd/kratos:v1.3.1
+    container_name: nyx-kratos-migrate
+    command: migrate sql -e --yes
+    environment:
+      DSN: "postgres://kratos_app:${KRATOS_DB_PASSWORD}@postgres:5432/kratos?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - nyx
+    restart: "no"   # migration only runs once
+    logging: *logging
+
+  kratos:
+    <<: [*env, *restart]
+    image: oryd/kratos:v1.3.1
+    container_name: nyx-kratos
+    command: serve --config=/etc/config/kratos/kratos.yml --dev
+    # ⚠ Remove --dev in production: it disables HTTPS enforcement and relaxes CORS.
+    # Production command: serve --config=/etc/config/kratos/kratos.yml
+    volumes:
+      - ../config/kratos:/etc/config/kratos:ro
+    environment:
+      # Env vars substituted by Kratos at runtime (see kratos.yml ${} references)
+      KRATOS_DB_PASSWORD:      "${KRATOS_DB_PASSWORD}"
+      POSTGRES_HOST:           postgres
+      KRATOS_COOKIE_SECRET:    "${KRATOS_COOKIE_SECRET}"
+      KRATOS_CIPHER_SECRET:    "${KRATOS_CIPHER_SECRET}"
+      KRATOS_PUBLIC_URL:       "${KRATOS_PUBLIC_URL:-http://localhost:4433}"
+      KRATOS_ADMIN_URL:        "http://kratos:4434"
+      NX_WEB_URL:              "${NX_WEB_URL:-http://localhost:5173}"
+      COOKIE_DOMAIN:           "${COOKIE_DOMAIN:-localhost}"
+      SESSION_COOKIE_SECURE:   "${SESSION_COOKIE_SECURE:-false}"
+      SMTP_CONNECTION_URI:     "${SMTP_CONNECTION_URI}"
+      SMTP_FROM_ADDRESS:       "${SMTP_FROM_ADDRESS:-noreply@nyx.com}"
+      TWILIO_ACCOUNT_SID:      "${TWILIO_ACCOUNT_SID}"
+      TWILIO_AUTH_TOKEN:       "${TWILIO_AUTH_TOKEN}"
+      TWILIO_PHONE_NUMBER:     "${TWILIO_PHONE_NUMBER}"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
+    depends_on:
+      kratos-migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${KRATOS_PUBLIC_PORT:-4433}:4433"   # public: browsers/apps
+      - "${KRATOS_ADMIN_PORT:-4434}:4434"    # admin: never expose externally
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4433/health/ready | grep -q status"]
+      interval: 15s
+      timeout:  5s
+      retries:  5
+      start_period: 30s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Continuwuity — Matrix homeserver (privacy-first; no federation)
+  # Nyx users get Matrix accounts for DMs (managed by Ogma crate).
+  # server_name = nyx.com (CANNOT change after first start)
+  # ────────────────────────────────────────────────────────────────────────────
+  continuwuity:
+    <<: [*env, *restart]
+    image: ghcr.io/girlbossceo/conduwuit:main
+    container_name: nyx-matrix
+    volumes:
+      - nyx-matrix-data:/data
+      - ../config/continuwuity/conduwuit.toml:/etc/conduwuit/conduwuit.toml:ro
+    environment:
+      CONDUWUIT_CONFIG:       "/etc/conduwuit/conduwuit.toml"
+      MATRIX_SERVER_NAME:     "${MATRIX_SERVER_NAME:-nyx.com}"
+      CONDUWUIT_LOG:          "${CONDUWUIT_LOG:-warn}"
+    ports:
+      - "${MATRIX_PORT:-8008}:8008"
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8008/_matrix/client/versions | grep -q versions"]
+      interval: 15s
+      timeout:  5s
+      retries:  5
+      start_period: 30s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Gorush — push notification gateway (APNs + FCM)
+  # Ushas worker publishes to Gorush's HTTP API.
+  # iOS/Android disabled by default; enable in prod with real credentials.
+  # ────────────────────────────────────────────────────────────────────────────
+  gorush:
+    <<: [*env, *restart]
+    image: appleboy/gorush:v1.18.6
+    container_name: nyx-gorush
+    command: --config /etc/gorush/config.yml
+    volumes:
+      - ../config/gorush/config.yml:/etc/gorush/config.yml:ro
+    environment:
+      GORUSH_API_KEY:    "${GORUSH_API_KEY}"
+      DRAGONFLY_HOST:    dragonfly
+      DRAGONFLY_PASSWORD: "${DRAGONFLY_PASSWORD}"
+      APNS_KEY_ID:       "${APNS_KEY_ID}"
+      APNS_TEAM_ID:      "${APNS_TEAM_ID}"
+      APNS_BUNDLE_ID_UZUME: "${APNS_BUNDLE_ID_UZUME:-com.nyx.uzume}"
+      FCM_API_KEY:       "${FCM_API_KEY}"
+    ports:
+      - "${GORUSH_PORT:-8088}:8088"
+    networks:
+      - nyx
+    depends_on:
+      dragonfly:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8088/sys/stat | grep -q cpu_num"]
+      interval: 15s
+      timeout:  5s
+      retries:  5
+      start_period: 15s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Prometheus — metrics collection
+  # ────────────────────────────────────────────────────────────────────────────
+  prometheus:
+    <<: [*env, *restart]
+    image: prom/prometheus:v3.2.1
+    container_name: nyx-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"          # allows config reload via POST /-/reload
+      - "--web.console.libraries=/etc/prometheus/console_libraries"
+      - "--web.console.templates=/etc/prometheus/consoles"
+    volumes:
+      - nyx-prometheus-data:/prometheus
+      - ../config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    environment:
+      ENVIRONMENT: "${ENVIRONMENT:-dev}"
+      # MinIO Prometheus integration token (generate with: mc admin prometheus generate)
+      MINIO_PROMETHEUS_TOKEN: "${MINIO_PROMETHEUS_TOKEN}"
+      MEILI_MASTER_KEY:       "${MEILI_MASTER_KEY}"
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy | grep -q Healthy"]
+      interval: 15s
+      timeout:  5s
+      retries:  3
+      start_period: 15s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Loki — log aggregation
+  # ────────────────────────────────────────────────────────────────────────────
+  loki:
+    <<: [*env, *restart]
+    image: grafana/loki:3.4.2
+    container_name: nyx-loki
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - nyx-loki-data:/loki
+      - ../config/loki/loki.yml:/etc/loki/loki.yml:ro
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/ready | grep -q ready"]
+      interval: 15s
+      timeout:  5s
+      retries:  3
+      start_period: 20s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Promtail — log collector (Docker → Loki)
+  # Tails container stdout/stderr and ships to Loki.
+  # ────────────────────────────────────────────────────────────────────────────
+  promtail:
+    <<: [*env, *restart]
+    image: grafana/promtail:3.4.2
+    container_name: nyx-promtail
+    command: -config.file=/etc/promtail/promtail.yml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # Docker service discovery
+      - ../config/promtail/promtail.yml:/etc/promtail/promtail.yml:ro
+    networks:
+      - nyx
+    depends_on:
+      loki:
+        condition: service_healthy
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Grafana — dashboards (Prometheus + Loki datasources)
+  # ────────────────────────────────────────────────────────────────────────────
+  grafana:
+    <<: [*env, *restart]
+    image: grafana/grafana:11.6.0
+    container_name: nyx-grafana
+    environment:
+      GF_SERVER_ROOT_URL:              "${GRAFANA_ROOT_URL:-http://localhost:3030}"
+      GF_SECURITY_ADMIN_USER:          "${GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD:      "${GRAFANA_ADMIN_PASSWORD}"
+      # Disable anonymous access in prod; useful for team dashboards in dev.
+      GF_AUTH_ANONYMOUS_ENABLED:       "${GRAFANA_ANON:-true}"
+      GF_AUTH_ANONYMOUS_ORG_ROLE:      "Viewer"
+      # Opt out of telemetry
+      GF_ANALYTICS_REPORTING_ENABLED:  "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES:  "false"
+      # Unified alerting
+      GF_UNIFIED_ALERTING_ENABLED:     "true"
+    volumes:
+      - nyx-grafana-data:/var/lib/grafana
+      - ../config/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "${GRAFANA_PORT:-3030}:3000"
+    networks:
+      - nyx
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health | grep -q ok"]
+      interval: 15s
+      timeout:  5s
+      retries:  3
+      start_period: 20s
+    logging: *logging
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
+volumes:
+  nyx-postgres-data:
+  nyx-dragonfly-data:
+  nyx-nats-data:
+  nyx-minio-data:
+  nyx-meili-data:
+  nyx-matrix-data:
+  nyx-prometheus-data:
+  nyx-loki-data:
+  nyx-grafana-data:
+
+# ── Network ───────────────────────────────────────────────────────────────────
+# All nyx services join this network.
+# platform.yml and uzume.yml declare it as external.
+networks:
+  nyx:
+    name: nyx
+    driver: bridge
+    attachable: true   # allows standalone containers to join (useful for debugging)
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

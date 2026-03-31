@@ -1,0 +1,102 @@
+[
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000001",
+    "email": "alice.chen@example.com",
+    "phone": "+14155550101",
+    "username": "alice.nyx",
+    "display_name": "Alice Chen",
+    "bio": "Photography enthusiast & coffee addict ☕ | Based in SF",
+    "is_private": false,
+    "avatar_seed": "alice"
+  },
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000002",
+    "email": "bob.osei@example.com",
+    "phone": "+14155550102",
+    "username": "bob_codes",
+    "display_name": "Bob Osei",
+    "bio": "Software engineer by day, musician by night 🎸",
+    "is_private": false,
+    "avatar_seed": "bob"
+  },
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000003",
+    "email": "carla.mendez@example.com",
+    "phone": "+14155550103",
+    "username": "carla.creates",
+    "display_name": "Carla Méndez",
+    "bio": "Designer & illustrator. Views are my own.",
+    "is_private": false,
+    "avatar_seed": "carla"
+  },
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000004",
+    "email": "david.kim@example.com",
+    "phone": "+14155550104",
+    "username": "dkim_runs",
+    "display_name": "David Kim",
+    "bio": "Running 🏃 | Trail enthusiast | Sub-3hr marathoner",
+    "is_private": false,
+    "avatar_seed": "david"
+  },
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000005",
+    "email": "eva.petrov@example.com",
+    "phone": "+14155550105",
+    "username": "eva.eats",
+    "display_name": "Eva Petrov",
+    "bio": "Food writer | Recipe developer | Cookbook author ✍️",
+    "is_private": false,
+    "avatar_seed": "eva"
+  },
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000006",
+    "email": "felix.amara@example.com",
+    "phone": "+14155550106",
+    "username": "felix_films",
+    "display_name": "Félix Amara",
+    "bio": "Cinematographer | Short films & docs | PNW 🌲",
+    "is_private": true,
+    "avatar_seed": "felix"
+  },
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000007",
+    "email": "gina.patel@example.com",
+    "phone": "+14155550107",
+    "username": "gina.p",
+    "display_name": "Gina Patel",
+    "bio": "Plant mom 🌿 | Yoga teacher | Slow living advocate",
+    "is_private": false,
+    "avatar_seed": "gina"
+  },
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000008",
+    "email": "hiro.tanaka@example.com",
+    "phone": "+81901234567",
+    "username": "hiro.builds",
+    "display_name": "Hiro Tanaka",
+    "bio": "Building things on the internet | Open source contributor",
+    "is_private": false,
+    "avatar_seed": "hiro"
+  },
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000009",
+    "email": "iris.ko@example.com",
+    "phone": "+14155550109",
+    "username": "iris.ko",
+    "display_name": "Iris Ko",
+    "bio": "Art director & visual storyteller 📸",
+    "is_private": false,
+    "avatar_seed": "iris"
+  },
+  {
+    "nyx_identity_id": "019524c6-0001-7000-8000-000000000010",
+    "email": "james.wright@example.com",
+    "phone": "+14155550110",
+    "username": "jwright_reads",
+    "display_name": "James Wright",
+    "bio": "Books, ideas, and occasional hot takes. Reader first.",
+    "is_private": false,
+    "avatar_seed": "james"
+  }
+]

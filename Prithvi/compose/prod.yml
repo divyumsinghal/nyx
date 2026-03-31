@@ -1,0 +1,214 @@
+# =============================================================================
+# prod.yml — Production overrides
+# Layered on top of infra.yml + platform.yml + uzume.yml.
+#
+# What this changes vs dev defaults:
+#   - restart: unless-stopped on all services
+#   - Resource limits tuned for Oracle Always-Free (4 ARM vCPU, 24 GB RAM)
+#   - Internal monitoring ports NOT exposed (metrics stay inside Docker network)
+#   - Grafana anonymous access disabled
+#   - Kratos --dev flag removed (set in infra.yml command override here)
+#   - Log driver set to loki (requires loki-docker-driver plugin)
+#
+# CHANGE FOR YOUR HARDWARE:
+#   - Adjust mem_limit / cpus per service based on profiling
+#   - Uncomment loki logging driver once plugin is installed:
+#     docker plugin install grafana/loki-docker-driver:latest --alias loki --grant-all-permissions
+#
+# Usage:
+#   docker compose \
+#     -f Prithvi/compose/infra.yml \
+#     -f Prithvi/compose/platform.yml \
+#     -f Prithvi/compose/uzume.yml \
+#     -f Prithvi/compose/prod.yml \
+#     up -d
+#
+# Or use:  just prod-up
+# =============================================================================
+
+name: nyx
+
+# ── Resource templates ────────────────────────────────────────────────────────
+# Adjust these to match your hardware. These are tuned for 4 vCPU / 24 GB.
+
+x-infra-resources: &infra-resources
+  deploy:
+    resources:
+      limits:
+        cpus:   "1.0"
+        memory: 2G
+      reservations:
+        memory: 512M
+
+x-service-resources: &service-resources
+  deploy:
+    resources:
+      limits:
+        cpus:   "0.5"
+        memory: 512M
+      reservations:
+        memory: 128M
+
+x-worker-resources: &worker-resources
+  deploy:
+    resources:
+      limits:
+        cpus:   "1.0"
+        memory: 1G
+      reservations:
+        memory: 256M
+
+x-prod-restart: &prod-restart
+  restart: unless-stopped
+
+# ── Loki log driver (uncomment after installing plugin) ───────────────────────
+# x-loki-logging: &loki-logging
+#   driver: loki
+#   options:
+#     loki-url:            "http://localhost:3100/loki/api/v1/push"
+#     loki-batch-size:     "400"
+#     loki-retries:        "5"
+#     loki-pipeline-stages: |
+#       - json:
+#           expressions:
+#             level: level
+#       - labels:
+#           level:
+
+services:
+
+  # ── Infrastructure: restart + resource limits ─────────────────────────────
+  postgres:
+    <<: [*infra-resources, *prod-restart]
+    # Remove debug log_statement=all; only log slow queries in prod
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - wal_level=replica
+      - -c
+      - log_min_duration_statement=500
+      - -c
+      - log_line_prefix=%t [%p] %u@%d
+      - -c
+      - log_timezone=UTC
+      - -c
+      - timezone=UTC
+    # In prod: do NOT expose postgres port publicly. Remove or bind to 127.0.0.1.
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  dragonfly:
+    <<: [*infra-resources, *prod-restart]
+    ports: []   # no external port; accessed only within nyx network
+
+  nats:
+    <<: [*infra-resources, *prod-restart]
+    ports: []   # client port internal only; remove monitor port in prod
+
+  minio:
+    <<: [*infra-resources, *prod-restart]
+    ports:
+      - "127.0.0.1:9000:9000"   # API: accessed by services internally; bind to loopback for admin access
+      # Console: only accessible via SSH tunnel in prod
+      # - "127.0.0.1:9001:9001"
+
+  meilisearch:
+    <<: [*infra-resources, *prod-restart]
+    ports: []   # internal only
+
+  kratos:
+    <<: [*service-resources, *prod-restart]
+    # Remove --dev flag for production
+    command: serve --config=/etc/config/kratos/kratos.yml
+    environment:
+      SESSION_COOKIE_SECURE: "true"
+      COOKIE_DOMAIN:         "nyx.com"
+    ports:
+      - "127.0.0.1:4433:4433"   # public API: fronted by Heimdall / nginx
+      # Admin port: NEVER expose externally
+      # - "127.0.0.1:4434:4434"  # only via SSH tunnel for ops access
+
+  continuwuity:
+    <<: [*infra-resources, *prod-restart]
+    ports: []   # fronted by Heimdall; no direct exposure
+
+  gorush:
+    <<: [*service-resources, *prod-restart]
+    ports: []
+
+  # ── Monitoring: internal-only in prod ─────────────────────────────────────
+  prometheus:
+    <<: [*infra-resources, *prod-restart]
+    ports:
+      - "127.0.0.1:9090:9090"   # only via SSH tunnel / VPN
+
+  loki:
+    <<: [*infra-resources, *prod-restart]
+    ports: []
+
+  promtail:
+    <<: *prod-restart
+
+  grafana:
+    <<: [*service-resources, *prod-restart]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED:   "false"
+      GF_SERVER_ROOT_URL:          "https://grafana.nyx.com"
+      GF_SECURITY_COOKIE_SECURE:   "true"
+      GF_SECURITY_COOKIE_SAMESITE: "strict"
+      GF_LOG_LEVEL:                "warn"
+    ports:
+      - "127.0.0.1:3030:3000"   # fronted by nginx / Cloudflare Tunnel
+
+  # ── Platform services: restart + resource limits ──────────────────────────
+  heimdall:
+    <<: [*service-resources, *prod-restart]
+    environment:
+      RUST_LOG: "warn"
+
+  oya:
+    <<: [*worker-resources, *prod-restart]
+    environment:
+      RUST_LOG: "warn"
+
+  ushas:
+    <<: [*service-resources, *prod-restart]
+    environment:
+      RUST_LOG: "warn"
+
+  # ── Uzume services: restart + resource limits ─────────────────────────────
+  uzume-profiles:
+    <<: [*service-resources, *prod-restart]
+    environment:
+      RUST_LOG: "warn"
+  uzume-feed:
+    <<: [*service-resources, *prod-restart]
+    environment:
+      RUST_LOG: "warn"
+  uzume-stories:
+    <<: [*service-resources, *prod-restart]
+    environment:
+      RUST_LOG: "warn"
+  uzume-reels:
+    <<: [*service-resources, *prod-restart]
+    environment:
+      RUST_LOG: "warn"
+  uzume-discover:
+    <<: [*service-resources, *prod-restart]
+    environment:
+      RUST_LOG: "warn"
+
+# ── External network ──────────────────────────────────────────────────────────
+networks:
+  nyx:
+    external: true

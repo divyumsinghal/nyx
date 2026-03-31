@@ -1,0 +1,293 @@
+# =============================================================================
+# kratos.yml — Ory Kratos identity & auth configuration
+# Docs: https://www.ory.sh/docs/kratos/reference/configuration
+# =============================================================================
+#
+# ── IDENTITY MODEL ────────────────────────────────────────────────────────────
+# Registration:  email + phone + username + password  (all required)
+# Login:         email OR phone OR username + password
+# Verification:  email (magic link) + phone (SMS OTP)
+# Recovery:      email only (phone recovery is future work)
+# 2FA:           TOTP (optional, user-controlled)
+#
+# This mirrors the UX of Instagram / Reddit:
+#   "Sign up with email + phone + pick a username. Log in with any of them."
+#
+# ── CHANGE FOR PRODUCTION ─────────────────────────────────────────────────────
+# - Set DSN to the real kratos_app database credential (never commit it)
+# - Set secrets.cookie, secrets.cipher to 32-byte random secrets
+# - Change serve.public.base_url to https://auth.nyx.com
+# - Change serve.admin.base_url to an internal-only URL (no public exposure)
+# - Configure courier.smtp with a real provider (Mailgun, Postmark, SES)
+# - Configure courier.sms with a real Twilio/Vonage webhook
+# - Set selfservice.default_browser_return_url to your frontend URL
+# - Review session lifetime and cookie settings for your security policy
+# =============================================================================
+
+version: v1.3.1
+
+# ── Database ──────────────────────────────────────────────────────────────────
+dsn: "postgres://kratos_app:${KRATOS_DB_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4"
+
+# ── Network ───────────────────────────────────────────────────────────────────
+serve:
+  public:
+    # The public API: browsers and native apps hit this directly.
+    # DEV:  http://localhost:4433
+    # PROD: https://auth.nyx.com
+    base_url: "${KRATOS_PUBLIC_URL:-http://localhost:4433}"
+    port: 4433
+    cors:
+      enabled: true
+      allowed_origins:
+        # DEV local frontends
+        - "http://localhost:5173"   # nyx-web (SvelteKit dev server)
+        - "http://localhost:5174"   # uzume-web dev server
+        # PROD — CHANGE THESE
+        - "https://nyx.com"
+        - "https://uzume.nyx.com"
+        - "https://anteros.nyx.com"
+        - "https://themis.nyx.com"
+      allowed_methods:  [POST, GET, PUT, PATCH, DELETE]
+      allowed_headers:  [Authorization, Content-Type, X-Session-Token, X-CSRF-Token]
+      exposed_headers:  [Content-Type]
+      allow_credentials: true
+
+  admin:
+    # NEVER expose the admin API publicly. Bind to localhost or an internal network.
+    # In Docker Compose the admin port is only reachable inside nyx network.
+    base_url: "${KRATOS_ADMIN_URL:-http://kratos:4434}"
+    port: 4434
+
+# ── Self-service flows ────────────────────────────────────────────────────────
+selfservice:
+  # Where to redirect after successful login/registration if no return_to is set.
+  # DEV:  http://localhost:5173
+  # PROD: https://nyx.com
+  default_browser_return_url: "${NX_WEB_URL:-http://localhost:5173}"
+
+  allowed_return_urls:
+    - "http://localhost:5173"
+    - "http://localhost:5174"
+    - "https://nyx.com"
+    - "https://uzume.nyx.com"
+    - "https://anteros.nyx.com"
+    - "https://themis.nyx.com"
+
+  methods:
+    # ── Password strategy ───────────────────────────────────────────────────
+    # Used for login (email|phone|username + password) and registration.
+    password:
+      enabled: true
+      config:
+        min_password_length: 10
+        # Check passwords against HaveIBeenPwned breach database.
+        haveibeenpwned_enabled: true
+        max_breaches: 0       # reject any breached password
+        identifier_similarity_check_enabled: true
+
+    # ── Code strategy (OTP via email or SMS) ────────────────────────────────
+    # Used for: phone/email verification, passwordless login (future).
+    code:
+      enabled:               true
+      mfa_enabled:           false  # set true when TOTP is configured
+      passwordless_enabled:  false  # enable for magic-link-only login
+
+    # ── TOTP (optional 2FA) ──────────────────────────────────────────────────
+    totp:
+      enabled: true
+      config:
+        issuer: "Nyx"
+
+    # ── WebAuthn / Passkeys ──────────────────────────────────────────────────
+    # Future: enable after initial launch. Passkeys replace password entirely.
+    webauthn:
+      enabled: false
+      config:
+        rp:
+          display_name: "Nyx"
+          # id must match the domain (no port)
+          id:      "${WEBAUTHN_RP_ID:-nyx.com}"
+          origins: ["https://nyx.com"]
+
+    # ── Link strategy (legacy magic-link) ────────────────────────────────────
+    # Keep enabled for backwards compat; code strategy is preferred.
+    link:
+      enabled: true
+      config:
+        lifespan: "1h"
+
+    # ── OIDC / Social login ───────────────────────────────────────────────────
+    # Future: add Google, Apple, etc.
+    oidc:
+      enabled: false
+      config:
+        providers: []
+
+    # ── Lookup secrets (backup codes) ────────────────────────────────────────
+    lookup_secret:
+      enabled: true
+
+  # ── Flow: Registration ──────────────────────────────────────────────────────
+  flows:
+    registration:
+      # How long the browser/app has to complete the registration flow.
+      lifespan: "1h"
+      enabled: true
+      ui_url: "${NX_WEB_URL:-http://localhost:5173}/auth/register"
+      # After registration, require email + phone verification before first login.
+      after:
+        password:
+          hooks:
+            - hook: session           # create a session immediately after signup
+            - hook: show_verification_ui  # then prompt for verification
+        code:
+          hooks:
+            - hook: session
+
+    # ── Flow: Login ─────────────────────────────────────────────────────────
+    login:
+      lifespan: "1h"
+      ui_url: "${NX_WEB_URL:-http://localhost:5173}/auth/login"
+      after:
+        password:
+          hooks:
+            - hook: revoke_active_sessions  # single-device policy (remove for multi-device)
+        code:
+          hooks:
+            - hook: revoke_active_sessions
+
+    # ── Flow: Verification ──────────────────────────────────────────────────
+    verification:
+      enabled: true
+      lifespan: "15m"
+      use: code   # 'code' = OTP (email OTP or SMS OTP), 'link' = magic link
+      ui_url: "${NX_WEB_URL:-http://localhost:5173}/auth/verify"
+      notify_unknown_recipients: false  # prevent email enumeration
+      after:
+        hooks:
+          - hook: session
+
+    # ── Flow: Recovery ──────────────────────────────────────────────────────
+    recovery:
+      enabled: true
+      lifespan: "15m"
+      use: code   # OTP sent to verified email
+      ui_url: "${NX_WEB_URL:-http://localhost:5173}/auth/recover"
+      notify_unknown_recipients: false  # prevent email enumeration
+
+    # ── Flow: Settings ──────────────────────────────────────────────────────
+    settings:
+      lifespan: "1h"
+      privileged_session_max_age: "15m"  # re-auth required for sensitive changes
+      ui_url: "${NX_WEB_URL:-http://localhost:5173}/settings"
+      after:
+        password:
+          hooks:
+            - hook: revoke_active_sessions   # invalidate all sessions on password change
+
+    # ── Flow: Logout ────────────────────────────────────────────────────────
+    logout:
+      after:
+        default_browser_return_url: "${NX_WEB_URL:-http://localhost:5173}/auth/login"
+
+# ── Session ───────────────────────────────────────────────────────────────────
+session:
+  lifespan: "720h"          # 30 days (standard for mobile-first apps)
+  earliest_possible_extend: "24h"
+  cookie:
+    # ⚠ PRODUCTION: use "__Host-" prefix for strongest cookie binding
+    # DEV: shorter name for ease of use
+    name: "nyx_session"
+    # Restrict cookie to nyx.com and subdomains
+    domain: "${COOKIE_DOMAIN:-localhost}"
+    # true in prod (HTTPS only), false in dev (HTTP allowed)
+    secure: "${SESSION_COOKIE_SECURE:-false}"
+    same_site: Lax
+    persistent: true
+
+# ── Identity ──────────────────────────────────────────────────────────────────
+identity:
+  default_schema_id: nyx_identity
+  schemas:
+    - id: nyx_identity
+      url: "file:///etc/config/kratos/identity.schema.json"
+
+# ── Secrets ───────────────────────────────────────────────────────────────────
+# PRODUCTION: rotate these secrets; they protect session cookies and CSRF tokens.
+# Generate with: openssl rand -base64 32
+secrets:
+  cookie:
+    - "${KRATOS_COOKIE_SECRET}"
+  cipher:
+    - "${KRATOS_CIPHER_SECRET}"
+
+# ── Hash (password storage) ───────────────────────────────────────────────────
+hashers:
+  algorithm: argon2id
+  argon2id:
+    memory:      131072  # 128 MiB
+    iterations:  3
+    parallelism: 4
+    salt_length: 16
+    key_length:  32
+    # Dedicated CPU budget for hashing. Keep low enough not to starve other requests.
+    expected_duration: "500ms"
+
+# ── Courier (email + SMS) ─────────────────────────────────────────────────────
+courier:
+  # How many delivery workers to run concurrently
+  deliver_every: "1s"
+
+  # ── Email ─────────────────────────────────────────────────────────────────
+  smtp:
+    # PRODUCTION: replace with Mailgun / Postmark / SES credentials.
+    # DEV: point to Mailhog or MailDev for local testing.
+    #   docker run -p 1025:1025 -p 8025:8025 mailhog/mailhog
+    connection_uri: "${SMTP_CONNECTION_URI:-smtps://user:password@mailhog:1025/?skip_ssl_verify=true}"
+    from_address:   "${SMTP_FROM_ADDRESS:-noreply@nyx.com}"
+    from_name:      "Nyx"
+    headers:
+      # Helps pass spam filters and enables reply tracking
+      "X-Mailer": "Ory Kratos"
+
+  # ── SMS (phone verification + OTP) ────────────────────────────────────────
+  # Kratos dispatches SMS via a configurable HTTP webhook.
+  # The webhook below is a Twilio example.
+  # PRODUCTION: set TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN via secrets.
+  #
+  # To swap providers (Vonage, AWS SNS, etc.), only the URL, headers, and
+  # body template change. The "from" pattern stays the same.
+  channels:
+    - id: sms
+      type: http
+      request_config:
+        url: "https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json"
+        method: POST
+        headers:
+          Content-Type: "application/x-www-form-urlencoded"
+        # Basic auth using Twilio Account SID + Auth Token
+        auth:
+          type: basic_auth
+          config:
+            user:     "${TWILIO_ACCOUNT_SID}"
+            password: "${TWILIO_AUTH_TOKEN}"
+        # Jsonnet body template. {{.Recipient}} = E.164 phone, {{.Body}} = OTP message.
+        body: base64://ewogICJUbyI6ICJ7ey5SZWNpcGllbnR9fSIsCiAgIkZyb20iOiAiJHtUV0lMSU9fUEhPTkVfTlVNQkVSfSIsCiAgIkJvZHkiOiAie3suQm9keX19Igp9
+        # ^ decodes to: {"To": "{{.Recipient}}", "From": "${TWILIO_PHONE_NUMBER}", "Body": "{{.Body}}"}
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+log:
+  level:             warn
+  format:            json
+  leak_sensitive_values: false  # NEVER set true in prod — leaks PII
+
+# ── Tracing ───────────────────────────────────────────────────────────────────
+tracing:
+  provider: otel
+  providers:
+    otlp:
+      insecure: true
+      server_url: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
+      sampling:
+        sampling_ratio: 0.1  # 10% in prod; 1.0 in dev

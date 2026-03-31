@@ -1,0 +1,93 @@
+# =============================================================================
+# Dockerfile.worker — NATS subscriber worker image (Oya, Ushas)
+# Identical build pipeline to Dockerfile.service.
+# Difference: workers have no HTTP server port, may need FFmpeg (Oya).
+#
+# Build args:
+#   BINARY_NAME    — "oya" or "ushas"
+#   WITH_FFMPEG    — "true" to install FFmpeg in runtime (Oya needs it)
+#   BUILD_PROFILE  — "release" (default) or "debug"
+#
+# Usage:
+#   docker build \
+#     --build-arg BINARY_NAME=oya \
+#     --build-arg WITH_FFMPEG=true \
+#     -f Prithvi/docker/Dockerfile.worker \
+#     -t ghcr.io/divyumsinghal/nyx/oya:latest \
+#     .
+# =============================================================================
+
+# syntax=docker/dockerfile:1.7
+
+FROM rust:1.85-slim-bookworm AS chef
+
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        pkg-config \
+        libssl-dev \
+        libpq-dev \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install cargo-chef --locked
+
+WORKDIR /build
+
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder
+
+ARG BINARY_NAME
+ARG BUILD_PROFILE=release
+
+COPY --from=planner /build/recipe.json recipe.json
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/build/target \
+    cargo chef cook --profile "${BUILD_PROFILE}" --recipe-path recipe.json
+
+COPY . .
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/build/target \
+    cargo build --profile "${BUILD_PROFILE}" --bin "${BINARY_NAME}" && \
+    cp "target/${BUILD_PROFILE}/${BINARY_NAME}" /build/output && \
+    strip /build/output
+
+# ── Runtime (with optional FFmpeg for Oya) ────────────────────────────────────
+# WITH_FFMPEG=true: use debian-slim runtime so we can apt-get install ffmpeg.
+# WITH_FFMPEG=false (default): use distroless like services.
+#
+# This conditional is handled at build time via ARG + multi-stage targeting.
+
+# Distroless runtime (default — Ushas, any worker without native deps)
+FROM gcr.io/distroless/cc-debian12:nonroot AS runtime-distroless
+COPY --from=builder /build/output /usr/local/bin/worker
+USER nonroot:nonroot
+ENTRYPOINT ["/usr/local/bin/worker"]
+
+# FFmpeg runtime (Oya)
+FROM debian:bookworm-slim AS runtime-ffmpeg
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        ffmpeg \
+        libssl3 \
+        libpq5 \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/* && \
+    # Create non-root user to match distroless nonroot uid
+    groupadd -g 65532 nonroot && \
+    useradd -u 65532 -g nonroot -s /sbin/nologin -M nonroot
+COPY --from=builder /build/output /usr/local/bin/worker
+USER nonroot:nonroot
+ENTRYPOINT ["/usr/local/bin/worker"]
+
+# ── Final stage selector ──────────────────────────────────────────────────────
+# docker build --target runtime-ffmpeg    (Oya)
+# docker build --target runtime-distroless (Ushas, others)
+# The justfile / CI selects the correct --target per BINARY_NAME.
+ARG WITH_FFMPEG=false
+FROM runtime-ffmpeg AS runtime-with-ffmpeg
+FROM runtime-distroless AS runtime-without-ffmpeg
