@@ -332,7 +332,7 @@ Wave 3: Integration hardening + deferred boundary + runbook (Tasks 10-12)
 
   **Commit**: YES | Message: `chore(security): add baseline and scan gates` | Files: `Seshat/*`, `.github/workflows/ci.yml`, `justfile`
 
-- [ ] 6. Implement Heka Ory Kratos client core
+- [x] 6. Implement Heka Ory Kratos client core
 
   **What to do**:
   - Implement Heka modules for Kratos client, session validation, identity lookup, and typed response handling.

@@ -23,7 +23,10 @@
     "ses_2bb743105ffe0eUH7xtRrqKV6G",
     "ses_2bb74313effey0NneYgt4xF1Y2",
     "ses_2bb6a02edffeqShbN5CBpuiU1I",
-    "ses_2bb6ae36effec8whRy8XfLHAdF"
+    "ses_2bb6ae36effec8whRy8XfLHAdF",
+    "ses_2bb61e32fffelgI6Mirn8SX3k1",
+    "ses_2bb61e2c9ffegACSn4vcwMnOJo",
+    "ses_2bb609ee7ffej7CJA9CtghGjCv"
   ],
   "plan_name": "nyx-uzume-monad-nun-foundation",
   "agent": "atlas",
@@ -63,6 +66,15 @@
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
       "updated_at": "2026-03-31T15:57:11.431Z"
+    },
+    "todo:6": {
+      "task_key": "todo:6",
+      "task_label": "6",
+      "task_title": "Implement Heka Ory Kratos client core",
+      "session_id": "ses_2bb609ee7ffej7CJA9CtghGjCv",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-03-31T16:12:24.322Z"
     }
   }
 }

@@ -59,3 +59,16 @@
 
 - Task 5 learning: security baseline should map explicit threat categories to concrete deterministic gates (dependency policy, CVE audit, secret signatures, and cross-app unauthorized-access invariants) so local and CI enforcement stay aligned.
 - Task 5 learning: cross-app unauthorized-access gating can be made deterministic by asserting critical migration constraints (`source_app <> target_app`, no self-link, revoked default policy) rather than relying on runtime integration setup.
+
+- Task 6 learning: provider payload structs stay internal and are mapped immediately to domain types.
+
+- Task 6 learning: keep provider payload structs internal to Heka and map immediately into domain identity types to enforce anti-leak boundaries.
+- Task 6 learning: deterministic Kratos error mapping stays stable as 401 auth_session_invalid, 403 auth_session_forbidden, 404 auth_identity_not_found, 5xx auth_provider_unavailable, network auth_network_unreachable, decode auth_provider_invalid_response.
+
+- Task 6 learning: Heka’s anti-leak boundary is safest when provider payload structs (`KratosSession`, `KratosIdentity`, `KratosIdentityTraits`) are internal-only and mapped immediately into domain-facing `NyxIdentity`, with strict serde `deny_unknown_fields` on boundary structs.
+- Task 6 learning: deterministic Kratos error mapping is stable when 401->`auth_session_invalid` (Unauthorized), 403->`auth_session_forbidden` (Forbidden), 404->`auth_identity_not_found` (NotFound), 5xx->`auth_provider_unavailable` (ServiceUnavailable), network->`auth_network_unreachable` (ServiceUnavailable), and decode/malformed payloads->`auth_provider_invalid_response` (ServiceUnavailable).
+
+- Task 6 learning: Heka’s anti-leak boundary is safest when provider payload structs (`KratosSession`, `KratosIdentity`, `KratosIdentityTraits`) are internal-only and mapped immediately into domain-facing `NyxIdentity`, with strict serde `deny_unknown_fields` on boundary structs.
+- Task 6 learning: deterministic Kratos error mapping is stable when 401->`auth_session_invalid` (Unauthorized), 403->`auth_session_forbidden` (Forbidden), 404->`auth_identity_not_found` (NotFound), 5xx->`auth_provider_unavailable` (ServiceUnavailable), network->`auth_network_unreachable` (ServiceUnavailable), and decode/malformed payloads->`auth_provider_invalid_response` (ServiceUnavailable).
+- Task 6 learning: provider payload structs stay internal to Heka and map immediately to domain identity types to preserve anti-leak boundaries.
+- Task 6 learning: deterministic Kratos error mapping is fixed as 401 auth_session_invalid, 403 auth_session_forbidden, 404 auth_identity_not_found, 5xx auth_provider_unavailable, network auth_network_unreachable, decode auth_provider_invalid_response.

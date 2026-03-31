@@ -27,3 +27,8 @@
 - Task 5 decision: introduced `Seshat/SECURITY-BASELINE.md` as the actionable security-first baseline artifact, including threat categories, controls, abuse-case expectations, and mandatory local/CI gate mapping.
 - Task 5 decision: wired `security-secret-scan` and `gate-cross-app-unauthorized` as mandatory just recipes and included the unauthorized-access gate in `just ci` so it is blocking by default.
 - Task 5 decision: updated `.github/workflows/ci.yml` to run `just security` and `just gate-cross-app-unauthorized` explicitly before `just ci` to make security gating visible and non-optional in CI execution logs.
+
+- Task 6 decision: implemented Heka Kratos client core behind a provider trait (`KratosProvider`) with a reqwest-backed adapter (`ReqwestKratosProvider`) so unit tests can validate deterministic Nun error mapping without leaking raw provider payloads beyond adapter boundary.
+- Task 6 decision: `KratosClient` exposes typed methods for step-1 core (`validate_session`, `get_identity`) and maps provider failures into Nun-standardized `NyxError` categories using stable machine-readable codes.
+- Task 6 decision: implement Heka Kratos core through provider trait (`KratosProvider`) plus reqwest adapter (`ReqwestKratosProvider`) so deterministic mapping and session/identity logic are testable without exposing provider internals.
+- Task 6 decision: keep service-facing identity contract minimal (`NyxIdentity { id }`) and enforce strict serde boundaries (`deny_unknown_fields`) on raw Kratos response structs.

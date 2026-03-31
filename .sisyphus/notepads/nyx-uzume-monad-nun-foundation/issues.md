@@ -18,3 +18,6 @@
 
 - Task 5 blocker reaffirmed: local execution of just-based gates remains blocked in this runtime because `just` is not installed (`command not found: just`), so direct recipe execution evidence is limited to equivalent underlying command checks.
 - Task 5 blocker reaffirmed: local dependency/vulnerability commands (`cargo deny check`, `cargo audit`) are unavailable because cargo-deny and cargo-audit are not installed here; CI remains authoritative because workflow provisions both tools before running mandatory gates.
+
+- Task 6 blocker reaffirmed: targeted Heka verification commands (`cargo test --manifest-path Cargo.toml --test kratos_client_core`, `cargo test --manifest-path Cargo.toml`, `cargo build --manifest-path Cargo.toml`) fail in this environment because workspace root `/home/sin/nyx/Cargo.toml` cannot be parsed (`no targets specified`), preventing local cargo RED/GREEN execution despite crate-level manifests being present.
+- Task 6 blocker reaffirmed: targeted Heka verification commands (`cargo test --manifest-path Cargo.toml --test kratos_client_core`, `cargo test --manifest-path Cargo.toml`, `cargo build --manifest-path Cargo.toml`) fail because workspace root `/home/sin/nyx/Cargo.toml` parse fails (`no targets specified`), blocking local cargo RED/GREEN execution in this environment.
