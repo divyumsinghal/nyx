@@ -87,3 +87,216 @@
 - Task 7 learning: deterministic policy evaluation is safer when direct tuple match is checked first, reverse tuple fallback second, and no-match falls back to deny.
 - Task 7 learning: explicit `Revoked` as a stored policy state guarantees immediate privacy reversion without implicit transitions.
 - Task 7 learning: app-selective direction checks must evaluate target app by direction (`to_app` direct, `from_app` reverse) to prevent cross-app leakage.
+
+## Task 8 Learning: Uzume-profiles Step-1 Identity/Policy Integration Points
+
+### Files Identified
+
+**Monad/Heka (Identity + Auth):**
+- `/home/sin/nyx/Monad/Heka/src/types.rs` — line 4-6: `NyxIdentity { id: IdentityId }` struct
+- `/home/sin/nyx/Monad/Heka/src/client.rs` — line 68-83: `KratosClient::validate_session(session_token) -> Result<NyxIdentity>`
+- `/home/sin/nyx/Monad/Heka/src/link_policy.rs` — line 76-84: `LinkPolicyEngine::is_visible(owner, viewer, from_app, to_app) -> bool`
+- `/home/sin/nyx/Monad/Heka/src/lib.rs` — line 8-9: re-exports `KratosClient`, `NyxIdentity`, `AppAlias`
+
+**Monad/Nun (Error Types + Policy Types):**
+- `/home/sin/nyx/Monad/Nun/src/error.rs` — line 81-92: `NyxError::unauthorized(code, msg)` → 401; line 95-106: `NyxError::forbidden(code, msg)` → 403; line 506-526: `ErrorResponse` wire format
+- `/home/sin/nyx/Monad/Nun/src/types/app.rs` — line 6-10: `NyxApp` enum (`Uzume`, `Anteros`, `Themis`) with `#[non_exhaustive]`
+- `/home/sin/nyx/Monad/Nun/src/types/link_policy.rs` — line 14-24: `LinkPolicy` enum variants (`OneWay`, `TwoWay`, `AppSelective`, `Revoked`) with `#[serde(deny_unknown_fields)]`
+- `/home/sin/nyx/Monad/Nun/src/validation.rs` — line 300-325: `link_policy(&LinkPolicy) -> Result<()>` validator
+- `/home/sin/nyx/Monad/Nun/src/testing.rs` — line 27-29: `test_id::<T>()`, line 41-83: `test_config()`, line 102-114: `assert_error_kind()`, line 117-127: `assert_error_code()`
+
+**apps/Uzume/Uzume-profiles:**
+- `/home/sin/nyx/apps/Uzume/Uzume-profiles/src/lib.rs` — stub (line 1-3), needs step-1 implementation
+
+### Call-Chain: Auth/Session Validation
+
+```
+HTTP Request (session token in Cookie or X-Session-Token)
+    ↓
+Handler extracts token
+    ↓
+heka::KratosClient::validate_session(&token)  [client.rs:68]
+    ↓
+KratosProvider::fetch_session() → /sessions/whoami
+    ↓
+map_kratos_identity() → NyxIdentity { id: IdentityId }  [client.rs:106]
+    ↓
+Result<NyxIdentity> returned to handler
+```
+
+### Call-Chain: Policy Enforcement (Post-Auth)
+
+```
+After NyxIdentity validated:
+    ↓
+Extract target identity + target NyxApp (e.g., Uzume)
+    ↓
+heka::LinkPolicyEngine::is_visible(owner, viewer, from_app, to_app)  [link_policy.rs:76]
+    ↓
+evaluate() → direct match first, reverse fallback, default-deny  [link_policy.rs:87-99]
+    ↓
+Returns bool (true=visible, false=hidden)
+    ↓
+If false → NyxError::forbidden("policy_denied", "Cross-app access denied")
+```
+
+### Error Response Matrix
+
+| Scenario | HTTP Status | Code | Message |
+|----------|-------------|------|---------|
+| Missing/empty session token | 400 | `auth_session_token_missing` | "Session token is required" |
+| Invalid/expired Kratos session | 401 | `auth_session_invalid` | "Session is invalid or expired" |
+| Session lacks privileges | 403 | `auth_session_forbidden` | "Session does not have required privileges" |
+| Identity not found (Kratos) | 404 | `auth_identity_not_found` | "Identity was not found" |
+| Cross-app policy denies access | 403 | `policy_denied` | "Cross-app access denied" (app code) |
+| Kratos 5xx response | 503 | `auth_provider_unavailable` | "Authentication provider is unavailable" |
+| Network unreachable | 503 | `auth_network_unreachable` | "Authentication provider is unreachable" |
+
+### Minimal Integration Surface for Uzume-profiles Step-1
+
+1. **Dependency**: Add `Heka` to `Cargo.toml`:
+   ```toml
+   Heka = { path = "../../Monad/Heka" }
+   ```
+
+2. **Handler pattern** (pseudo-code):
+   ```rust
+   async fn get_profile(ctx: Context, alias: String) -> Result<Json<Profile>> {
+       // 1. Validate session → get NyxIdentity
+       let identity = ctx.heka.validate_session(ctx.session_token()).await?;
+       
+       // 2. Resolve alias → get AppAlias + IdentityId
+       let app_alias = ctx.heka.resolve_alias(identity.id, NyxApp::Uzume).await?;
+       
+       // 3. Query profile by alias
+       let profile = query_profile_by_alias(&alias, NyxApp::Uzume)?;
+       
+       // 4. Optional: Policy check if viewing other's profile
+       if profile.owner_id != identity.id {
+           let visible = ctx.link_policy.is_visible(
+               profile.owner_id, 
+               identity.id, 
+               NyxApp::Uzume, 
+               NyxApp::Uzume
+           );
+           if !visible {
+               return Err(NyxError::forbidden("policy_denied", "Cross-app access denied"));
+           }
+       }
+       
+       Ok(Json(profile))
+   }
+   ```
+
+3. **Error handling**: Use `NyxError::unauthorized()` / `NyxError::forbidden()` for auth failures. The wire format is standardized via `ErrorResponse` (line 512-526 in error.rs).
+
+### Test Fixtures Available
+
+- `nun::testing::test_id::<Post>()` — generate typed IDs
+- `nun::testing::test_config()` — localhost config for tests
+- `nun::testing::assert_error_kind(&result, ErrorKind::Unauthorized)` — assert 401
+- `nun::testing::assert_error_code(&result, "auth_session_invalid")` — assert specific code
+
+### What NOT to Do
+
+- Do NOT expose `NyxIdentity` directly to API responses (anti-leak boundary)
+- Do NOT call Kratos Admin API from handlers (reserved for backend-only lookups)
+- Do NOT default-allow on missing policy — Task 7 established default-deny semantics
+- Do NOT implement link policy upserts in step-1 (beyond read-only visibility checks)
+
+## Uzume-profiles Step-1 Service: Rust Web-Service Patterns (Axum)
+
+### 1. Standardized Error Handling via `IntoResponse`
+**Reference**: [Axum Official Docs - Error Handling](https://docs.rs/axum/latest/axum/response/trait.IntoResponse.html) / Reputable implementations like `tokio-rs/axum` examples.
+**Pattern**: Wrap `anyhow::Error` or Heka-provided domain errors in an `AppError` tuple struct to ensure deterministic responses.
+```rust
+use axum::{http::StatusCode, response::{IntoResponse, Response}, Json};
+use serde_json::json;
+
+pub struct AppError(pub StatusCode, pub String);
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        let (status, error_message) = (self.0, self.1);
+        let body = Json(json!({
+            "error": error_message,
+        }));
+        (status, body).into_response()
+    }
+}
+```
+**Risk Note**: Returning raw strings or default 500s leaks internal state. Ensure all provider failures from Heka strictly map to this structure, converting non-auth domain issues explicitly to avoid non-deterministic auth errors.
+
+### 2. App-Scoped Identity via `FromRequestParts` (Extractor)
+**Reference**: [Axum Extractors - `FromRequestParts`](https://docs.rs/axum/latest/axum/extract/trait.FromRequestParts.html)
+**Pattern**: Implement `FromRequestParts` for an app-scoped `User` or `ProfileIdentity` struct to enforce default-deny authentication on `GET /me` and `PATCH /me`.
+```rust
+use axum::{async_trait, extract::FromRequestParts, http::request::Parts};
+
+pub struct ProfileIdentity {
+    pub user_id: String,
+    // Note: Do not expose global auth state, only app-scoped identifiers.
+}
+
+#[async_trait]
+impl<S> FromRequestParts<S> for ProfileIdentity
+where
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        // Extract token, validate via Heka/Nun foundation.
+        // Return explicit 401 Unauthorized if invalid.
+        Err(AppError(StatusCode::UNAUTHORIZED, "Invalid or missing auth token".into()))
+    }
+}
+```
+**Risk Note**: Do not leak global session IDs into the controller scope. The extractor must downcast the global token into a strictly scoped `ProfileIdentity` (Step-1 constraint: no global identity exposure). 
+
+### 3. Handler Signatures for `/me` Endpoints
+**Reference**: Standard REST patterns in Rust `axum` architectures (e.g., [GitHub OpenAPITools/openapi-generator Axum templates](https://github.com/OpenAPITools/openapi-generator/tree/master/samples/server/petstore/rust-axum)).
+**Pattern**: Rely on the extractor to guarantee the user is authorized before the handler logic executes.
+```rust
+use axum::{Json, extract::State};
+
+pub async fn get_me(
+    identity: ProfileIdentity, // Extractor guarantees 401/403 if missing/invalid
+    State(state): State<AppState>,
+) -> Result<Json<ProfileDto>, AppError> {
+    // Controller logic only sees the authorized app-scoped identity
+    todo!()
+}
+
+pub async fn patch_me(
+    identity: ProfileIdentity,
+    State(state): State<AppState>,
+    Json(payload): Json<UpdateProfileDto>,
+) -> Result<Json<ProfileDto>, AppError> {
+    todo!()
+}
+```
+**Risk Note**: Avoid manual header parsing inside the handlers (`get_me`/`patch_me`). Doing so bypasses the centralized, deterministic error mapping of the extractor, potentially leading to inconsistent 403 vs 401 behaviors.
+
+### 4. Public Profile Read (Explicit Scoping)
+**Reference**: General Rust API security best practices.
+**Pattern**: Differentiate explicitly between authenticated (`/me`) and public (`/:id`) endpoints by omitting the `ProfileIdentity` extractor for public reads, relying instead on data-layer authorization (e.g. `is_public` flags).
+```rust
+use axum::extract::Path;
+
+pub async fn get_public_profile(
+    Path(profile_id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<Json<PublicProfileDto>, AppError> {
+    // No identity extractor -> purely public read logic.
+    // Must return 404 NOT FOUND (not 403) if profile doesn't exist or is private, to prevent enumeration.
+    todo!()
+}
+```
+**Risk Note**: Returning 403 for private profiles on public endpoints creates an enumeration vulnerability (identity leakage). Always map access-denied on public routes to `404 Not Found`.
+- Task 8 learning: keep Uzume-profiles response boundary identity-safe by storing `IdentityId` internally in the domain model while returning only alias/profile fields via a dedicated `PublicProfileResponse` DTO.
+- Task 8 learning: protected `/me` behavior is deterministic when auth extraction is centralized (`require_identity`) and maps missing/blank token to `NyxError::unauthorized("auth_session_token_missing", ...)` before provider validation.
+- Task 8 learning: private profile reads should default-deny and return `NyxError::forbidden("policy_denied", ...)` unless viewer is owner or `LinkPolicyEngine::is_visible(owner, viewer, NyxApp::Uzume, NyxApp::Uzume)` allows visibility.
+- Task 8 learning: BDD test comments (`#given #when #then`) remain required and useful for enforcing TDD traceability in profile lifecycle and unauthorized/forbidden path tests.
+- Task 8 endpoint wiring learning: a minimal callable endpoint layer can stay deterministic by routing `(method, path)` to service methods and mapping `NyxError` via `to_error_response(None)` into stable `{error, code}` JSON with matching status.
+- Task 8 endpoint testing learning: endpoint-level lifecycle/auth/privacy coverage is preserved by BDD tests that assert concrete route behavior for `GET /me`, `PATCH /me`, and `GET /{alias}` including `auth_session_token_missing` and `policy_denied` codes.

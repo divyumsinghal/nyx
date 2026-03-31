@@ -1,1 +1,18 @@
-a
+[package]
+name = "Uzume-profiles"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "uzume_profiles"
+path = "src/lib.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../../../Monad/Nun" }
+heka = { package = "Heka", path = "../../../Monad/Heka" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
