@@ -1,0 +1,20 @@
+[package]
+name = "Heka"
+description = "Nyx platform: Kratos identity client + app-scoped alias system"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+Nun = { path = "../Nun" }
+reqwest = { workspace = true }
+jsonwebtoken = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }

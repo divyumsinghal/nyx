@@ -1,14 +1,32 @@
-[package]
-name = "nyx"
+[workspace]
+resolver = "2"
+members = [
+    "Monad/Nun",
+    "Monad/Mnemosyne",
+    "Monad/Lethe",
+    "Monad/events",
+    "Monad/Akash",
+    "Monad/Brizo",
+    "Monad/Heka",
+    "Monad/Ogma",
+    "Monad/api",
+    "Monad/Heimdall",
+    "Monad/Oya",
+    "Monad/Ushas",
+    "Monad/xtask",
+    "apps/Uzume/Uzume-profiles",
+    "apps/Uzume/Uzume-feed",
+    "apps/Uzume/Uzume-stories",
+    "apps/Uzume/Uzume-reels",
+    "apps/Uzume/Uzume-discover",
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/divyumsinghal/nyx"
 rust-version = "1.85"
-
-[workspace]
-resolver = "2"
-members = ["Monad/*", "apps/Anteros", "apps/Themis", "apps/Uzume"]
 
 [workspace.dependencies]
 # Async runtime
@@ -29,6 +47,8 @@ tower-http = { version = "0.6", features = [
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+rmp-serde = "1"
+base64 = "0.22"
 
 # Database
 sqlx = { version = "0.8", features = [
