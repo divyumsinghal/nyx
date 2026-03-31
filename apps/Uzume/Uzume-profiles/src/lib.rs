@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use heka::link_policy::LinkPolicyEngine;
 use nun::{IdentityId, NyxApp, NyxError, Result};
+use nyx_events::{EventEnvelope, EventPublisher, NoopEventPublisher, subjects};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -26,7 +27,11 @@ pub struct Profile {
 }
 
 impl Profile {
-    pub fn new(identity_id: IdentityId, alias: impl Into<String>, display_name: impl Into<String>) -> Self {
+    pub fn new(
+        identity_id: IdentityId,
+        alias: impl Into<String>,
+        display_name: impl Into<String>,
+    ) -> Self {
         Self {
             alias: alias.into(),
             display_name: display_name.into(),
@@ -90,6 +95,7 @@ where
 {
     auth: A,
     policy: LinkPolicyEngine,
+    event_publisher: Arc<dyn EventPublisher>,
     profiles_by_identity: HashMap<IdentityId, Profile>,
     alias_to_identity: HashMap<String, IdentityId>,
 }
@@ -146,7 +152,9 @@ where
             (EndpointMethod::Patch, "/me") => {
                 let patch = request
                     .body
-                    .ok_or_else(|| NyxError::bad_request("invalid_json", "Invalid JSON: missing request body"))
+                    .ok_or_else(|| {
+                        NyxError::bad_request("invalid_json", "Invalid JSON: missing request body")
+                    })
                     .and_then(|value| {
                         serde_json::from_value::<ProfilePatch>(value).map_err(NyxError::from)
                     });
@@ -175,7 +183,10 @@ where
                     .and_then(to_json_value);
                 map_endpoint_result(result)
             }
-            _ => error_response(NyxError::not_found("route_not_found", "Route was not found")),
+            _ => error_response(NyxError::not_found(
+                "route_not_found",
+                "Route was not found",
+            )),
         }
     }
 }
@@ -208,9 +219,17 @@ where
     A: Authenticator,
 {
     pub fn new(auth: A, policy: LinkPolicyEngine) -> Self {
+        Self::new_with_events(auth, policy, NoopEventPublisher)
+    }
+
+    pub fn new_with_events<E>(auth: A, policy: LinkPolicyEngine, event_publisher: E) -> Self
+    where
+        E: EventPublisher + 'static,
+    {
         Self {
             auth,
             policy,
+            event_publisher: Arc::new(event_publisher),
             profiles_by_identity: HashMap::new(),
             alias_to_identity: HashMap::new(),
         }
@@ -219,7 +238,8 @@ where
     pub fn insert_profile(&mut self, profile: Profile) {
         self.alias_to_identity
             .insert(profile.alias.clone(), profile.identity_id);
-        self.profiles_by_identity.insert(profile.identity_id, profile);
+        self.profiles_by_identity
+            .insert(profile.identity_id, profile);
     }
 
     pub async fn get_me(&self, session_token: Option<&str>) -> Result<PublicProfileResponse> {
@@ -252,7 +272,10 @@ where
             profile.is_private = is_private;
         }
 
-        Ok(PublicProfileResponse::from(profile.clone()))
+        let response = PublicProfileResponse::from(profile.clone());
+        self.publish_profile_updated(&response).await?;
+
+        Ok(response)
     }
 
     pub async fn get_public_profile(
@@ -317,5 +340,25 @@ where
         self.profiles_by_identity
             .get(&identity)
             .ok_or_else(|| NyxError::not_found("profile_not_found", "Profile was not found"))
+    }
+
+    async fn publish_profile_updated(&self, profile: &PublicProfileResponse) -> Result<()> {
+        let event = EventEnvelope::new(
+            NyxApp::Uzume,
+            subjects::UZUME_PROFILE_UPDATED,
+            serde_json::json!({
+                "alias": profile.alias,
+                "display_name": profile.display_name,
+                "bio": profile.bio,
+                "avatar_url": profile.avatar_url,
+                "is_private": profile.is_private,
+                "is_verified": profile.is_verified,
+                "follower_count": profile.follower_count,
+                "following_count": profile.following_count,
+                "post_count": profile.post_count
+            }),
+        );
+
+        self.event_publisher.publish(event).await
     }
 }

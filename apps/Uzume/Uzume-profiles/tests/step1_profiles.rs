@@ -22,10 +22,9 @@ impl TestAuthenticator {
 #[async_trait]
 impl Authenticator for TestAuthenticator {
     async fn validate_session(&self, session_token: &str) -> nun::Result<IdentityId> {
-        self.sessions
-            .get(session_token)
-            .copied()
-            .ok_or_else(|| nun::NyxError::unauthorized("auth_session_invalid", "Session is invalid or expired"))
+        self.sessions.get(session_token).copied().ok_or_else(|| {
+            nun::NyxError::unauthorized("auth_session_invalid", "Session is invalid or expired")
+        })
     }
 }
 
@@ -60,7 +59,10 @@ async fn me_profile_lifecycle_and_public_read() {
         )
         .await
         .unwrap();
-    let public = service.get_public_profile("owner_alias", None).await.unwrap();
+    let public = service
+        .get_public_profile("owner_alias", None)
+        .await
+        .unwrap();
 
     // #then lifecycle state is consistent and response does not leak global identity internals
     assert_eq!(me_before.alias, "owner_alias");

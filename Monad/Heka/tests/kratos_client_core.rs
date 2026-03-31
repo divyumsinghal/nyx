@@ -98,7 +98,10 @@ impl KratosProvider for MockProvider {
         session_from_value(value)
     }
 
-    async fn fetch_identity(&self, _identity_id: &str) -> Result<serde_json::Value, KratosProviderError> {
+    async fn fetch_identity(
+        &self,
+        _identity_id: &str,
+    ) -> Result<serde_json::Value, KratosProviderError> {
         let value = self
             .identity_results
             .lock()
@@ -113,15 +116,16 @@ impl KratosProvider for MockProvider {
 async fn validate_session_returns_identity_for_valid_session() {
     // #given a valid Kratos session payload with typed identity id
     let id: IdentityId = "0195d0eb-8857-7d8e-8a10-ec8fdc357e7e".parse().unwrap();
-    let provider = MockProvider::with_session_result(Ok(serde_json::Value::from(ProviderSession {
-        identity: ProviderIdentity {
-            id: id.to_string(),
-            traits: ProviderTraits {
-                email: Some("private@example.com".to_string()),
-                phone: Some("+15551234567".to_string()),
+    let provider =
+        MockProvider::with_session_result(Ok(serde_json::Value::from(ProviderSession {
+            identity: ProviderIdentity {
+                id: id.to_string(),
+                traits: ProviderTraits {
+                    email: Some("private@example.com".to_string()),
+                    phone: Some("+15551234567".to_string()),
+                },
             },
-        },
-    })));
+        })));
     let client = KratosClient::with_provider(provider);
 
     // #when validating session
@@ -231,17 +235,20 @@ async fn validate_session_maps_malformed_payload_to_invalid_response() {
 #[tokio::test]
 async fn get_identity_maps_malformed_provider_id_to_invalid_response() {
     // #given Kratos identity payload contains malformed UUID value
-    let provider = MockProvider::with_identity_result(Ok(serde_json::Value::from(ProviderIdentity {
-        id: "not-a-uuid".to_string(),
-        traits: ProviderTraits {
-            email: Some("private@example.com".to_string()),
-            phone: Some("+15551234567".to_string()),
-        },
-    })));
+    let provider =
+        MockProvider::with_identity_result(Ok(serde_json::Value::from(ProviderIdentity {
+            id: "not-a-uuid".to_string(),
+            traits: ProviderTraits {
+                email: Some("private@example.com".to_string()),
+                phone: Some("+15551234567".to_string()),
+            },
+        })));
     let client = KratosClient::with_provider(provider);
 
     // #when looking up identity
-    let result = client.get_identity("0195d0eb-8857-7d8e-8a10-ec8fdc357e7e".parse().unwrap()).await;
+    let result = client
+        .get_identity("0195d0eb-8857-7d8e-8a10-ec8fdc357e7e".parse().unwrap())
+        .await;
 
     // #then malformed provider payload maps to deterministic unavailable error
     let err = result.unwrap_err();

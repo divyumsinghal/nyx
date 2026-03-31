@@ -203,7 +203,9 @@ pub type IdentityId = Id<entity::Identity>;
 mod tests {
     use super::*;
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     struct Post;
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
     struct Comment;
 
     type PostId = Id<Post>;

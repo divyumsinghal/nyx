@@ -2,8 +2,10 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use heka::link_policy::LinkPolicyEngine;
 use nun::{IdentityId, NyxApp, NyxError, Result};
+use nyx_events::{subjects, EventEnvelope, EventPublisher, NoopEventPublisher};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// Feed mode enum for future extensibility
@@ -21,7 +23,7 @@ pub enum FeedMode {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Post {
     pub id: Uuid,
-    author_id: IdentityId,  // SECURITY: Private to prevent global identity leakage
+    author_id: IdentityId, // SECURITY: Private to prevent global identity leakage
     pub author_alias: String,
     pub caption: String,
     pub like_count: u64,
@@ -99,7 +101,8 @@ where
     A: Authenticator,
 {
     auth: A,
-    policy: LinkPolicyEngine,  // SECURITY: Enforce cross-app privacy
+    policy: LinkPolicyEngine, // SECURITY: Enforce cross-app privacy
+    event_publisher: Arc<dyn EventPublisher>,
     posts_by_id: HashMap<Uuid, Post>,
     posts_by_author: HashMap<IdentityId, Vec<Uuid>>, // newest-first
     global_timeline: Vec<Uuid>,                      // newest-first
@@ -111,9 +114,17 @@ where
     A: Authenticator,
 {
     pub fn new(auth: A, policy: LinkPolicyEngine) -> Self {
+        Self::new_with_events(auth, policy, NoopEventPublisher)
+    }
+
+    pub fn new_with_events<E>(auth: A, policy: LinkPolicyEngine, event_publisher: E) -> Self
+    where
+        E: EventPublisher + 'static,
+    {
         Self {
             auth,
-            policy,  // SECURITY: Store policy for enforcement
+            policy, // SECURITY: Store policy for enforcement
+            event_publisher: Arc::new(event_publisher),
             posts_by_id: HashMap::new(),
             posts_by_author: HashMap::new(),
             global_timeline: Vec::new(),
@@ -169,6 +180,8 @@ where
         // Insert into global timeline (newest first)
         self.global_timeline.insert(0, post_id);
 
+        self.publish_post_created(&post).await?;
+
         Ok(PostResponse::from(post))
     }
 
@@ -179,8 +192,8 @@ where
         post_id: Uuid,
         session_token: Option<&str>,
     ) -> Result<PostResponse> {
-        let viewer = self.require_identity(session_token).await?;  // SECURITY: Require auth
-        
+        let viewer = self.require_identity(session_token).await?; // SECURITY: Require auth
+
         let post = self
             .posts_by_id
             .get(&post_id)
@@ -190,7 +203,10 @@ where
         let author_id = post.author_id();
         if viewer != author_id {
             // SECURITY: Enforce privacy policy
-            if !self.policy.is_visible(author_id, viewer, NyxApp::Uzume, NyxApp::Uzume) {
+            if !self
+                .policy
+                .is_visible(author_id, viewer, NyxApp::Uzume, NyxApp::Uzume)
+            {
                 return Err(NyxError::forbidden(
                     "policy_denied",
                     "Access to post denied by privacy policy",
@@ -204,13 +220,15 @@ where
     /// Delete a post (only author can delete)
     pub async fn delete_post(&mut self, post_id: Uuid, session_token: Option<&str>) -> Result<()> {
         let author = self.require_identity(session_token).await?;
-        
+
         // Check if post exists and extract author_id
-        let post_author_id = self
+        let post = self
             .posts_by_id
             .get(&post_id)
-            .map(|p| p.author_id())
+            .cloned()
             .ok_or_else(|| NyxError::not_found("post_not_found", "Post was not found"))?;
+
+        let post_author_id = post.author_id();
 
         if post_author_id != author {
             return Err(NyxError::forbidden(
@@ -230,6 +248,9 @@ where
         // Remove from global timeline
         self.global_timeline.retain(|id| id != &post_id);
 
+        self.publish_post_deleted(post_id, &post.author_alias)
+            .await?;
+
         Ok(())
     }
 
@@ -241,7 +262,7 @@ where
         session_token: Option<&str>,
         limit: usize,
     ) -> Result<Vec<PostResponse>> {
-        let _viewer = self.require_identity(session_token).await?;  // SECURITY: Require auth
+        let _viewer = self.require_identity(session_token).await?; // SECURITY: Require auth
 
         // Return chronological timeline (newest first)
         let mut posts: Vec<_> = self
@@ -249,13 +270,14 @@ where
             .iter()
             .filter_map(|id| self.posts_by_id.get(id).cloned())
             .collect();
-        
+
         // Sort by created_at DESC (newest first), with id DESC as stable tie-breaker
         posts.sort_by(|a, b| {
-            b.created_at.cmp(&a.created_at)
+            b.created_at
+                .cmp(&a.created_at)
                 .then_with(|| b.id.cmp(&a.id))
         });
-        
+
         Ok(posts
             .into_iter()
             .take(limit)
@@ -318,6 +340,34 @@ where
                 }
             })
             .ok_or_else(|| NyxError::not_found("alias_not_found", "Alias not found for identity"))
+    }
+
+    async fn publish_post_created(&self, post: &Post) -> Result<()> {
+        let event = EventEnvelope::new(
+            NyxApp::Uzume,
+            subjects::UZUME_POST_CREATED,
+            serde_json::json!({
+                "post_id": post.id.to_string(),
+                "author_alias": post.author_alias,
+                "caption": post.caption,
+                "created_at": post.created_at
+            }),
+        );
+
+        self.event_publisher.publish(event).await
+    }
+
+    async fn publish_post_deleted(&self, post_id: Uuid, author_alias: &str) -> Result<()> {
+        let event = EventEnvelope::new(
+            NyxApp::Uzume,
+            subjects::UZUME_POST_DELETED,
+            serde_json::json!({
+                "post_id": post_id.to_string(),
+                "author_alias": author_alias
+            }),
+        );
+
+        self.event_publisher.publish(event).await
     }
 }
 

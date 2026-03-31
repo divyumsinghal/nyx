@@ -137,6 +137,7 @@ pub fn assert_ok<T, E: std::fmt::Debug>(result: &Result<T, E>) {
 mod tests {
     use super::*;
 
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     struct FakeEntity;
 
     #[test]

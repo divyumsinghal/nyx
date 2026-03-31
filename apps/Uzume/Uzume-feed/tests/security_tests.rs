@@ -41,8 +41,8 @@ impl Authenticator for TestAuthenticator {
 }
 
 fn identity(n: u64) -> IdentityId {
-    let uuid = Uuid::parse_str(&format!("550e8400-e29b-41d4-a716-{:012}", n))
-        .expect("Valid UUID format");
+    let uuid =
+        Uuid::parse_str(&format!("550e8400-e29b-41d4-a716-{:012}", n)).expect("Valid UUID format");
     IdentityId::from_uuid(uuid)
 }
 
@@ -85,7 +85,7 @@ async fn get_home_timeline_requires_valid_token() {
     // #then it returns 401 Unauthorized
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert_eq!(err.code(), "invalid_token");  // From validate_session
+    assert_eq!(err.code(), "invalid_token"); // From validate_session
 }
 
 #[tokio::test]
@@ -129,7 +129,7 @@ async fn get_post_requires_valid_token() {
     // #then it returns 401 Unauthorized
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert_eq!(err.code(), "invalid_token");  // From validate_session
+    assert_eq!(err.code(), "invalid_token"); // From validate_session
 }
 
 // ============================================================
@@ -169,14 +169,23 @@ fn post_serialization_does_not_expose_global_identity() {
 fn post_response_only_exposes_alias_not_identity() {
     // #given a post
     let identity = identity(5);
-    let post = Post::new(Uuid::now_v7(), identity, "user_alias", "Content", Utc::now());
+    let post = Post::new(
+        Uuid::now_v7(),
+        identity,
+        "user_alias",
+        "Content",
+        Utc::now(),
+    );
     let response = PostResponse::from(post);
 
     // #then the response has only alias, never identity
     assert_eq!(response.author_alias, "user_alias");
     // Verify serialize doesn't include author_id
     let json = serde_json::to_string(&response).unwrap();
-    assert!(!json.contains("550e8400"), "Global identity should not appear in JSON");
+    assert!(
+        !json.contains("550e8400"),
+        "Global identity should not appear in JSON"
+    );
 }
 
 // ============================================================
@@ -201,7 +210,13 @@ async fn get_post_enforces_visibility_policy() {
     service.register_alias(bob, "bob");
 
     // #and alice posts
-    let post = Post::new(Uuid::now_v7(), alice, "alice", "Private content", Utc::now());
+    let post = Post::new(
+        Uuid::now_v7(),
+        alice,
+        "alice",
+        "Private content",
+        Utc::now(),
+    );
     let post_id = post.id;
     service.seed_post_for_testing(post);
 
@@ -253,7 +268,7 @@ async fn get_home_timeline_rejects_empty_token() {
     // #then it's rejected as invalid
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert_eq!(err.code(), "auth_session_token_missing");  // Empty tokens are treated as missing
+    assert_eq!(err.code(), "auth_session_token_missing"); // Empty tokens are treated as missing
 }
 
 #[tokio::test]

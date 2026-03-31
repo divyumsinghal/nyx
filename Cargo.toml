@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "Monad/Nun",
     "Monad/Heka",
+    "Monad/events",
     "apps/Uzume/Uzume-profiles",
     "apps/Uzume/Uzume-feed",
 ]

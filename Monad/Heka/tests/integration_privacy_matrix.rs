@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use heka::link_policy::{LinkPolicyEngine, LinkRule};
 use nun::{IdentityId, LinkPolicy, NyxApp, NyxError};
-use serde_json::json;
 use uzume_profiles::{
     Authenticator as ProfileAuthenticator, EndpointMethod, EndpointRequest, Profile,
     ProfilesEndpoints, ProfilesService,
@@ -24,10 +23,9 @@ impl TestAuthenticator {
 #[async_trait]
 impl ProfileAuthenticator for TestAuthenticator {
     async fn validate_session(&self, session_token: &str) -> nun::Result<IdentityId> {
-        self.sessions
-            .get(session_token)
-            .copied()
-            .ok_or_else(|| NyxError::unauthorized("auth_session_invalid", "Session is invalid or expired"))
+        self.sessions.get(session_token).copied().ok_or_else(|| {
+            NyxError::unauthorized("auth_session_invalid", "Session is invalid or expired")
+        })
     }
 }
 
@@ -176,7 +174,7 @@ async fn revoked_link_immediately_denies_access() {
 
     let service_revoked = ProfilesService::new(auth, policy_revoked);
     let mut endpoints_revoked = ProfilesEndpoints::new(service_revoked);
-    let mut profile = Profile::new(owner, "owner_alias", "Owner").with_private(true);
+    let profile = Profile::new(owner, "owner_alias", "Owner").with_private(true);
     endpoints_revoked.insert_profile(profile);
 
     // #then access reverts to default-deny

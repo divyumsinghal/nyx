@@ -374,21 +374,20 @@ impl From<sqlx::Error> for NyxError {
 #[cfg(feature = "validator")]
 impl From<validator::ValidationErrors> for NyxError {
     fn from(errors: validator::ValidationErrors) -> Self {
-        let fields: Vec<FieldError> = errors
-            .field_errors()
-            .iter()
-            .flat_map(|(field, errs)| {
-                errs.iter().map(move |e| {
-                    FieldError::new(
-                        *field,
-                        e.code.as_ref(),
-                        e.message
-                            .as_ref()
-                            .map_or_else(|| e.code.to_string(), ToString::to_string),
-                    )
-                })
-            })
-            .collect();
+        let mut fields: Vec<FieldError> = Vec::new();
+
+        for (field, errs) in errors.field_errors() {
+            for error in errs {
+                let code = error.code.to_string();
+                let message = error
+                    .message
+                    .as_ref()
+                    .map_or_else(|| code.clone(), ToString::to_string);
+
+                fields.push(FieldError::new(field.to_string(), code, message));
+            }
+        }
+
         Self::validation(fields)
     }
 }

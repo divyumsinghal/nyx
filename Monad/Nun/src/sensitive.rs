@@ -155,6 +155,9 @@ mod tests {
             password: Sensitive::new("hunter2".to_string()),
         };
 
+        assert_eq!(config.url, "postgres://localhost");
+        assert_eq!(config.password.expose(), "hunter2");
+
         let debug = format!("{config:?}");
         assert!(debug.contains("postgres://localhost"));
         assert!(!debug.contains("hunter2"));

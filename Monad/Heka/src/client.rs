@@ -93,7 +93,9 @@ impl KratosClient {
     }
 }
 
-fn parse_session(payload: serde_json::Value) -> std::result::Result<KratosSession, KratosProviderError> {
+fn parse_session(
+    payload: serde_json::Value,
+) -> std::result::Result<KratosSession, KratosProviderError> {
     serde_json::from_value(payload).map_err(|_| KratosProviderError::Decode)
 }
 
@@ -117,18 +119,16 @@ fn map_kratos_identity(identity: KratosIdentity) -> Result<NyxIdentity> {
 
 fn map_provider_error(error: KratosProviderError) -> NyxError {
     match error {
-        KratosProviderError::Status(401) => NyxError::unauthorized(
-            "auth_session_invalid",
-            "Session is invalid or expired",
-        ),
+        KratosProviderError::Status(401) => {
+            NyxError::unauthorized("auth_session_invalid", "Session is invalid or expired")
+        }
         KratosProviderError::Status(403) => NyxError::forbidden(
             "auth_session_forbidden",
             "Session does not have required privileges",
         ),
-        KratosProviderError::Status(404) => NyxError::not_found(
-            "auth_identity_not_found",
-            "Identity was not found",
-        ),
+        KratosProviderError::Status(404) => {
+            NyxError::not_found("auth_identity_not_found", "Identity was not found")
+        }
         KratosProviderError::Status(status) if status >= 500 => NyxError::service_unavailable(
             "auth_provider_unavailable",
             "Authentication provider is unavailable",

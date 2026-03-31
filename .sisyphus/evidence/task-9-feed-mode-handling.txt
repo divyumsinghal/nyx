@@ -1,0 +1,22 @@
+Task 9 mode handling verification
+$ cargo test -p Uzume-feed --test step1_feed_mode_handling -- --nocapture
+warning: crate `Nun` should have a snake case name
+  |
+  = help: convert the identifier to snake case: `nun`
+  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: `Nun` (lib) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.47s
+     Running tests/step1_feed_mode_handling.rs (target/debug/deps/step1_feed_mode_handling-44e3331d51475368)
+
+running 7 tests
+test feed_mode_contract_is_future_proof ... ok
+test feed_mode_only_chronological_available_in_step1 ... ok
+test feed_mode_chronological_is_serializable ... ok
+test feed_mode_chronological_is_deserializable ... ok
+test feed_mode_transition_path_documented ... ok
+test feed_service_no_ranking_logic_in_step1 ... ok
+test feed_service_ignores_mode_parameter_in_timeline ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

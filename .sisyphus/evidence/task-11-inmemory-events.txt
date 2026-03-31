@@ -1,0 +1,54 @@
+Task 11 in-memory adapter verification
+$ cargo test -p nyx-events --test event_boundary in_memory_adapter_is_deterministic -- --nocapture
+   Compiling config v0.14.1
+   Compiling tokio v1.50.0
+   Compiling Nun v0.1.0 (/home/sin/nyx/Monad/Nun)
+warning: crate `Nun` should have a snake case name
+  |
+  = help: convert the identifier to snake case: `nun`
+  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+   Compiling nyx-events v0.1.0 (/home/sin/nyx/Monad/events)
+warning: `Nun` (lib) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.10s
+     Running tests/event_boundary.rs (target/debug/deps/event_boundary-d83bf1f1741c179a)
+
+running 1 test
+test in_memory_adapter_is_deterministic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+
+$ cargo test -p Uzume-feed --test task11_event_boundary -- --nocapture
+warning: crate `Nun` should have a snake case name
+  |
+  = help: convert the identifier to snake case: `nun`
+  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: `Nun` (lib) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.64s
+     Running tests/task11_event_boundary.rs (target/debug/deps/task11_event_boundary-9f1cd0a4be9027d7)
+
+running 2 tests
+test create_post_publishes_uzume_post_created_event ... ok
+test feed_default_constructor_remains_provider_agnostic ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+
+$ cargo test -p Uzume-profiles --test task11_event_boundary -- --nocapture
+warning: crate `Nun` should have a snake case name
+  |
+  = help: convert the identifier to snake case: `nun`
+  = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: `Nun` (lib) generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.38s
+     Running tests/task11_event_boundary.rs (target/debug/deps/task11_event_boundary-31eeba5aefbddb65)
+
+running 2 tests
+test profiles_default_constructor_remains_provider_agnostic ... ok
+test patch_me_publishes_uzume_profile_updated_event ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+

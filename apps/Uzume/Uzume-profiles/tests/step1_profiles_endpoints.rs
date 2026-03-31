@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use heka::link_policy::LinkPolicyEngine;
-use nun::{IdentityId, NyxError, NyxApp};
+use nun::{IdentityId, NyxApp, NyxError};
 use serde_json::json;
 use uzume_profiles::{
     Authenticator, EndpointMethod, EndpointRequest, Profile, ProfilesEndpoints, ProfilesService,

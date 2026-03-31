@@ -1,47 +1,39 @@
+### Monad/events
 
-### Monad/nyx-events
+Provider-agnostic event boundary for Step-1. Depends on `Nun` only.
 
-NATS JetStream client wrapper. Depends on `Nun`.
+This crate intentionally does NOT choose a concrete backbone provider yet. Service crates publish `EventEnvelope` values through the `EventPublisher` trait and remain decoupled from NATS or any other transport.
 
-NATS JetStream typed pub/sub. `NyxEvent<T>` envelope: `{ id, subject, app, timestamp, payload: T }`. Subject convention: `{app}.{entity}.{action}`. Typed publisher + subscriber. See the inter-service communication section for the full event map.
+Current adapters:
+- `NoopEventPublisher` for default runtime behavior
+- `InMemoryEventPublisher` for deterministic tests
 
 ```
-nyx-events/
+events/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs
-│   ├── client.rs          # NatsClient: connect, publish, subscribe, create streams
-│   ├── subjects.rs        # All event subject constants (nyx.user.created, Uzume.post.liked, etc.)
-│   ├── envelope.rs        # NyxEvent<T> envelope: { id, subject, app, timestamp, payload: T }
-│   ├── publisher.rs       # Typed publisher: publish(subject, payload) → serializes to JSON
-│   └── subscriber.rs      # Typed subscriber: subscribe<T>(subject) → Stream<NyxEvent<T>>
+│   ├── adapter.rs       # InMemoryEventPublisher + NoopEventPublisher
+│   ├── envelope.rs      # DomainEvent trait + EventEnvelope + EventPublisher port
+│   └── subjects.rs      # Subject constants following {app}.{entity}.{action}
 └── tests/
+    └── event_boundary.rs
 ```
 
-Event subjects follow a strict convention: `{app_or_nyx}.{entity}.{action}`
+`EventEnvelope` fields:
+- `id`: UUIDv7 event identifier
+- `app`: `NyxApp` origin
+- `subject`: domain subject string
+- `occurred_at`: UTC timestamp
+- `payload`: JSON payload without provider-specific metadata
 
-```rust
-pub mod subjects {
-    // Platform-level
-    pub const USER_CREATED: &str = "nyx.user.created";
-    pub const USER_DELETED: &str = "nyx.user.deleted";
-    pub const APPS_LINKED: &str  = "nyx.apps.linked";
+Subject convention remains `{app_or_nyx}.{entity}.{action}`.
 
-    // Uzume
-    pub const Uzume_POST_CREATED: &str    = "Uzume.post.created";
-    pub const Uzume_POST_LIKED: &str      = "Uzume.post.liked";
-    pub const Uzume_COMMENT_CREATED: &str = "Uzume.comment.created";
-    pub const Uzume_STORY_CREATED: &str   = "Uzume.story.created";
-    pub const Uzume_USER_FOLLOWED: &str   = "Uzume.user.followed";
+Example subjects:
+- `nyx.user.created`
+- `nyx.user.deleted`
+- `Uzume.profile.updated`
+- `Uzume.post.created`
+- `Uzume.post.deleted`
 
-    // Anteros
-    pub const Anteros_SWIPE: &str         = "Anteros.swipe";
-    pub const Anteros_MATCH_CREATED: &str = "Anteros.match.created";
-
-    // Themis
-    pub const Themis_LISTING_CREATED: &str = "Themis.listing.created";
-    pub const Themis_REVIEW_CREATED: &str  = "Themis.review.created";
-}
-```
-
-New apps add their own subjects to this file. The convention guarantees no collisions.
+When a concrete provider is introduced later, it should be implemented as an adapter in this crate without changing service-domain code.
