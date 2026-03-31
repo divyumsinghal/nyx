@@ -1,7 +1,13 @@
 [workspace]
 resolver = "2"
 members = [
+    "Monad/Akash",
+    "Monad/Lethe",
+    "Monad/Mnemosyne",
     "Monad/Nun",
+    "Monad/Oya",
+    "Monad/api",
+    "Monad/events",
     "Monad/Heka",
     "apps/Uzume/Uzume-profiles",
     "apps/Uzume/Uzume-feed",

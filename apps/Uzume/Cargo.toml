@@ -1,0 +1,11 @@
+[package]
+name = "Uzume"
+description = "Social media app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+nun = { package = "Nun", path = "../../Monad/Nun" }

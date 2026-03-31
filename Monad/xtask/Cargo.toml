@@ -1,0 +1,15 @@
+[package]
+name = "nyx-xtask"
+description = "Developer CLI: migrate, seed, openapi, new-app scaffold"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "nyx-xtask"
+path = "src/main.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../Nun" }

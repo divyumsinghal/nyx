@@ -16,6 +16,12 @@ nun = { package = "Nun", path = "../Nun" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
+async-nats = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+futures = "0.3"
+async-stream = "0.3"
 
 [dev-dependencies]
 chrono = { workspace = true }

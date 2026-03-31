@@ -1,8 +1,12 @@
 # Nyx Step 2 — Uzume Stories Final (Monad-First, Production)
 
--> FOLLOW TDD - Test driven development, 100 % extremem coverage with any edge case you can think of -> mandatory: use superpowers for this.
--> FOLLOW TDD - Test driven development, 100 % extremem coverage with any edge case you can think of -> mandatory: use superpowers for this.
--> FOLLOW TDD - Test driven development, 100 % extremem coverage with any edge case you can think of -> mandatory: use superpowers for this.
+-> FOLLOW TDD - Test driven development, 100 % extreme coverage with any edge case you can think of -> /superpowers:test-driven-development
+-> FOLLOW TDD - Test driven development, 100 % extreme coverage with any edge case you can think of -> /superpowers:test-driven-development
+-> FOLLOW TDD - Test driven development, 100 % extreme coverage with any edge case you can think of -> /superpowers:test-driven-development
+
+-> Delegate to Subagents -> Parallelise evertything -> This is a move fast and right projeect -> /superpowers:subagent-driven-development
+-> Delegate to Subagents -> Parallelise evertything -> This is a move fast and right projeect -> /superpowers:subagent-driven-development
+-> Delegate to Subagents -> Parallelise evertything -> This is a move fast and right projeect -> /superpowers:subagent-driven-development
 
 ## TL;DR
 > **Summary**: Deliver the final production Uzume Stories service end-to-end in a single release train, with shared capabilities implemented in Monad first and Uzume-specific domain logic implemented in Uzume-stories, while preserving all Step 1 contracts.
@@ -169,7 +173,7 @@ Wave 4: Security hardening + rollback + release validation (Tasks 13-14)
 
   **Commit**: YES | Message: `test(contracts): lock step1 compatibility for step2` | Files: `contracts/*`, `tests/contracts/*`, `justfile` (if needed)
 
-- [ ] 2. Build Monad storage primitives for stories media (`Akash`)
+- [x] 2. Build Monad storage primitives for stories media (`Akash`)
 
   **What to do**:
   - Implement reusable stories storage path + object lifecycle helpers in `Monad/Akash`.
@@ -212,7 +216,7 @@ Wave 4: Security hardening + rollback + release validation (Tasks 13-14)
 
   **Commit**: YES | Message: `feat(akash): add stories media storage primitives` | Files: `Monad/Akash/src/*`, `Monad/Akash/tests/*`
 
-- [ ] 3. Build Monad async media pipeline primitives (`Oya` + `events`)
+- [x] 3. Build Monad async media pipeline primitives (`Oya` + `events`)
 
   **What to do**:
   - Implement shared async processing contract: upload accepted → event emitted → media processed → ready event.

@@ -568,3 +568,85 @@ grep -r "Uzume/stories" --include="*.rs" .
 - **Nun**: May need MediaType/MediaVariant enums in types/media.rs
 - **Validation**: Need media-specific validators (MIME whitelist, size limits)
 - **Key naming**: Need stories-specific path builders
+
+## Step 2 Task 2 Implementation Learnings (Akash) - 2026-03-31
+
+## Step 2 Task 2 Implementation Learnings (Akash) - 2026-03-31
+
+- StorageClient wraps rust-s3 Bucket via Box<Bucket> from Bucket::new in rust-s3 0.36.
+- MinIO/S3-compatible setup works with Region::Custom plus with_path_style for deterministic URLs.
+- Credentials::new(Some(access), Some(secret), None, None, None) maps cleanly from nun Sensitive values via expose().
+- rust-s3 0.36 presign_put and presign_get are async and return String URLs.
+- UploadMetadata validation should be fail-closed: normalize MIME, enforce allowlist, reject zero bytes, enforce max size.
+- Typed presign response structs should carry method, URL, and headers to preserve security header contracts.
+
+## Step 2 Task 2 Implementation Learnings (Akash) — 2026-03-31
+
+- `StorageClient` can safely wrap `rust-s3` via `Box<Bucket>` because `Bucket::new` returns boxed bucket in `rust-s3` 0.36.
+- For MinIO/S3-compatible endpoints, `Region::Custom { region, endpoint }` with `.with_path_style()` keeps URL generation deterministic in local/self-hosted setups.
+- `Credentials::new(Some(access), Some(secret), None, None, None)` integrates cleanly with `nun::Sensitive<String>` using `.expose()`.
+- Presign helpers are async in rust-s3 0.36:
+  - `presign_put(path, expiry_secs, custom_headers, custom_queries).await`
+  - `presign_get(path, expiry_secs, custom_queries).await`
+- `UploadMetadata` validation works best as fail-closed:
+  - normalize MIME to lowercase trim
+  - explicit MIME allowlist
+  - reject zero bytes
+  - enforce deterministic max size with `NyxError::payload_too_large("upload_too_large", ...)`
+- Typed presign response structs (`PresignedUpload`, `PresignedDownload`) should carry method + headers map + URL to keep callers transport-agnostic and security-header aware.
+
+## Step 2 Task 2 Implementation Learnings (Akash) — 2026-03-31
+
+- `StorageClient` can safely wrap `rust-s3` via `Box<Bucket>` because `Bucket::new` returns boxed bucket in `rust-s3` 0.36.
+- For MinIO/S3-compatible endpoints, `Region::Custom { region, endpoint }` with `.with_path_style()` keeps URL generation deterministic in local/self-hosted setups.
+- `Credentials::new(Some(access), Some(secret), None, None, None)` integrates cleanly with `nun::Sensitive<String>` using `.expose()`.
+- Presign helpers are async in rust-s3 0.36:
+  - `presign_put(path, expiry_secs, custom_headers, custom_queries).await`
+  - `presign_get(path, expiry_secs, custom_queries).await`
+- `UploadMetadata` validation works best as fail-closed:
+  - normalize MIME to lowercase trim
+  - explicit MIME allowlist
+  - reject zero bytes
+  - enforce deterministic max size with `NyxError::payload_too_large("upload_too_large", ...)`
+- Typed presign response structs (`PresignedUpload`, `PresignedDownload`) should carry method + headers map + URL to keep callers transport-agnostic and security-header aware.
+Task2 Akash note.
+
+
+## Step 2 Task 2 Implementation Learnings (Akash) - 2026-03-31
+
+- StorageClient wraps rust-s3 Bucket via Box<Bucket> from Bucket::new in rust-s3 0.36.
+- MinIO/S3-compatible setup works with Region::Custom plus with_path_style for deterministic URLs.
+- Credentials::new(Some(access), Some(secret), None, None, None) maps cleanly from nun Sensitive values via expose().
+- rust-s3 0.36 presign_put and presign_get are async and return String URLs.
+- UploadMetadata validation should be fail-closed: normalize MIME, enforce allowlist, reject zero bytes, enforce max size.
+- Typed presign response structs should carry method, URL, and headers to preserve security header contracts.
+
+## Step 2 Task 3 Implementation Learnings (events + Oya) - 2026-03-31
+
+### events crate
+- `NyxEvent<T>` envelope with `{ id, subject, app, timestamp, payload: T }` compiles and serializes correctly.
+- Subject constants: `UZUME_STORY_CREATED`, `UZUME_STORY_VIEWED`, `UZUME_MEDIA_UPLOADED`, `UZUME_MEDIA_PROCESSED` follow `{app}.{entity}.{action}` convention.
+- `MediaUploadedPayload` carries `job_id` for idempotency, `entity_type`, `entity_id`, `source_path`, `mime_type`, `size_bytes`.
+- `MediaProcessedPayload` carries `job_id` (correlation), `variants` HashMap, `processing_ms`.
+- `NatsClient` wraps `async_nats::Client` + `jetstream::Context`, implements `Clone` for sharing between publisher/subscriber.
+- `Publisher` is app-scoped at construction time — all published events carry the correct app identifier.
+- `Subscriber` uses `async_stream::stream!` macro to convert NATS subscriber into a typed `EventStream<T>`.
+- `async-nats` 0.39 `publish()` requires `impl Into<Bytes>` for subject — needs owned `String`, not `&str`.
+- `async-nats` 0.39 `subscribe()` also requires owned `String` for subject.
+- 13 tests pass: envelope serialization, subject constants, payload serialization, event parsing (valid/invalid/wrong type).
+
+### Oya crate
+- `fast_image_resize` 3.x API differs significantly from 5.x: uses `NonZeroU32` for dimensions, `Image::from_vec_u8`/`from_slice_u8`, `Resizer::new(algorithm)` takes algorithm in constructor, `resize()` takes `DynamicImageView`/`DynamicImageViewMut` via `.view()`/`.view_mut()` methods.
+- `image` 0.24 API: `GenericImageView` trait must be imported for `.dimensions()` method on `DynamicImage`.
+- `ProcessingConfig::default()` provides story entity with 4 image variants (1080, 640, 320, 150px) and 3 video variants (720p, 480p, 360p).
+- `MediaPipeline` validates MIME type against allowlist and file size against max before processing.
+- `VideoError::FfmpegNotFound` returned when ffmpeg binary is absent — worker fails fast.
+- Worker binary (`oya-worker`) subscribes to `Uzume.media.uploaded`, processes media, emits `Uzume.media.processed`.
+- Idempotency: worker tracks processed `job_id`s in a `HashSet<uuid::Uuid>` to skip duplicates.
+- 18 tests pass: config defaults, image decode/resize/encode, pipeline validation, video error handling.
+
+### Dependency versions for rustc 1.85
+- `image = "0.24"` (0.25 requires rustc 1.88)
+- `fast_image_resize = "3"` (5.x requires rustc 1.87)
+- `async-nats = "0.39"` (workspace)
+- `async-stream = "0.3"` (for subscriber stream generation)
