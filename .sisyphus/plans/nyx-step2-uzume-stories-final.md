@@ -121,7 +121,7 @@ Wave 4: Security hardening + rollback + release validation (Tasks 13-14)
 ## TODOs
 > Implementation + Test = ONE task. Never separate.
 
-- [ ] 1. Contract lock + Step 1 compatibility guardrails
+- [x] 1. Contract lock + Step 1 compatibility guardrails
 
   **What to do**:
   - Encode explicit Step 1 compatibility checks for identity/privacy/feed invariants and CI/security gates.
