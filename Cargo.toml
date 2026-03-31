@@ -4,6 +4,8 @@ members = [
     "Monad/Nun",
     "Monad/Heka",
     "Monad/events",
+    "Monad/Heimdall",
+    "Monad/xtask",
     "apps/Uzume/Uzume-profiles",
     "apps/Uzume/Uzume-feed",
 ]
@@ -94,6 +96,11 @@ base64 = "0.22"
 utoipa = { version = "5", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
 
+# CLI parsing (used by nyx-xtask and future binaries)
+clap = { version = "4", features = ["derive", "env"] }
+
 # Testing
 tokio-test = "0.4"
 testcontainers = "0.24"
+testcontainers-modules = { version = "0.11", features = ["postgres", "nats"] }
+tempfile = "3"
