@@ -3,7 +3,7 @@ dev-infra:          docker compose -f Prithvi/compose/infra.yml up -d
 dev-ogma:           cargo run -p ogma
 dev-aengus:         cargo run -p aengus
 dev-themis:         cargo run -p themis
-dev-gateway:        cargo run -p nyx-gateway
+dev-gateway:        cargo run -p Heimdall
 
 # Testing
 test:               cargo nextest run --workspace

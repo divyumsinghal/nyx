@@ -1,0 +1,49 @@
+[package]
+name = "Nun"
+description = "Monad platform foundation: typed IDs, errors, config, pagination, validation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[features]
+default = []
+sqlx = ["dep:sqlx"]
+validator = ["dep:validator"]
+test = []
+
+[dependencies]
+# Serialization — always needed
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# IDs — UUIDv7
+uuid = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Config loading
+config = { workspace = true }
+
+# Cursor encoding — MessagePack + base64url
+rmp-serde = { workspace = true } # MessagePack for cursor serialization
+base64 = { workspace = true }    # URL-safe base64 for cursor strings
+
+# Optional — database type integration
+sqlx = { workspace = true, optional = true, features = [
+    "postgres",
+    "uuid",
+    "chrono",
+] }
+
+# Optional — validator crate integration
+validator = { workspace = true, optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+serde_json = { workspace = true }

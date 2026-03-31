@@ -1,5 +1,8 @@
 ## Uzume
 
+> When Amaterasu (the sun goddess) hid in a cave out of grief, the world fell into permanent darkness. All the gods tried everything to coax her out and failed. Then Ame-no-Uzume climbed on an overturned tub, performed a wild and comedic dance, and progressively shed her clothes, causing every god watching to burst into laughter and cheering. Amaterasu, confused by the impossible sound of joy in a dark world, opened the cave to look. The light returned. A dance went viral and saved the world. She is the Shinto patron deity of performing arts, joy, and entertainment.
+
+
 **Uzume**: Five domain microservices — each a separate binary crate, a separate process, a separate container.
 
 ```
@@ -83,7 +86,7 @@ DELETE /{alias}/block        Unblock
 - `Uzume.saves` — user_id, post_id (PK)
 - `Uzume.user_timeline` — user_id, post_id, score, created_at (PK user_id+post_id)
 
-**Feed strategy**: Hybrid push/pull (fanout-on-write for ≤10k followers, fanout-on-read for >10k). Exactly how Instagram handles the celebrity problem.
+**Feed strategy**: Hybrid push/pull (fanout-on-write for ≤10k followers, fanout-on-read for >10k). Exactly how other apps (like instagram, tiktok, etc) handle the celebrity problem.
 
 **API** (prefix `/api/Uzume/feed`):
 
