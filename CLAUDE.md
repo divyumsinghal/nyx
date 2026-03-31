@@ -24,10 +24,10 @@ Focus is currently on **Nyx + Uzume** only. Anteros and Themis are future work b
 ## Architecture — the key decisions
 
 ### Microservices, not monoliths
-Each app is composed of multiple microservices, each its own binary crate, process, and container. Uzume has 5 services: `Uzume-profiles`, `Uzume-feed`, `Uzume-stories`, `Uzume-reels`, `Uzume-discover`. Platform has 3 processes: `nyx-gateway`, `nyx-media` worker, `nyx-notify` worker.
+Each app is composed of multiple microservices, each its own binary crate, process, and container. Uzume has 5 services: `Uzume-profiles`, `Uzume-feed`, `Uzume-stories`, `Uzume-reels`, `Uzume-discover`. Platform has 3 processes: `nyx-gateway`, `Oya` worker, `nyx-notify` worker.
 
 ### Platform crates are libraries, not services
-`nyx-auth`, `nyx-db`, `nyx-cache`, `nyx-events`, `nyx-storage`, `nyx-search`, `nyx-messaging` are Rust library crates. They compile directly into app service binaries. Zero network hops to the platform layer. They contain typed HTTP clients that talk to actual infrastructure (Kratos, Continuwuity, Meilisearch, etc.).
+`nyx-auth`, `Mnemosyne`, `Lethe`, `nyx-events`, `Akash`, `Brizo`, `nyx-messaging` are Rust library crates. They compile directly into app service binaries. Zero network hops to the platform layer. They contain typed HTTP clients that talk to actual infrastructure (Kratos, Continuwuity, Meilisearch, etc.).
 
 ### REST everywhere
 One protocol: HTTP/JSON. No gRPC, no protobuf. Shared Rust types via library crates provide compile-time safety without code generation. Debuggable with curl.
@@ -53,17 +53,17 @@ nyx/
 ├── justfile                   # Task runner
 ├── package.json + pnpm-workspace.yaml  # Frontend workspace
 │
-├── platform/                  # Nyx shared crates
+├── Monad/                  # Nyx shared crates
 │   ├── nyx-common/            # Types, errors, config, IDs (UUIDv7)
 │   ├── nyx-api/               # Axum framework: NyxServer builder, middleware, extractors
-│   ├── nyx-db/                # PostgreSQL pool, migrations, transactions
+│   ├── Mnemosyne/                # PostgreSQL pool, migrations, transactions
 │   ├── nyx-auth/              # Ory Kratos client + app-scoped alias system
 │   ├── nyx-events/            # NATS JetStream typed pub/sub
-│   ├── nyx-cache/             # DragonflyDB client, rate limiting, sessions
-│   ├── nyx-storage/           # MinIO/S3 client, presigned URLs
-│   ├── nyx-search/            # Meilisearch client, index management
+│   ├── Lethe/             # DragonflyDB client, rate limiting, sessions
+│   ├── Akash/           # MinIO/S3 client, presigned URLs
+│   ├── Brizo/            # Meilisearch client, index management
 │   ├── nyx-messaging/         # Matrix/Continuwuity client, privacy enforcement
-│   ├── nyx-media/             # Image/video processing (lib + worker binary)
+│   ├── Oya/             # Image/video processing (lib + worker binary)
 │   ├── nyx-notify/            # Push + in-app notifications (lib + worker binary)
 │   ├── nyx-gateway/           # API gateway binary (thin reverse proxy)
 │   └── nyx-xtask/             # Dev CLI: migrate, seed, openapi
@@ -75,12 +75,12 @@ nyx/
 │   ├── Uzume-reels/           # Short-form video, algorithmic feed (:3004)
 │   └── Uzume-discover/        # Explore page, trending, search (:3005)
 │
-├── clients/                   # Frontend (pnpm workspace)
+├── Maya/                   # Frontend (pnpm workspace)
 │   ├── shared/                # @nyx/ui Svelte component library
 │   ├── Uzume-web/             # Uzume SvelteKit app
 │   └── nyx-web/               # Nyx account portal
 │
-├── infra/                     # Deployment
+├── Prithvi/                     # Deployment
 │   ├── compose/               # infra.yml, platform.yml, Uzume.yml, dev.yml, prod.yml
 │   ├── docker/                # Dockerfile.service, Dockerfile.worker, Dockerfile.web
 │   ├── config/                # Kratos, Continuwuity, Gorush, NATS, Prometheus, Grafana
@@ -88,7 +88,7 @@ nyx/
 │   └── scripts/               # deploy.sh, backup.sh, health-check.sh
 │
 ├── migrations/                # SQL migrations per schema
-│   ├── platform/              # nyx schema
+│   ├── Monad/              # nyx schema
 │   └── Uzume/                 # Uzume schema
 │
 ├── docs/                      # Architecture, API docs, ADRs
@@ -215,7 +215,7 @@ Uzume-{service}/
 | Uzume-stories     | 3003                |
 | Uzume-reels       | 3004                |
 | Uzume-discover    | 3005                |
-| nyx-media worker  | — (NATS subscriber) |
+| Oya worker        | — (NATS subscriber) |
 | nyx-notify worker | — (NATS subscriber) |
 
 ## Gateway routing
@@ -236,24 +236,24 @@ Uzume-{service}/
 ```
 nyx.user.created             → Uzume-profiles (create stub)
 nyx.user.deleted             → all Uzume services (cascade)
-Uzume.post.created            → nyx-media, nyx-search, nyx-notify, Uzume-feed (fanout)
+Uzume.post.created            → Oya, Brizo, nyx-notify, Uzume-feed (fanout)
 Uzume.post.liked              → nyx-notify, Uzume-feed (score)
 Uzume.comment.created         → nyx-notify, Uzume-feed (score)
 Uzume.user.followed           → nyx-notify, Uzume-feed (timeline)
 Uzume.user.blocked            → Uzume-feed (filter), Uzume-discover (filter)
-Uzume.story.created           → nyx-media, nyx-notify
+Uzume.story.created           → Oya, nyx-notify
 Uzume.story.viewed            → nyx-notify
-Uzume.reel.created            → nyx-media (transcode), nyx-search
+Uzume.reel.created            → Oya (transcode), Brizo
 Uzume.reel.viewed             → Uzume-reels (scoring)
-Uzume.profile.updated         → nyx-search
+Uzume.profile.updated         → Brizo
 Uzume.media.processed         → Uzume-feed / Uzume-stories / Uzume-reels (update URLs)
 ```
 
 ## Crate dependency hierarchy (no cycles)
 
 ```
-nyx-common → nyx-db, nyx-cache, nyx-events, nyx-storage, nyx-search, nyx-auth, nyx-messaging
-         └→ nyx-api → nyx-media, nyx-notify, nyx-gateway
+nyx-common → Mnemosyne, Lethe, nyx-events, Akash, Brizo, nyx-auth, nyx-messaging
+         └→ nyx-api → Oya, nyx-notify, nyx-gateway
                    └→ Uzume-profiles, Uzume-feed, Uzume-stories, Uzume-reels, Uzume-discover
 ```
 
@@ -265,8 +265,8 @@ nyx-common → nyx-db, nyx-cache, nyx-events, nyx-storage, nyx-search, nyx-auth,
 4. Add variant to `NyxApp` enum in `nyx-common`
 5. Add NATS subjects in `nyx-events`
 6. Add gateway routes in `nyx-gateway`
-7. Add compose file in `infra/compose/{app}.yml`
-8. Create `clients/{app}-web/` SvelteKit app
+7. Add compose file in `Prithvi/compose/{app}.yml`
+8. Create `Maya/{app}-web/` SvelteKit app
 
 Zero changes to platform crate code. Zero changes to other apps.
 
@@ -283,28 +283,28 @@ These files in the project contain the full detailed specs:
 - [ ] Repository initialized
 - [ ] `nyx-common` crate created
 - [ ] `nyx-api` crate created (NyxServer builder)
-- [ ] `nyx-db` crate created
+- [ ] `Mnemosyne` crate created
 - [ ] `nyx-auth` crate created (Kratos client + aliases)
 - [ ] `nyx-events` crate created
-- [ ] `nyx-cache` crate created
-- [ ] `nyx-storage` crate created
-- [ ] `nyx-search` crate created
+- [ ] `Lethe` crate created
+- [ ] `Akash` crate created
+- [ ] `Brizo` crate created
 - [ ] `nyx-messaging` crate created
 - [ ] `nyx-gateway` binary
-- [ ] `nyx-media` worker binary
+- [ ] `Oya` worker binary
 - [ ] `nyx-notify` worker binary
 - [ ] `Uzume-profiles` service
 - [ ] `Uzume-feed` service
 - [ ] `Uzume-stories` service
 - [ ] `Uzume-reels` service
 - [ ] `Uzume-discover` service
-- [ ] `infra/compose/infra.yml` (all infrastructure)
-- [ ] `infra/config/kratos/` (identity schema)
-- [ ] `migrations/platform/` (nyx schema)
+- [ ] `Prithvi/compose/infra.yml` (all infrastructure)
+- [ ] `Prithvi/config/kratos/` (identity schema)
+- [ ] `migrations/Monad/` (nyx schema)
 - [ ] `migrations/Uzume/` (Uzume schema)
-- [ ] `clients/shared/` (@nyx/ui)
-- [ ] `clients/Uzume-web/`
-- [ ] `clients/nyx-web/`
+- [ ] `Maya/shared/` (@nyx/ui)
+- [ ] `Maya/Uzume-web/`
+- [ ] `Maya/nyx-web/`
 - [ ] CI/CD pipeline (.github/workflows/)
 
 ## Style and quality

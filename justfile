@@ -1,5 +1,5 @@
 # Development
-dev-infra:          docker compose -f infra/compose/infra.yml up -d
+dev-infra:          docker compose -f Prithvi/compose/infra.yml up -d
 dev-ogma:           cargo run -p ogma
 dev-aengus:         cargo run -p aengus
 dev-themis:         cargo run -p themis

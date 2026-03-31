@@ -15,13 +15,13 @@ All five share the same Cargo dependency pattern:
 
 ```toml
 [dependencies]
-Monad  = { path = "../../platform/Monad" }
-nyx-api     = { path = "../../platform/nyx-api" }
-nyx-db      = { path = "../../platform/nyx-db" }
-nyx-events  = { path = "../../platform/nyx-events" }
-nyx-cache   = { path = "../../platform/nyx-cache" }
-nyx-storage = { path = "../../platform/nyx-storage" }
-nyx-search  = { path = "../../platform/nyx-search" }
+Nun  = { path = "../../Monad/Nun" }
+nyx-api     = { path = "../../Monad/nyx-api" }
+Mnemosyne      = { path = "../../Monad/Mnemosyne" }
+nyx-events  = { path = "../../Monad/nyx-events" }
+Lethe   = { path = "../../Monad/Lethe" }
+Akash = { path = "../../Monad/Akash" }
+Brizo  = { path = "../../Monad/Brizo" }
 ```
 
 All five share the same internal module structure:
@@ -178,7 +178,7 @@ GET    /discover/trending/reels    Trending reels
 GET    /search?q={q}&type={t}      Search (users|posts|hashtags|locations)
 ```
 
-**Calls**: Uzume-feed (HTTP, engagement data), Uzume-profiles (HTTP, follow-overlap), Uzume-reels (HTTP, trending), nyx-search (library, Meilisearch queries). All cached in DragonflyDB.
+**Calls**: Uzume-feed (HTTP, engagement data), Uzume-profiles (HTTP, follow-overlap), Uzume-reels (HTTP, trending), Brizo (library, Meilisearch queries). All cached in DragonflyDB.
 
 **Workers**: trending_updater (every 5min, recalculate trending), search_sync (NATS → Meilisearch)
 

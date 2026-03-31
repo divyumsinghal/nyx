@@ -41,7 +41,7 @@ Runs on every PR and push to `main`. Steps:
 
 ### workflows/release.yml
 
-Triggered by Git tags (`v*`). Builds multi-platform Docker images (amd64 + arm64) and pushes to GitHub Container Registry (`ghcr.io/nyx-platform/*`). Images use multi-stage builds: Rust builder → `gcr.io/distroless/cc` runtime (no shell, minimal attack surface).
+Triggered by Git tags (`v*`). Builds multi-platform Docker images (amd64 + arm64) and pushes to GitHub Container Registry (`ghcr.io/nyx-Monad/*`). Images use multi-stage builds: Rust builder → `gcr.io/distroless/cc` runtime (no shell, minimal attack surface).
 
 ### workflows/deploy.yml
 
