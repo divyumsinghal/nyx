@@ -1,4 +1,5 @@
 # Decisions
+
 - Global Identity (IdentityId) is internal-only; Aliases are the primary public identifiers.
 - Default-private isolation is enforced at the platform level.
 - Cross-app linking requires explicit opt-in stored in Platform DB (nyx.app_links).
@@ -34,3 +35,7 @@
 - Task 6 decision: keep service-facing identity contract minimal (`NyxIdentity { id }`) and enforce strict serde boundaries (`deny_unknown_fields`) on raw Kratos response structs.
 - Task 6 hardening decision: keep `NyxIdentity` and app-facing contracts in `types.rs` only, while making Kratos boundary payload models private implementation details in `client.rs` to avoid accidental public coupling to provider schema.
 - Task 6 hardening decision: preserve deterministic Nun mapping codes and statuses unchanged while tightening malformed payload handling via internal parse step (`serde_json::Value` -> private typed structs with `deny_unknown_fields`).
+- Task 7 decision: link policy precedence is deterministic with revoked deny taking priority and default private fallback when no valid rule exists.
+
+- Task 7 decision: introduce a dedicated in-memory `LinkPolicyEngine` in Heka to make policy evaluation explicit, privacy-first, and testable before storage integration.
+- Task 7 decision: introduce in-memory LinkPolicyEngine in Heka for explicit privacy-first alias/link evaluation with deterministic precedence.

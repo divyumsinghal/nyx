@@ -74,3 +74,12 @@
 - Task 6 learning: deterministic Kratos error mapping is fixed as 401 auth_session_invalid, 403 auth_session_forbidden, 404 auth_identity_not_found, 5xx auth_provider_unavailable, network auth_network_unreachable, decode auth_provider_invalid_response.
 - Task 6 hardening learning: strict anti-leak boundaries are stronger when Kratos payload models are private to `client.rs` and `KratosProvider` returns raw JSON that is parsed internally with `deny_unknown_fields` into private boundary structs before mapping to `NyxIdentity`.
 - Task 6 TDD learning: RED started by adding `validate_session_rejects_identity_with_unknown_fields` in `Monad/Heka/tests/kratos_client_core.rs` to force strict malformed-provider rejection, GREEN was achieved by internal JSON parsing (`parse_session`/`parse_identity`) plus private boundary structs in `client.rs`, and REFACTOR moved provider payload types out of `types.rs` to keep service API clean.
+
+- Task 7 learning: privacy-safe alias/link policy evaluation is easiest to keep deterministic by evaluating direct tuple match first and reverse tuple fallback second, with default-deny when neither rule exists.
+- Task 7 learning: revoke semantics are most reliable when modeled as explicit `LinkPolicy::Revoked` upsert on the same tuple so visibility reverts immediately without implicit state transitions.
+- Task 7 learning: app-selective policy checks must validate the target app in the evaluated direction (`to_app` for direct, `from_app` for reverse) to avoid accidental cross-app leakage.
+
+
+- Task 7 learning: privacy-safe alias/link policy evaluation is easiest to keep deterministic by evaluating direct tuple match first and reverse tuple fallback second, with default-deny when neither rule exists.
+- Task 7 learning: revoke semantics are most reliable when modeled as explicit `LinkPolicy::Revoked` upsert on the same tuple so visibility reverts immediately without implicit state transitions.
+- Task 7 learning: app-selective policy checks must validate the target app in the evaluated direction (`to_app` for direct, `from_app` for reverse) to avoid accidental cross-app leakage.
