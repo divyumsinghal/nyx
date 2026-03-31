@@ -2,8 +2,29 @@ use std::sync::Arc;
 
 use nun::{IdentityId, NyxError, Result};
 use reqwest::{Client, StatusCode};
+use serde::Deserialize;
 
-use crate::types::{KratosIdentity, KratosSession, NyxIdentity};
+use crate::types::NyxIdentity;
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KratosSession {
+    identity: KratosIdentity,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KratosIdentity {
+    id: String,
+    traits: KratosIdentityTraits,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KratosIdentityTraits {
+    email: Option<String>,
+    phone: Option<String>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KratosProviderError {
@@ -14,9 +35,15 @@ pub enum KratosProviderError {
 
 #[async_trait::async_trait]
 pub trait KratosProvider: Send + Sync {
-    async fn fetch_session(&self, session_token: &str) -> std::result::Result<KratosSession, KratosProviderError>;
+    async fn fetch_session(
+        &self,
+        session_token: &str,
+    ) -> std::result::Result<serde_json::Value, KratosProviderError>;
 
-    async fn fetch_identity(&self, identity_id: &str) -> std::result::Result<KratosIdentity, KratosProviderError>;
+    async fn fetch_identity(
+        &self,
+        identity_id: &str,
+    ) -> std::result::Result<serde_json::Value, KratosProviderError>;
 }
 
 #[derive(Clone)]
@@ -50,6 +77,7 @@ impl KratosClient {
             .provider
             .fetch_session(session_token)
             .await
+            .and_then(parse_session)
             .map_err(map_provider_error)?;
         map_kratos_identity(session.identity)
     }
@@ -59,12 +87,24 @@ impl KratosClient {
             .provider
             .fetch_identity(&identity_id.to_string())
             .await
+            .and_then(parse_identity)
             .map_err(map_provider_error)?;
         map_kratos_identity(identity)
     }
 }
 
+fn parse_session(payload: serde_json::Value) -> std::result::Result<KratosSession, KratosProviderError> {
+    serde_json::from_value(payload).map_err(|_| KratosProviderError::Decode)
+}
+
+fn parse_identity(
+    payload: serde_json::Value,
+) -> std::result::Result<KratosIdentity, KratosProviderError> {
+    serde_json::from_value(payload).map_err(|_| KratosProviderError::Decode)
+}
+
 fn map_kratos_identity(identity: KratosIdentity) -> Result<NyxIdentity> {
+    let _ = (&identity.traits.email, &identity.traits.phone);
     let id = identity.id.parse::<IdentityId>().map_err(|_| {
         NyxError::service_unavailable(
             "auth_provider_invalid_response",
@@ -130,7 +170,7 @@ impl KratosProvider for ReqwestKratosProvider {
     async fn fetch_session(
         &self,
         session_token: &str,
-    ) -> std::result::Result<KratosSession, KratosProviderError> {
+    ) -> std::result::Result<serde_json::Value, KratosProviderError> {
         let response = self
             .http
             .get(format!("{}/sessions/whoami", self.public_url))
@@ -144,7 +184,7 @@ impl KratosProvider for ReqwestKratosProvider {
         }
 
         response
-            .json::<KratosSession>()
+            .json::<serde_json::Value>()
             .await
             .map_err(|_| KratosProviderError::Decode)
     }
@@ -152,7 +192,7 @@ impl KratosProvider for ReqwestKratosProvider {
     async fn fetch_identity(
         &self,
         identity_id: &str,
-    ) -> std::result::Result<KratosIdentity, KratosProviderError> {
+    ) -> std::result::Result<serde_json::Value, KratosProviderError> {
         let response = self
             .http
             .get(format!("{}/admin/identities/{identity_id}", self.admin_url))
@@ -169,7 +209,7 @@ impl KratosProvider for ReqwestKratosProvider {
         }
 
         response
-            .json::<KratosIdentity>()
+            .json::<serde_json::Value>()
             .await
             .map_err(|_| KratosProviderError::Decode)
     }

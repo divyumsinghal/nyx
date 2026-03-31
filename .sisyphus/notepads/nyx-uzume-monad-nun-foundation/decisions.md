@@ -32,3 +32,5 @@
 - Task 6 decision: `KratosClient` exposes typed methods for step-1 core (`validate_session`, `get_identity`) and maps provider failures into Nun-standardized `NyxError` categories using stable machine-readable codes.
 - Task 6 decision: implement Heka Kratos core through provider trait (`KratosProvider`) plus reqwest adapter (`ReqwestKratosProvider`) so deterministic mapping and session/identity logic are testable without exposing provider internals.
 - Task 6 decision: keep service-facing identity contract minimal (`NyxIdentity { id }`) and enforce strict serde boundaries (`deny_unknown_fields`) on raw Kratos response structs.
+- Task 6 hardening decision: keep `NyxIdentity` and app-facing contracts in `types.rs` only, while making Kratos boundary payload models private implementation details in `client.rs` to avoid accidental public coupling to provider schema.
+- Task 6 hardening decision: preserve deterministic Nun mapping codes and statuses unchanged while tightening malformed payload handling via internal parse step (`serde_json::Value` -> private typed structs with `deny_unknown_fields`).
