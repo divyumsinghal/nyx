@@ -250,3 +250,9 @@ cargo check --workspace 2>&1 | head -50
 # List all crates
 cargo metadata --format-version=1 --no-deps | jq -r '.packages[].name'
 ```
+
+## Step 2 Task 1 / Step 2 Guardrail Contract Lock (2026-03-31)
+- Added contract lock manifest at `contracts/step1-compat.lock` and verifier at `tests/contracts/verify_step1_contract_lock.sh`.
+- Locked invariants cover: app-scoped alias visibility default, fail-closed link/revoke semantics (`revoked` default + revoked non-applicability), and chronological feed default guard (`FeedMode::default() == Chronological`).
+- Added deterministic drift fixture `tests/contracts/step1-compat-drift.fixture.lock` to ensure guardrails fail on semantic drift.
+- Wired gate into local/CI-equivalent flow: new `just gate-step1-compat` and included in `just ci`; CI workflow invokes `just gate-step1-compat` explicitly before parity bundle.
