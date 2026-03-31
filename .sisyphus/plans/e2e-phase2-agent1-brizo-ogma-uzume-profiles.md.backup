@@ -1,0 +1,1518 @@
+# E2E Phase 2 Agent 1: Brizo + Ogma + Uzume-profiles
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Production-grade implementation of search (Brizo), messaging (Ogma), and profiles service (Uzume-profiles) with full integration for deployment readiness.
+
+**Architecture:** Three-tier service integration: Meilisearch-backed profile search, Matrix-powered direct messaging, and PostgreSQL-stored profiles with follow graph and privacy enforcement. Event-driven sync via NATS with strict TDD validation.
+
+**Tech Stack:** Rust (async/await with Tokio), Meilisearch SDK v0.32, Matrix SDK v0.16, PostgreSQL (with pgx migrations), NATS JetStream, testcontainers for integration testing.
+
+---
+
+## TL;DR
+
+> **Quick Summary**: Production-ready implementation of Brizo (Meilisearch search), Ogma (Matrix messaging), and Uzume-profiles (profiles + follow graph) with full service integration, event-driven sync, and strict TDD validation.
+>
+> **Deliverables**:
+> - Brizo: Meilisearch client wrapper with profile indexing, search, sync workers
+> - Ogma: Matrix client wrapper with DM room management, messaging, session persistence
+> - Uzume-profiles: HTTP server (Axum), DB layer, NATS event workers, follow graph service
+> - Integration: profile_updated → Meilisearch sync, DM room creation via Ogma
+> - Tests: Full TDD coverage (unit + integration) with testcontainers
+>
+> **Estimated Effort**: Large (production-grade, 3 services + integration)
+> **Parallel Execution**: YES - 7 waves (foundation, core services, integration layer, HTTP server, sync workers, final integration, verification)
+> **Critical Path**: Task 1 → 5 → 10 → 15 → 20 → 25 → F1-F4 → deploy
+
+---
+
+## Context
+
+### Original Request
+Continue Phase 2 / Agent 1 for Nyx e2e plan: Brizo + Ogma + Uzume-profiles with Phase 1 merge - search, messaging, profiles service. Production deployment deadline, full completion required. Move fast with parallel agents, 5-minute planning window, then build. Phase 0 agents 1 and 2 are in-progress - decouple and proceed with contract assumptions unless hard dependency found.
+
+### Interview Summary
+**Key Discussions**:
+- **Scope**: Full completion (not minimal slice), production-grade, final draft for deadline-driven deployment
+- **Dependencies**: Decouple from in-progress Phase 0 agents; proceed with explicit assumptions, no waiting
+- **Test Strategy**: Strict TDD - RED-GREEN-REFACTOR on every task including new modules
+- **Timebox**: Plan fast (~5 min), then build with parallel agents under 30-min window
+
+**Research Findings**:
+- **No canonical Phase 2 Agent 1 plan** - this is new plan creation based on e2e plan reference
+- **Brizo (Monad/Brizo)**: README-only, no src/ - needs full Meilisearch client implementation
+- **Ogma (Monad/Ogma)**: README-only, no src/ - needs full Matrix client implementation
+- **Uzume-profiles (apps/Uzume/Uzume-profiles)**: Service layer exists (lib.rs - Profile model, ProfilesService, ProfilesEndpoints), but no HTTP handlers, routes, DB queries, NATS workers
+- **Test Infrastructure**: Rust integration tests with testcontainers, no Playwright e2e scaffold yet
+- **External Services**: Meilisearch v1.12.0, Matrix (Conduwuit), PostgreSQL, NATS JetStream all running in compose
+
+### Metis Review
+**Identified Gaps (addressed)**:
+- **External dependency validation**: Added verification commands for services, migrations, NATS streams
+- **Production patterns**: Incorporated Meilisearch lazy index creation, task completion, index swapping; Matrix session persistence, sync loops with recovery
+- **Rollback strategy**: Added explicit procedures for DB, Meilisearch, Matrix, and service rollback
+- **Observability**: Added logging requirements (structured, levels), metrics to track
+- **Acceptance criteria**: Made all criteria executable with specific commands (no vague descriptions)
+- **Phase 0 decoupling**: Explicit fallback strategy for in-flight agents
+
+**Guardrails Added**:
+- Must NOT wait for Phase 0 unless hard dependency proven
+- Must NOT deploy without full TDD coverage passing
+- Must NOT skip rollback procedures in documentation
+- Must NOT use vague acceptance criteria (all command-verified)
+- Must NOT skip NATS event-driven sync for consistency
+
+---
+
+## Work Objectives
+
+### Core Objective
+Deploy production-ready Brizo, Ogma, and Uzume-profiles services with full integration: profile search, direct messaging, follow graph, and event-driven sync, all validated via strict TDD.
+
+### Concrete Deliverables
+- `Monad/Brizo/src/lib.rs` - BrizoClient with index/create/search/delete/sync, tests in `tests/`
+- `Monad/Ogma/src/lib.rs` - OgmaClient with room management, messaging, session persistence, tests in `tests/`
+- `apps/Uzume/Uzume-profiles/src/handlers/` - HTTP request handlers
+- `apps/Uzume/Uzume-profiles/src/routes/` - Axum route definitions
+- `apps/Uzume/Uzume-profiles/src/queries/` - PostgreSQL queries
+- `apps/Uzume/Uzume-profiles/src/workers/` - NATS event consumers
+- `apps/Uzume/Uzume-profiles/src/services/follow_graph.rs` - Follow/unfollow/block/unblock logic
+- Integration: profile_updated NATS event → Brizo Meilisearch sync worker
+- Integration: DM creation → Ogma Matrix room worker
+
+### Definition of Done
+- [ ] All unit tests pass: `cargo nextest run --workspace --lib`
+- [ ] All integration tests pass: `cargo nextest run --workspace --test`
+- [ ] Brizo search returns correct profiles: `curl -sf 'http://localhost:3001/search?q=alice' | jq '. | length > 0'`
+- [ ] Ogma sends DM messages: Matrix room created and message received
+- [ ] Uzume-profiles CRUD works: `curl -sf 'http://localhost:3000/me' | jq '.username'`
+- [ ] Follow graph operations persist: Follow/unfollow/block/unblock in DB
+- [ ] NATS sync workers running: Brizo receives profile_updated, Ogma receives DM requests
+- [ ] External services verified healthy: Meilisearch, Matrix, PostgreSQL, NATS
+- [ ] Rollback procedures documented and tested
+- [ ] All services build: `cargo build --workspace --release`
+- [ ] CI gate passes: `just ci` (fmt, lint, security, test)
+- [ ] No `as any`, `@ts-ignore`, empty catches, console.log in prod
+
+### Must Have
+- Brizo: Meilisearch client with profile indexing, search, batch sync (10M chunking)
+- Ogma: Matrix client with DM room creation, messaging, session persistence, sync loop with recovery
+- Uzume-profiles: HTTP server (Axum), PostgreSQL queries, follow graph service (follow/unfollow/block/unblock)
+- NATS integration: profile_updated → Brizo sync, DM requests → Ogma room creation
+- Strict TDD: RED-GREEN-REFACTOR on every task, 95%+ coverage
+- Production patterns: Lazy index creation, task completion waits, session restore, error recovery
+- Testcontainers integration: All integration tests use real services (PostgreSQL, Meilisearch, NATS)
+
+### Must NOT Have (Guardrails)
+- Waiting for Phase 0 agents (decouple, proceed with assumptions)
+- Skipping TDD (every task must have failing test first)
+- Vague acceptance criteria (all must be command-verifiable)
+- Missing rollback procedures (DB, Meilisearch, Matrix, service)
+- Skipping NATS sync (event-driven consistency required)
+- Hardcoded credentials (use environment variables)
+- Silent failures (structured logging, proper error propagation)
+- AI slop: excessive comments, over-abstraction, generic names (data/result/item/temp)
+
+---
+
+## Verification Strategy (MANDATORY)
+
+> **ZERO HUMAN INTERVENTION** — ALL verification is agent-executed. No exceptions.
+> Acceptance criteria requiring "user manually tests/confirms" are FORBIDDEN.
+
+### Test Decision
+- **Infrastructure exists**: YES (Rust integration tests with testcontainers in justfile)
+- **Automated tests**: YES (Strict TDD - RED-GREEN-REFACTOR)
+- **Framework**: `cargo nextest` (faster than cargo test) + testcontainers
+- **If TDD**: Each task follows RED (failing test) → GREEN (minimal impl) → REFACTOR
+
+### QA Policy
+Every task MUST include agent-executed QA scenarios (see TODO template below).
+Evidence saved to `.sisyphus/evidence/task-{N}-{scenario-slug}.{ext}`.
+
+- **Backend/Services**: Use Bash (curl) — HTTP requests, assert JSON response, status codes
+- **Database**: Use Bash (psql) — Verify rows, constraints, indexes
+- **External Services**: Use Bash — Verify Meilisearch index, Matrix rooms, NATS streams
+- **Library/Modules**: Use Bash (cargo nextest) — Run tests, check coverage
+- **Workers/Background**: Use Bash — Verify consumers process events via NATS
+
+- **Frontend/UI**: N/A (no UI in this slice)
+
+---
+
+## Execution Strategy
+
+### Parallel Execution Waves
+
+> Maximize throughput by grouping independent tasks into parallel waves.
+> Each wave completes before the next begins.
+> Target: 5-8 tasks per wave. Fewer than 3 per wave (except final) = under-splitting.
+
+```
+Wave 1 (Start Immediately — foundation + dependency validation):
+├── Task 1: Verify external services [quick]
+├── Task 2: Add Meilisearch SDK to workspace [quick]
+├── Task 3: Add Matrix SDK to workspace [quick]
+├── Task 4: Setup Brizo project structure [quick]
+├── Task 5: Setup Ogma project structure [quick]
+├── Task 6: Create Uzume-profiles HTTP layer scaffolding [quick]
+└── Task 7: Create Uzume-profiles DB query layer scaffolding [quick]
+
+Wave 2 (After Wave 1 — core client implementations, MAX PARALLEL):
+├── Task 8: Brizo client implementation - index/create/search/delete [deep]
+├── Task 9: Ogma client implementation - session/rooms/messaging [deep]
+├── Task 10: Uzume-profiles follow graph service [deep]
+├── Task 11: Uzume-profiles DB queries - profiles/follows/blocks [unspecified-high]
+├── Task 12: Uzume-profiles HTTP handlers - CRUD [unspecified-high]
+├── Task 13: Uzume-profiles HTTP routes - Axum router [unspecified-high]
+└── Task 14: Uzume-profiles main entry - HTTP server [quick]
+
+Wave 3 (After Wave 2 — NATS integration + sync workers, MAX PARALLEL):
+├── Task 15: Brizo sync worker - profile_updated → Meilisearch [deep]
+├── Task 16: Ogma sync worker - DM requests → Matrix rooms [deep]
+├── Task 17: Uzume-profiles NATS publisher - profile events [unspecified-high]
+├── Task 18: Uzume-profiles NATS publisher - follow events [unspecified-high]
+├── Task 19: Brizo batch sync with chunking [unspecified-high]
+└── Task 20: Ogma session persistence and restore [quick]
+
+Wave 4 (After Wave 3 — integration and validation):
+├── Task 21: End-to-end integration test - profile CRUD + search [deep]
+├── Task 22: End-to-end integration test - follow graph + privacy [deep]
+├── Task 23: End-to-end integration test - DM creation + messaging [deep]
+├── Task 24: Error handling validation - service failures [unspecified-high]
+├── Task 25: Performance benchmark - search latency [quick]
+└── Task 26: Performance benchmark - DB query latency [quick]
+
+Wave FINAL (After ALL tasks — 4 parallel reviews, then user okay):
+├── Task F1: Plan compliance audit (oracle)
+├── Task F2: Code quality review (unspecified-high)
+├── Task F3: Real manual QA (unspecified-high)
+└── Task F4: Scope fidelity check (deep)
+-> Present results -> Get explicit user okay
+
+Critical Path: Task 1 → 2 → 4 → 8 → 15 → 21 → F1-F4 → user okay
+Parallel Speedup: ~75% faster than sequential
+Max Concurrent: 7 (Waves 1 & 2)
+```
+
+### Dependency Matrix (abbreviated — show ALL tasks in your generated plan)
+
+- **1-7**: — — 8-14, 1
+- **8**: 2, 4 — 15, 19, 21, 2
+- **9**: 3, 5 — 16, 20, 23, 2
+- **10**: 6 — 11, 12, 18, 22, 2
+- **11**: 6, 10 — 12, 18, 22, 2
+- **12**: 6, 10, 11 — 13, 14, 17, 2
+- **13**: 6, 12 — 14, 17, 2
+- **14**: 6, 12, 13 — 17, 3
+- **15**: 2, 4, 8 — 19, 21, 2
+- **16**: 3, 5, 9 — 20, 23, 2
+- **17**: 6, 12, 13 — 21, 22, 2
+- **18**: 6, 10 — 22, 2
+- **19**: 2, 4, 8, 15 — 21, 2
+- **20**: 3, 5, 9, 16 — 23, 2
+- **21**: 2, 3, 4, 8, 15, 17, 19, 24, 25 — 26, 4
+- **22**: 6, 10, 17, 18, 24 — 26, 4
+- **23**: 3, 5, 9, 16, 20, 24 — 26, 4
+- **24**: 21, 22, 23 — 25, 26, 3
+- **25**: 21, 24 — 26, 2
+- **26**: 21, 22, 23, 24, 25 — F1-F4, 4
+
+> This is abbreviated for reference. YOUR generated plan must include the FULL matrix for ALL tasks.
+
+### Agent Dispatch Summary
+
+- **Wave 1**: **7** — T1→`quick`, T2-T3→`quick`, T4-T5→`quick`, T6-T7→`quick`
+- **Wave 2**: **7** — T8→`deep`, T9→`deep`, T10→`deep`, T11→`unspecified-high`, T12→`unspecified-high`, T13→`unspecified-high`, T14→`quick`
+- **Wave 3**: **6** — T15→`deep`, T16→`deep`, T17-T18→`unspecified-high`, T19→`unspecified-high`, T20→`quick`
+- **Wave 4**: **6** — T21-T23→`deep`, T24→`unspecified-high`, T25-T26→`quick`
+- **FINAL**: **4** — F1→`oracle`, F2→`unspecified-high`, F3→`unspecified-high`, F4→`deep`
+
+---
+
+## TODOs
+
+> Implementation + Test = ONE Task. Never separate.
+> EVERY task MUST have: Recommended Agent Profile + Parallelization info + QA Scenarios.
+> **A task WITHOUT QA Scenarios is INCOMPLETE. No exceptions.**
+
+---
+- [ ] 1. Verify external services are running
+
+  **What to do**:
+  - Check Meilisearch health at http://nyx-meilisearch:7700/health
+  - Check Matrix health at http://nyx-matrix:8008/_matrix/client/versions
+  - Check PostgreSQL connectivity via psql
+  - Check NATS JetStream connectivity
+  - Verify migrations can run
+  - Verify NATS streams exist
+
+  **Must NOT do**:
+  - Do not modify any service configuration
+  - Do not skip any service verification
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `quick`
+    - Reason: Simple verification commands, no implementation
+  - **Skills**: `[]`
+    - No special skills needed - standard bash verification
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for simple verification
+
+  **Parallelization**:
+  - **Can Run In Parallel**: NO
+  - **Parallel Group**: Sequential (Task 1 must complete before others start)
+  - **Blocks**: [Tasks 2-7]
+  - **Blocked By**: None (can start immediately)
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - N/A (no existing service verification pattern)
+
+  **API/Type References** (contracts to implement against):
+  - N/A (external services only)
+
+  **Test References** (testing patterns to follow):
+  - N/A (no test needed for this task)
+
+  **External References** (libraries and frameworks):
+  - Meilisearch docs: https://docs.meilisearch.com/learn/getting_started/quick_start.html
+  - Matrix docs: https://matrix-org.github.io/matrix-rust-sdk/matrix_sdk/
+  - PostgreSQL: Connection string in .env
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - Meilisearch health endpoint: Verify search backend is ready for Brizo integration
+  - Matrix client versions: Verify messaging backend is compatible with SDK version 0.16
+  - PostgreSQL connection: Ensure Uzume-profiles DB layer can connect
+  - NATS streams: Verify event infrastructure exists for sync workers
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] N/A (verification task, no implementation)
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: Verify Meilisearch is healthy
+    Tool: Bash (curl)
+    Preconditions: Docker compose running
+    Steps:
+      1. curl -sf http://nyx-meilisearch:7700/health
+    Expected Result: HTTP 200 with JSON response
+    Failure Indicators: Connection refused, HTTP 5xx
+    Evidence: .sisyphus/evidence/task-1-meilisearch-health.txt
+
+  Scenario: Verify Matrix is healthy
+    Tool: Bash (curl)
+    Preconditions: Docker compose running
+    Steps:
+      1. curl -sf http://nyx-matrix:8008/_matrix/client/versions
+    Expected Result: HTTP 200 with versions array
+    Failure Indicators: Connection refused, HTTP 5xx
+    Evidence: .sisyphus/evidence/task-1-matrix-health.txt
+
+  Scenario: Verify PostgreSQL is accessible
+    Tool: Bash (psql)
+    Preconditions: .env has DATABASE_URL
+    Steps:
+      1. psql "$DATABASE_URL" -c "SELECT 1;"
+    Expected Result: Returns "1"
+    Failure Indicators: Connection failed, auth error
+    Evidence: .sisyphus/evidence/task-1-postgres-health.txt
+
+  Scenario: Verify NATS JetStream is accessible
+    Tool: Bash (nats-cli or curl)
+    Preconditions: Docker compose running
+    Steps:
+      1. nc -zv nyx-nats 4222
+    Expected Result: Exit code 0
+    Failure Indicators: Connection refused, timeout
+    Evidence: .sisyphus/evidence/task-1-nats-health.txt
+
+  Scenario: Verify migrations can run
+    Tool: Bash (cargo)
+    Preconditions: .sisyphus/plans/e2e-phase2-agent1-brizo-ogma-uzume-profiles.md
+    Steps:
+      1. cargo run -p nyx-xtask -- migrate
+    Expected Result: Exit code 0, "Migrations up to date" or similar
+    Failure Indicators: Migration errors, schema conflicts
+    Evidence: .sisyphus/evidence/task-1-migrations.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] All 5 service health checks captured
+
+  **Commit**: NO | YES (if any .env/config changes needed)
+  - Message: `feat(brizo-ogma-uzume-profiles): verify external services`
+  - Files: `.env` (if modified)
+  - Pre-commit: N/A
+
+- [ ] 2. Add Meilisearch SDK to workspace
+
+  **What to do**:
+  - Verify `meilisearch-sdk = "0.28"` exists in workspace (use existing, no upgrade)
+  - Update Monad/Brizo/Cargo.toml with Meilisearch dependency
+  - Verify workspace builds with new dependency
+  - Create simple smoke test for Meilisearch client initialization
+
+  **Must NOT do**:
+  - Do not implement Brizo client yet (Task 8)
+  - Do not skip workspace build verification
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `quick`
+    - Reason: Adding dependency and basic smoke test, straightforward
+  - **Skills**: `[]`
+    - No special skills needed - standard Cargo.toml editing
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for dependency addition
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with Tasks 3, 4, 5, 6, 7)
+  - **Blocks**: [Task 8 (Brizo client implementation)]
+  - **Blocked By**: None (can start immediately)
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - `Cargo.toml` workspace format (root Cargo.toml)
+  - Similar dependency additions in workspace
+
+  **API/Type References** (contracts to implement against):
+  - `meilisearch_sdk::Client` from crate docs
+
+  **Test References** (testing patterns to follow):
+  - `apps/Uzume/Uzume-profiles/tests/` - BDD comment structure
+  - `Nun/src/testing.rs` (per e2ePlan.md) - test utilities
+
+  **External References** (libraries and frameworks):
+  - Meilisearch SDK: https://docs.rs/meilisearch-sdk/latest/meilisearch_sdk/
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - Workspace Cargo.toml format: Ensures dependency is available to all workspace members
+  - Meilisearch SDK docs: Provides client initialization pattern for Task 8
+  - Test utilities: Follow existing test patterns for smoke test
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] Smoke test created: Monad/Brizo/tests/smoke_meilisearch.rs
+  - [ ] `cargo test --package brizo smoke` → PASS
+  - [ ] Workspace builds: `cargo build --workspace` → SUCCESS
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: Meilisearch dependency added successfully
+    Tool: Bash (cargo)
+    Preconditions: Root workspace Cargo.toml edited
+    Steps:
+      1. cargo build --workspace 2>&1 | grep -E "meilisearch-sdk|Compiling"
+    Expected Result: Meilisearch-sdk fetched and compiled successfully
+    Failure Indicators: Resolution error, compilation error
+    Evidence: .sisyphus/evidence/task-2-meilisearch-dependency.txt
+
+  Scenario: Smoke test passes
+    Tool: Bash (cargo)
+    Preconditions: Meilisearch service running
+    Steps:
+      1. cargo test --package brizo smoke -- --nocapture
+    Expected Result: Test creates client and connects to Meilisearch
+    Failure Indicators: Connection error, panic
+    Evidence: .sisyphus/evidence/task-2-smoke-test.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Cargo build output and smoke test results captured
+
+  **Commit**: YES
+  - Message: `chore(brizo): add meilisearch-sdk 0.32.0 dependency`
+  - Files: `Cargo.toml`, `Monad/Brizo/Cargo.toml`, `Monad/Brizo/tests/smoke_meilisearch.rs`
+  - Pre-commit: `cargo build --workspace`
+
+- [ ] 3. Add Matrix SDK to workspace
+
+  **What to do**:
+  - Add `matrix-sdk = { version = "0.16", features = ["sqlite"] }` to workspace dependencies
+  - Add `ruma = { version = "0.12", features = ["unstable-msc"] }` to workspace dependencies
+  - Update Monad/Ogma/Cargo.toml with Matrix dependencies
+  - Verify workspace builds with new dependencies
+  - Create simple smoke test for Matrix client initialization
+
+  **Must NOT do**:
+  - Do not implement Ogma client yet (Task 9)
+  - Do not skip workspace build verification
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `quick`
+    - Reason: Adding dependencies and basic smoke test, straightforward
+  - **Skills**: `[]`
+    - No special skills needed - standard Cargo.toml editing
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for dependency addition
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with Tasks 2, 4, 5, 6, 7)
+  - **Blocks**: [Task 9 (Ogma client implementation)]
+  - **Blocked By**: None (can start immediately)
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - `Cargo.toml` workspace format (root Cargo.toml)
+  - Similar dependency additions in workspace
+
+  **API/Type References** (contracts to implement against):
+  - `matrix_sdk::Client` from crate docs
+  - `ruma` types for Matrix events
+
+  **Test References** (testing patterns to follow):
+  - `apps/Uzume/Uzume-profiles/tests/` - BDD comment structure
+
+  **External References** (libraries and frameworks):
+  - Matrix SDK: https://matrix-org.github.io/matrix-rust-sdk/matrix_sdk/
+  - Ruma docs: https://docs.rs/ruma/latest/ruma/
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - Workspace Cargo.toml format: Ensures dependencies are available to all workspace members
+  - Matrix SDK docs: Provides client initialization pattern for Task 9
+  - Ruma types: Type-safe Matrix event handling in Ogma
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] Smoke test created: Monad/Ogma/tests/smoke_matrix.rs
+  - [ ] `cargo test --package ogma smoke` → PASS
+  - [ ] Workspace builds: `cargo build --workspace` → SUCCESS
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: Matrix SDK dependency added successfully
+    Tool: Bash (cargo)
+    Preconditions: Root workspace Cargo.toml edited
+    Steps:
+      1. cargo build --workspace 2>&1 | grep -E "matrix-sdk|ruma|Compiling"
+    Expected Result: matrix-sdk and ruma fetched and compiled successfully
+    Failure Indicators: Resolution error, compilation error
+    Evidence: .sisyphus/evidence/task-3-matrix-dependency.txt
+
+  Scenario: Smoke test passes
+    Tool: Bash (cargo)
+    Preconditions: Matrix homeserver running
+    Steps:
+      1. cargo test --package ogma smoke -- --nocapture
+    Expected Result: Test initializes Matrix client without panicking
+    Failure Indicators: Connection error, panic
+    Evidence: .sisyphus/evidence/task-3-smoke-test.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Cargo build output and smoke test results captured
+
+  **Commit**: YES
+  - Message: `chore(ogma): add matrix-sdk 0.16 and ruma 0.12 dependencies`
+  - Files: `Cargo.toml`, `Monad/Ogma/Cargo.toml`, `Monad/Ogma/tests/smoke_matrix.rs`
+  - Pre-commit: `cargo build --workspace`
+- [ ] 4. Setup Brizo project structure
+
+  **What to do**:
+  - Create Monad/Brizo/src/ directory if missing
+  - Create Monad/Brizo/src/lib.rs with module declarations
+  - Create Monad/Brizo/Cargo.toml with workspace dependencies
+  - Add Brizo to workspace members in root Cargo.toml
+  - Verify crate compiles
+  - Create test directory structure tests/
+
+  **Must NOT do**:
+  - Do not implement Brizo client logic yet (Task 8)
+  - Do not add tests yet (smoke test in Task 2)
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `quick`
+    - Reason: Basic project scaffolding, no business logic
+  - **Skills**: `[]`
+    - No special skills needed - standard Rust project setup
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for project scaffolding
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with Tasks 2, 3, 5, 6, 7)
+  - **Blocks**: [Task 8 (Brizo client implementation)]
+  - **Blocked By**: Task 2 (Meilisearch dependency)
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - `Monad/Nun/Cargo.toml` - Workspace member format
+  - `Monad/Heka/src/lib.rs` - Module declaration pattern
+  - `apps/Uzume/Uzume-profiles/` - Test directory structure
+
+  **API/Type References** (contracts to implement against):
+  - N/A (scaffolding only)
+
+  **Test References** (testing patterns to follow):
+  - `Monad/Nun/src/lib.rs` - Module structure
+
+  **External References** (libraries and frameworks):
+  - Rust crate layout: https://doc.rust-lang.org/book/ch07-01-packages-and-crates.html
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - Workspace member format: Ensures Brizo is part of the Nyx workspace
+  - Module declaration pattern: Follows existing conventions in Nun and Heka
+  - Test directory structure: Matches Uzume-profiles test layout
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] Crate compiles: `cargo build --package brizo` → SUCCESS
+  - [ ] Workspace includes Brizo: `grep brizo Cargo.toml` → matches
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: Brizo project structure created
+    Tool: Bash (cargo + ls)
+    Preconditions: Tasks 1-2 complete
+    Steps:
+      1. ls Monad/Brizo/src/
+      2. cat Monad/Brizo/src/lib.rs
+      3. cargo build --package brizo
+    Expected Result: src/ and tests/ directories exist, lib.rs has mod declarations, compiles
+    Failure Indicators: Missing directories, compilation errors
+    Evidence: .sisyphus/evidence/task-4-brizo-structure.txt
+
+  Scenario: Workspace includes Brizo
+    Tool: Bash (grep)
+    Preconditions: Root Cargo.toml edited
+    Steps:
+      1. grep "brizo" Cargo.toml
+    Expected Result: Matches in [workspace.members] or [dependencies]
+    Failure Indicators: No match
+    Evidence: .sisyphus/evidence/task-4-workspace-brizo.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Directory listing and compilation output captured
+
+  **Commit**: YES
+  - Message: `chore(brizo): setup project structure and workspace membership`
+  - Files: `Monad/Brizo/src/lib.rs`, `Monad/Brizo/Cargo.toml`, `Cargo.toml`
+  - Pre-commit: `cargo build --workspace`
+
+- [ ] 5. Setup Ogma project structure
+
+  **What to do**:
+  - Create Monad/Ogma/src/ directory if missing
+  - Create Monad/Ogma/src/lib.rs with module declarations
+  - Create Monad/Ogma/Cargo.toml with workspace dependencies
+  - Add Ogma to workspace members in root Cargo.toml
+  - Verify crate compiles
+  - Create test directory structure tests/
+
+  **Must NOT do**:
+  - Do not implement Ogma client logic yet (Task 9)
+  - Do not add tests yet (smoke test in Task 3)
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `quick`
+    - Reason: Basic project scaffolding, no business logic
+  - **Skills**: `[]`
+    - No special skills needed - standard Rust project setup
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for project scaffolding
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with Tasks 2, 3, 4, 6, 7)
+  - **Blocks**: [Task 9 (Ogma client implementation)]
+  - **Blocked By**: Task 3 (Matrix dependency)
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - `Monad/Nun/Cargo.toml` - Workspace member format
+  - `Monad/Heka/src/lib.rs` - Module declaration pattern
+  - `apps/Uzume/Uzume-profiles/` - Test directory structure
+
+  **API/Type References** (contracts to implement against):
+  - N/A (scaffolding only)
+
+  **Test References** (testing patterns to follow):
+  - `Monad/Nun/src/lib.rs` - Module structure
+
+  **External References** (libraries and frameworks):
+  - Rust crate layout: https://doc.rust-lang.org/book/ch07-01-packages-and-crates.html
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - Workspace member format: Ensures Ogma is part of the Nyx workspace
+  - Module declaration pattern: Follows existing conventions in Nun and Heka
+  - Test directory structure: Matches Uzume-profiles test layout
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] Crate compiles: `cargo build --package ogma` → SUCCESS
+  - [ ] Workspace includes Ogma: `grep ogma Cargo.toml` → matches
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: Ogma project structure created
+    Tool: Bash (cargo + ls)
+    Preconditions: Tasks 1-3 complete
+    Steps:
+      1. ls Monad/Ogma/src/
+      2. cat Monad/Ogma/src/lib.rs
+      3. cargo build --package ogma
+    Expected Result: src/ and tests/ directories exist, lib.rs has mod declarations, compiles
+    Failure Indicators: Missing directories, compilation errors
+    Evidence: .sisyphus/evidence/task-5-ogma-structure.txt
+
+  Scenario: Workspace includes Ogma
+    Tool: Bash (grep)
+    Preconditions: Root Cargo.toml edited
+    Steps:
+      1. grep "ogma" Cargo.toml
+    Expected Result: Matches in [workspace.members] or [dependencies]
+    Failure Indicators: No match
+    Evidence: .sisyphus/evidence/task-5-workspace-ogma.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Directory listing and compilation output captured
+
+  **Commit**: YES
+  - Message: `chore(ogma): setup project structure and workspace membership`
+  - Files: `Monad/Ogma/src/lib.rs`, `Monad/Ogma/Cargo.toml`, `Cargo.toml`
+  - Pre-commit: `cargo build --workspace`
+
+- [ ] 6. Create Uzume-profiles HTTP layer scaffolding
+
+  **What to do**:
+  - Create apps/Uzume/Uzume-profiles/src/handlers/ directory
+  - Create apps/Uzume/Uzume-profiles/src/routes/ directory
+  - Create apps/Uzume/Uzume-profiles/src/queries/ directory
+  - Create apps/Uzume/Uzume-profiles/src/workers/ directory
+  - Add module declarations to apps/Uzume/Uzume-profiles/src/lib.rs
+  - Verify crate compiles
+
+  **Must NOT do**:
+  - Do not implement handlers, routes, queries, or workers yet (Tasks 11-13, 15-18)
+  - Do not skip module declaration updates
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `quick`
+    - Reason: Directory creation and module declarations, no business logic
+  - **Skills**: `[]`
+    - No special skills needed - standard Rust module setup
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for scaffolding
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with Tasks 2-5, 7)
+  - **Blocks**: [Tasks 11-13, 15-18 (handlers, routes, queries, workers)]
+  - **Blocked By**: None (can start immediately)
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - `apps/Uzume/Uzume-feed/src/lib.rs` - Existing service module structure
+
+  **API/Type References** (contracts to implement against):
+  - `apps/Uzume/Uzume-profiles/src/lib.rs` - Existing service layer
+
+  **Test References** (testing patterns to follow):
+  - N/A (scaffolding only)
+
+  **External References** (libraries and frameworks):
+  - Axum handlers: https://docs.rs/axum/latest/axum/
+  - Rust modules: https://doc.rust-lang.org/book/ch07-02-defining-modules-to-control-scope-and-privacy.html
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - Uzume-feed structure: Follows existing service organization
+  - Axum docs: Handler function signature patterns for Task 12
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] Directories created: handlers/, routes/, queries/, workers/
+  - [ ] Crate compiles: `cargo build --package uzume-profiles` → SUCCESS
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: HTTP layer directories created
+    Tool: Bash (ls)
+    Preconditions: apps/Uzume/Uzume-profiles/src/ exists
+    Steps:
+      1. ls -la apps/Uzume/Uzume-profiles/src/
+    Expected Result: handlers/, routes/, queries/, workers/ directories present
+    Failure Indicators: Missing directories
+    Evidence: .sisyphus/evidence/task-6-http-layer-directories.txt
+
+  Scenario: Module declarations added
+    Tool: Bash (grep)
+    Preconditions: lib.rs edited
+    Steps:
+      1. grep -E "mod handlers|mod routes|mod queries|mod workers" apps/Uzume/Uzume-profiles/src/lib.rs
+    Expected Result: All 4 module declarations present
+    Failure Indicators: Missing declarations
+    Evidence: .sisyphus/evidence/task-6-module-declarations.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Directory listing and module grep captured
+
+  **Commit**: YES
+  - Message: `chore(uzume-profiles): create HTTP layer scaffolding`
+  - Files: `apps/Uzume/Uzume-profiles/src/lib.rs` (updated)
+  - Pre-commit: `cargo build --workspace`
+
+- [ ] 7. Create Uzume-profiles DB query layer scaffolding
+
+  **What to do**:
+  - Ensure PostgreSQL dependency is in apps/Uzume/Uzume-profiles/Cargo.toml
+  - Add sqlx or pgx if not present
+  - Create apps/Uzume/Uzume-profiles/src/queries/mod.rs with empty module
+  - Create migration stub for profiles table if not exists
+  - Create migration stub for follows table
+  - Create migration stub for blocks table
+  - Verify crate compiles
+
+  **Must NOT do**:
+  - Do not implement DB queries yet (Task 11)
+  - Do not write full migrations yet (just stubs)
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `quick`
+    - Reason: Adding DB dependency and migration stubs, no complex queries
+  - **Skills**: `[]`
+    - No special skills needed - standard DB setup
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for basic DB scaffolding
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 1 (with Tasks 2-6)
+  - **Blocks**: [Task 11 (DB queries implementation)]
+  - **Blocked By**: None (can start immediately)
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - Check if other services use sqlx/pgx for migrations
+  - Migration patterns in existing codebase
+
+  **API/Type References** (contracts to implement against):
+  - N/A (scaffolding only)
+
+  **Test References** (testing patterns to follow):
+  - N/A (scaffolding only)
+
+  **External References** (libraries and frameworks):
+  - sqlx: https://docs.rs/sqlx/latest/sqlx/
+  - pgx: https://docs.rs/pgx/latest/pgx/
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - sqlx/docs: Compile-checked SQL queries for Task 11
+  - Migration patterns: Follow existing DB schema conventions
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] DB dependency added: `grep sqlx apps/Uzume/Uzume-profiles/Cargo.toml` → matches
+  - [ ] Migration stubs created: `ls migrations/` → shows profile/follow/block stubs
+  - [ ] Crate compiles: `cargo build --package uzume-profiles` → SUCCESS
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: DB dependency added
+    Tool: Bash (grep)
+    Preconditions: Cargo.toml edited
+    Steps:
+      1. grep -E "sqlx|pgx|postgres" apps/Uzume/Uzume-profiles/Cargo.toml
+    Expected Result: PostgreSQL client dependency present
+    Failure Indicators: No match
+    Evidence: .sisyphus/evidence/task-7-db-dependency.txt
+
+  Scenario: Migration stubs exist
+    Tool: Bash (ls)
+    Preconditions: migrations/ directory exists
+    Steps:
+      1. ls -la migrations/ | grep -E "profile|follow|block"
+    Expected Result: Migration stubs for profiles, follows, blocks present
+    Failure Indicators: Missing stubs
+    Evidence: .sisyphus/evidence/task-7-migration-stubs.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Dependency grep and migration listing captured
+
+  **Commit**: YES
+  - Message: `chore(uzume-profiles): add DB layer scaffolding and migration stubs`
+  - Files: `apps/Uzume/Uzume-profiles/Cargo.toml`, `apps/Uzume/Uzume-profiles/src/queries/mod.rs`
+  - Pre-commit: `cargo build --workspace`
+
+---
+## Final Verification Wave (MANDATORY — after ALL implementation tasks)
+
+> 4 review agents run in PARALLEL. ALL must APPROVE. Present consolidated results to user and get explicit "okay" before completing.
+>
+> **Do NOT auto-proceed after verification. Wait for user's explicit approval before marking work complete.**
+> **Never mark F1-F4 as checked before getting user's okay.** Rejection or user feedback -> fix -> re-run -> present again -> wait for okay.
+
+- [ ] F1. **Plan Compliance Audit** — `oracle`
+  Read the plan end-to-end. For each "Must Have": verify implementation exists (read file, curl endpoint, run command). For each "Must NOT Have": search codebase for forbidden patterns — reject with file:line if found. Check evidence files exist in .sisyphus/evidence/. Compare deliverables against plan.
+  Output: `Must Have [N/N] | Must NOT Have [N/N] | Tasks [N/N] | VERDICT: APPROVE/REJECT`
+
+- [ ] F2. **Code Quality Review** — `unspecified-high`
+  Run `tsc --noEmit` + linter + `cargo nextest`. Review all changed files for: `as any`/`@ts-ignore`, empty catches, console.log in prod, commented-out code, unused imports. Check AI slop: excessive comments, over-abstraction, generic names (data/result/item/temp).
+  Output: `Build [PASS/FAIL] | Lint [PASS/FAIL] | Tests [N pass/N fail] | Files [N clean/N issues] | VERDICT`
+
+- [ ] F3. **Real Manual QA** — `unspecified-high` (+ `playwright` skill if UI)
+  Start from clean state. Execute EVERY QA scenario from EVERY task — follow exact steps, capture evidence. Test cross-task integration (features working together, not isolation). Test edge cases: empty state, invalid input, rapid actions. Save to `.sisyphus/evidence/final-qa/`.
+  Output: `Scenarios [N/N pass] | Integration [N/N] | Edge Cases [N tested] | VERDICT`
+
+- [ ] F4. **Scope Fidelity Check** — `deep`
+  For each task: read "What to do", read actual diff (git log/diff). Verify 1:1 — everything in spec was built (no missing), nothing beyond spec was built (no creep). Check "Must NOT do" compliance. Detect cross-task contamination: Task N touching Task M's files. Flag unaccounted changes.
+  Output: `Tasks [N/N compliant] | Contamination [CLEAN/N issues] | Unaccounted [CLEAN/N files] | VERDICT`
+
+---
+
+## Commit Strategy
+
+- **1**: `feat(brizo-ogma-uzume-profiles): verify external services and add dependencies` — Cargo.toml, .env
+- **2**: `chore(brizo): setup project structure` — Monad/Brizo/src/lib.rs
+- **3**: `chore(ogma): setup project structure` — Monad/Ogma/src/lib.rs
+- **4**: `chore(uzume-profiles): create HTTP and DB layer scaffolding` — apps/Uzume/Uzume-profiles/src/
+- **5-7**: Group commits by service:
+  - `feat(brizo): implement core client with index/search/delete` — Monad/Brizo/src/
+  - `feat(ogma): implement core client with session/rooms/messaging` — Monad/Ogma/src/
+  - `feat(uzume-profiles): implement follow graph service` — apps/Uzume/Uzume-profiles/src/services/follow_graph.rs
+  - `feat(uzume-profiles): add DB queries layer` — apps/Uzume/Uzume-profiles/src/queries/
+  - `feat(uzume-profiles): add HTTP handlers` — apps/Uzume/Uzume-profiles/src/handlers/
+  - `feat(uzume-profiles): add Axum routes` — apps/Uzume/Uzume-profiles/src/routes/
+  - `feat(uzume-profiles): add HTTP server` — apps/Uzume/Uzume-profiles/src/main.rs
+- **8-10**: Group by integration:
+  - `feat(brizo): add NATS sync worker for profile updates` — apps/Uzume/Uzume-profiles/src/workers/
+  - `feat(ogma): add NATS sync worker for DM requests` — apps/Uzume/Uzume-profiles/src/workers/
+  - `feat(uzume-profiles): add NATS publishers for events` — apps/Uzume/Uzume-profiles/src/workers/
+- **11-13**: Group by validation:
+  - `test(e2e): add profile CRUD + search integration tests` — tests/
+  - `test(e2e): add follow graph + privacy integration tests` — tests/
+  - `test(e2e): add DM creation + messaging integration tests` — tests/
+  - `perf(benchmark): add search and DB query benchmarks` — benches/
+- **FINAL**: `chore(e2e-phase2): pass plan compliance and quality reviews` — N/A
+
+---
+
+## Success Criteria
+
+### Verification Commands
+```bash
+# All tests pass
+cargo nextest run --workspace
+
+# External services healthy
+curl -sf http://nyx-meilisearch:7700/health && echo "Meilisearch OK"
+curl -sf http://nyx-matrix:8008/_matrix/client/versions && echo "Matrix OK"
+psql "$DATABASE_URL" -c "SELECT 1;" && echo "PostgreSQL OK"
+
+# Brizo search works
+curl -sf 'http://localhost:3001/search?q=test' | jq '. | length > 0'
+
+# Uzume-profiles CRUD works
+curl -sf 'http://localhost:3000/me' | jq '.username'
+
+# Ogma messaging works (via Matrix API or NATS)
+# Verify DM room creation and message sending
+
+# Follow graph persists
+psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM Uzume.follows;"
+
+# CI gate passes
+just ci
+
+# Evidence files exist
+ls -la .sisyphus/evidence/ | grep "task-"
+
+# Rollback procedures documented
+ls -la docs/rollback-procedures.md 2>/dev/null || echo "Documented in plan"
+```
+
+### Final Checklist
+- [ ] All "Must Have" present (Brizo, Ogma, Uzume-profiles HTTP/DB, follow graph, NATS sync)
+- [ ] All "Must NOT Have" absent (no Phase 0 blocking, no skipped TDD, no vague criteria)
+- [ ] All unit tests pass (cargo nextest run --workspace --lib)
+- [ ] All integration tests pass (cargo nextest run --workspace --test)
+- [ ] All QA scenarios executed with evidence captured
+- [ ] External services verified healthy
+- [ ] CI gate passes (just ci)
+- [ ] Rollback procedures documented
+- [ ] No `as any`, `@ts-ignore`, empty catches, console.log
+- [ ] Evidence files exist for all tasks (.sisyphus/evidence/)
+- [ ] Plan compliance audit: APPROVE
+- [ ] Code quality review: VERDICT OK
+- [ ] Real manual QA: VERDICT OK
+- [ ] Scope fidelity check: VERDICT OK
+- [ ] 8. Brizo client implementation - index/create/search/delete
+
+  **What to do**:
+  - Write failing tests for BrizoClient methods (RED)
+  - Implement BrizoClient with Arc<meilisearch_sdk::Client>
+  - Add methods:
+    - ensure_profile_index() - lazy index creation with settings
+    - index_profile(profile) - add document with .wait_for_completion()
+    - search_profiles(query) - search with filters and pagination
+    - delete_profile(id) - remove by ID
+    - sync_profiles_batch(profiles) - chunked batch sync (10M docs)
+  - Implement error handling with From<meilisearch_sdk::Error>
+  - Refactor to clean up code (stay GREEN)
+
+  **Must NOT do**:
+  - Do not skip .wait_for_completion() for writes
+  - Do not use magic numbers for chunking (use const)
+  - Do not skip error propagation
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `deep`
+    - Reason: Core client implementation with Meilisearch integration, async patterns
+  - **Skills**: `[]`
+    - No special skills needed - standard Rust async client
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for this focused implementation
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 2 (with Tasks 9-14)
+  - **Blocks**: [Tasks 15, 19, 21]
+  - **Blocked By**: Tasks 2, 4
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - N/A (new implementation, use production patterns from Metis)
+
+  **API/Type References** (contracts to implement against):
+  - Profile model from Nun types
+  - Meilisearch SDK docs for method signatures
+
+  **Test References** (testing patterns to follow):
+  - `apps/Uzume/Uzume-profiles/tests/` - BDD comment structure
+  - `Monad/Brizo/tests/smoke_meilisearch.rs` - from Task 2
+
+  **External References** (libraries and frameworks):
+  - Meilisearch SDK: https://docs.meilisearch.com/learn/getting_started/quick_start.html
+  - Production patterns (Modrinth, contratopublico) from Metis research
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - Meilisearch SDK docs: Exact method signatures and error types
+  - Production patterns: Lazy index creation, task completion, chunking strategies
+  - BDD comments: Follow existing test structure for consistency
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] All tests fail first: `cargo test --package brizo --lib` → FAIL (RED)
+  - [ ] All tests pass after impl: `cargo test --package brizo --lib` → PASS (GREEN)
+  - [ ] Index created on first use: Meilisearch index Uzume_users exists
+  - [ ] Search returns matching results: query returns profile data
+  - [ ] Delete removes from index: subsequent search no longer returns profile
+  - [ ] Batch sync chunks correctly: 10M docs per batch
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: Create profile index lazily
+    Tool: Bash (cargo + curl)
+    Preconditions: Meilisearch running, no index exists
+    Steps:
+      1. cargo test --package brizo ensure_profile_index -- --nocapture
+      2. curl -sf http://nyx-meilisearch:7700/indexes
+    Expected Result: Test passes, Uzume_users index exists
+    Failure Indicators: Test fails, index not created
+    Evidence: .sisyphus/evidence/task-8-brizo-create-index.txt
+
+  Scenario: Index profile with task completion
+    Tool: Bash (cargo + curl)
+    Preconditions: Index exists
+    Steps:
+      1. cargo test --package brizo index_profile -- --nocapture
+      2. curl -sf 'http://nyx-meilisearch:7700/indexes/Uzume_users/documents' | jq '.'
+    Expected Result: Document added, no async errors
+    Failure Indicators: Document not added, timeout
+    Evidence: .sisyphus/evidence/task-8-brizo-index-profile.txt
+
+  Scenario: Search profiles with filters
+    Tool: Bash (cargo + curl)
+    Preconditions: Profiles indexed
+    Steps:
+      1. cargo test --package brizo search_profiles -- --nocapture
+      2. curl -sf 'http://nyx-meilisearch:7700/indexes/Uzume_users/search?q=test' | jq '.hits | length > 0'
+    Expected Result: Search returns matching profiles, no errors
+    Failure Indicators: Empty results, search errors
+    Evidence: .sisyphus/evidence/task-8-brizo-search.txt
+
+  Scenario: Delete profile from index
+    Tool: Bash (cargo + curl)
+    Preconditions: Profile indexed
+    Steps:
+      1. cargo test --package brizo delete_profile -- --nocapture
+      2. curl -sf 'http://nyx-meilisearch:7700/indexes/Uzume_users/search?q=deleted_id' | jq '.hits | length == 0'
+    Expected Result: Profile removed, search returns empty
+    Failure Indicators: Profile still in index
+    Evidence: .sisyphus/evidence/task-8-brizo-delete.txt
+
+  Scenario: Batch sync with chunking
+    Tool: Bash (cargo)
+    Preconditions: Multiple profiles to sync
+    Steps:
+      1. cargo test --package brizo sync_profiles_batch -- --nocapture
+    Expected Result: Batches of 10M, all profiles synced, no panics
+    Failure Indicators: Chunking errors, missing profiles
+    Evidence: .sisyphus/evidence/task-8-brizo-batch-sync.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Test output and Meilisearch API responses captured
+
+  **Commit**: YES
+  - Message: `feat(brizo): implement core client with index/search/delete`
+  - Files: `Monad/Brizo/src/lib.rs`, `Monad/Brizo/tests/client_tests.rs`
+  - Pre-commit: `cargo test --package brizo --lib`
+
+- [ ] 9. Ogma client implementation - session/rooms/messaging
+
+  **What to do**:
+  - Write failing tests for OgmaClient methods (RED)
+  - Implement OgmaClient with Arc<matrix_sdk::Client>
+  - Add methods:
+    - new(homeserver_url, session_store) - initialize with session restore
+    - create_app_room(app, user_a, user_b) - DM room with app tagging
+    - list_rooms(user_id, app) - filtered by app tag
+    - send_message(room_id, content) - message sending with transaction ID
+    - save_session() - persist access token
+    - restore_session() - reload on startup
+    - start_sync_loop(shutdown_signal) - sync with error recovery and 5s backoff
+  - Implement error handling with From<matrix_sdk::Error>
+  - Add session persistence trait/interface
+  - Refactor to clean up code (stay GREEN)
+
+  **Must NOT do**:
+  - Do not skip session persistence (critical for reliability)
+  - Do not skip error recovery in sync loop
+  - Do not hardcode homeserver URLs
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `deep`
+    - Reason: Matrix client integration with session persistence, sync loops, error recovery - complex async patterns
+  - **Skills**: `[]`
+    - No special skills needed - standard async Rust client patterns
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for this focused implementation
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 2 (with Tasks 8, 10-14)
+  - **Blocks**: [Tasks 16, 20, 23]
+  - **Blocked By**: Tasks 3, 5
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - `Monad/Heka/src/identity.rs` - Session/identity patterns
+
+  **API/Type References** (contracts to implement against):
+  - `matrix_sdk::Client` from crate docs
+  - Matrix room types for DM creation
+
+  **Test References** (testing patterns to follow):
+  - `Monad/Ogma/tests/smoke_matrix.rs` - from Task 3
+
+  **External References** (libraries and frameworks):
+  - Matrix SDK docs: https://matrix-org.github.io/matrix-rust-sdk/matrix_sdk/
+  - Production patterns (microclaw, Loungy, iamb) from Metis research
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - Matrix SDK docs: Exact method signatures and async patterns
+  - Production patterns: Session persistence, auto-join, sync loops with recovery
+  - Heka identity: Follows existing auth patterns in codebase
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] All tests fail first: `cargo test --package ogma --lib` → FAIL (RED)
+  - [ ] All tests pass after impl: `cargo test --package ogma --lib` → PASS (GREEN)
+  - [ ] Session persists: Access token saved to storage on login
+  - [ ] Session restores: Client reconnects on restart with saved token
+  - [ ] Sync loop runs: Consumer processes Matrix events without panics
+  - [ ] Error recovery: Backoff and retry on transient failures
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: Initialize Matrix client with session restore
+    Tool: Bash (cargo)
+    Preconditions: Matrix homeserver running
+    Steps:
+      1. cargo test --package ogma new_with_session_restore -- --nocapture
+    Expected Result: Client initialized, session loaded if exists
+    Failure Indicators: Panic, session load error
+    Evidence: .sisyphus/evidence/task-9-ogma-session-restore.txt
+
+  Scenario: Create DM room with app tagging
+    Tool: Bash (cargo)
+    Preconditions: Client initialized, users exist
+    Steps:
+      1. cargo test --package ogma create_app_room -- --nocapture
+    Expected Result: Matrix room created with app tag, users joined
+    Failure Indicators: Room not created, missing app tag
+    Evidence: .sisyphus/evidence/task-9-ogma-create-room.txt
+
+  Scenario: List rooms filtered by app
+    Tool: Bash (cargo)
+    Preconditions: Rooms exist with app tags
+    Steps:
+      1. cargo test --package ogma list_rooms -- --nocapture
+    Expected Result: Returns only rooms matching app tag
+    Failure Indicators: Returns unfiltered rooms, missing rooms
+    Evidence: .sisyphus/evidence/task-9-ogma-list-rooms.txt
+
+  Scenario: Send message with idempotency
+    Tool: Bash (cargo)
+    Preconditions: Room exists, client connected
+    Steps:
+      1. cargo test --package ogma send_message -- --nocapture
+    Expected Result: Message delivered, no duplicate on retry
+    Failure Indicators: Message not sent, duplicate message sent
+    Evidence: .sisyphus/evidence/task-9-ogma-send-message.txt
+
+  Scenario: Sync loop with error recovery
+    Tool: Bash (cargo)
+    Preconditions: Sync loop running
+    Steps:
+      1. cargo test --package ogma sync_recovery -- --nocapture
+      2. Test transient error simulation, wait 10s
+      3. Verify sync continues (no crash)
+    Expected Result: Sync recovers from errors, continues processing events
+    Failure Indicators: Sync stops permanently, panic on error
+    Evidence: .sisyphus/evidence/task-9-ogma-sync-recovery.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Test output and Matrix API responses captured
+
+  **Commit**: YES
+  - Message: `feat(ogma): implement core client with session/rooms/messaging`
+  - Files: `Monad/Ogma/src/lib.rs`, `Monad/Ogma/tests/client_tests.rs`
+  - Pre-commit: `cargo test --package ogma --lib`
+
+- [ ] 10. Uzume-profiles follow graph service
+
+  **What to do**:
+  - Write failing tests for follow graph operations (RED)
+  - Implement FollowGraphService with:
+    - follow(user_id, target_id) - add follow relationship
+    - unfollow(user_id, target_id) - remove follow
+    - block(user_id, target_id) - add block
+    - unblock(user_id, target_id) - remove block
+    - get_followers(user_id) - list follows
+    - get_blocking(user_id) - list blocked
+  - Enforce privacy rules:
+    - Blocked users cannot follow/unfollow each other
+    - Private profile followers visible only to mutual follows
+    - Public profile followers visible to all
+  - Integrate with Heka LinkPolicyEngine for privacy checks
+  - Refactor to clean up code (stay GREEN)
+
+  **Must NOT do**:
+  - Do not skip privacy enforcement (Heka integration required)
+  - Do not allow blocked users to interact
+  - Do not expose private profile followers to non-mutual follows
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `deep`
+    - Reason: Follow graph with privacy enforcement using Heka LinkPolicyEngine - complex business logic
+  - **Skills**: `[]`
+    - No special skills needed - follows existing privacy patterns
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for this focused implementation
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 2 (with Tasks 8, 9, 11-14)
+  - **Blocks**: [Tasks 12, 18, 22]
+  - **Blocked By**: Task 6
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - `Monad/Heka/src/link_policy.rs` - LinkPolicyEngine for privacy enforcement
+  - `apps/Uzume/Uzume-profiles/src/lib.rs` - Existing Profile and ProfilesService patterns
+
+  **API/Type References** (contracts to implement against):
+  - Profile types from Nun
+  - LinkPolicyEngine from Heka
+
+  **Test References** (testing patterns to follow):
+  - `apps/Uzume/Uzume-profiles/tests/` - BDD comment structure
+
+  **External References** (libraries and frameworks):
+  - N/A (uses existing codebase types and services)
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - LinkPolicyEngine: Enforces cross-app privacy (who can see who)
+  - Profile types: Ensures type consistency with Uzume-profiles service
+  - BDD tests: Follows existing test structure for consistency
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] All tests fail first: `cargo test --package uzume-profiles follow_graph --lib` → FAIL (RED)
+  - [ ] All tests pass after impl: `cargo test --package uzume-profiles follow_graph --lib` → PASS (GREEN)
+  - [ ] Follow creates relationship: Database shows follow row
+  - [ ] Unfollow removes relationship: Database row deleted
+  - [ ] Block prevents interaction: Blocked users cannot follow each other
+  - [ ] Private profile privacy: Followers visible only to mutual follows
+  - [ ] Public profile privacy: Followers visible to all
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: Follow public profile
+    Tool: Bash (cargo)
+    Preconditions: Users exist, profiles public
+    Steps:
+      1. cargo test --package uzume-profiles follow_graph follow_public -- --nocapture
+      2. psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM Uzume.follows WHERE user_id = 'user1' AND target_id = 'user2';"
+    Expected Result: Follow created in database, visible in query
+    Failure Indicators: Follow not created, privacy violation
+    Evidence: .sisyphus/evidence/task-10-follow-public.txt
+
+  Scenario: Follow private profile (mutual follow required)
+    Tool: Bash (cargo)
+    Preconditions: User B has private profile
+    Steps:
+      1. cargo test --package uzume-profiles follow_graph follow_private -- --nocapture
+    Expected Result: Follow requires mutual follow (user A follows user B, user B follows user A)
+    Failure Indicators: Follow allowed without mutual follow, privacy violation
+    Evidence: .sisyphus/evidence/task-10-follow-private.txt
+
+  Scenario: Block user prevents follow
+    Tool: Bash (cargo)
+    Preconditions: Users exist
+    Steps:
+      1. cargo test --package uzume-profiles follow_graph block -- --nocapture
+      2. cargo test --package uzume-profiles follow_graph follow_blocked -- --nocapture
+    Expected Result: Second follow fails with privacy error
+    Failure Indicators: Follow succeeds despite block
+    Evidence: .sisyphus/evidence/task-10-block-prevents-follow.txt
+
+  Scenario: Unfollow removes relationship
+    Tool: Bash (cargo)
+    Preconditions: Follow relationship exists
+    Steps:
+      1. cargo test --package uzume-profiles follow_graph unfollow -- --nocapture
+      2. psql "$DATABASE_URL" -c "SELECT COUNT(*) FROM Uzume.follows WHERE user_id = 'user1' AND target_id = 'user2';"
+    Expected Result: Relationship removed from database
+    Failure Indicators: Relationship persists
+    Evidence: .sisyphus/evidence/task-10-unfollow.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Test output and database queries captured
+
+  **Commit**: YES
+  - Message: `feat(uzume-profiles): implement follow graph service with privacy enforcement`
+  - Files: `apps/Uzume/Uzume-profiles/src/services/follow_graph.rs`, `apps/Uzume/Uzume-profiles/tests/follow_graph_tests.rs`
+  - Pre-commit: `cargo test --package uzume-profiles --lib`
+
+- [ ] 11. Uzume-profiles DB queries - profiles/follows/blocks
+
+  **What to do**:
+  - Write failing tests for DB queries (RED)
+  - Implement query layer in apps/Uzume/Uzume-profiles/src/queries/mod.rs:
+    - profile_queries.rs - CRUD operations for profiles
+    - follow_queries.rs - CRUD for follow relationships
+    - block_queries.rs - CRUD for block relationships
+  - Use sqlx with compile-time checked queries
+  - Add connection pool management
+  - Implement transaction support for multi-table operations
+  - Refactor to clean up code (stay GREEN)
+
+  **Must NOT do**:
+  - Do not skip transaction support for follow/block operations
+  - Do not use raw SQL strings (use sqlx macros)
+  - Do not skip error handling for constraint violations
+
+  **Recommended Agent Profile**:
+  > Select category + skills based on task domain. Justify each choice.
+  - **Category**: `unspecified-high`
+    - Reason: DB query layer with sqlx, transactions, connection pooling - standard but requires attention to detail
+  - **Skills**: `[]`
+    - No special skills needed - sqlx follows standard patterns
+  - **Skills Evaluated but Omitted**:
+    - All other skills: Not needed for DB queries
+
+  **Parallelization**:
+  - **Can Run In Parallel**: YES
+  - **Parallel Group**: Wave 2 (with Tasks 8-10, 12-14)
+  - **Blocks**: [Tasks 12, 18, 22]
+  - **Blocked By**: Tasks 6, 7, 10
+
+  **References** (CRITICAL - Be Exhaustive):
+
+  **Pattern References** (existing code to follow):
+  - Check existing query patterns in codebase
+  - sqlx query! macro examples from docs
+
+  **API/Type References** (contracts to implement against):
+  - Profile, Follow, Block types from Nun
+  - PostgreSQL schema from migrations
+
+  **Test References** (testing patterns to follow):
+  - `apps/Uzume/Uzume-profiles/tests/` - BDD comment structure
+
+  **External References** (libraries and frameworks):
+  - sqlx docs: https://docs.rs/sqlx/latest/sqlx/
+  - PostgreSQL transactions: https://www.postgresql.org/docs/current/transactions.html
+
+  **WHY Each Reference Matters** (explain the relevance):
+  - sqlx: Compile-time SQL verification prevents runtime errors
+  - Transactions: Ensure data consistency across follows/blocks
+  - Schema: Queries must match database structure
+
+  **Acceptance Criteria**:
+
+  > **AGENT-EXECUTABLE VERIFICATION ONLY** — No human action permitted.
+  > Every criterion MUST be verifiable by running a command or using a tool.
+
+  **If TDD (tests enabled):**
+  - [ ] All tests fail first: `cargo test --package uzume-profiles queries --lib` → FAIL (RED)
+  - [ ] All tests pass after impl: `cargo test --package uzume-profiles queries --lib` → PASS (GREEN)
+  - [ ] Profile CRUD works: Create, read, update, delete profiles
+  - [ ] Follow CRUD works: Create, read, delete follows
+  - [ ] Block CRUD works: Create, read, delete blocks
+  - [ ] Transactions ensure consistency: Multi-table ops atomic
+
+  **QA Scenarios (MANDATORY — task is INCOMPLETE without these):**
+
+  \`\`\`
+  Scenario: Create profile in database
+    Tool: Bash (cargo + psql)
+    Preconditions: PostgreSQL running, schema exists
+    Steps:
+      1. cargo test --package uzume-profiles queries create_profile -- --nocapture
+      2. psql "$DATABASE_URL" -c "SELECT * FROM Uzume.profiles WHERE id = 'test-profile';"
+    Expected Result: Profile row inserted with correct fields
+    Failure Indicators: Constraint violation, missing fields
+    Evidence: .sisyphus/evidence/task-11-create-profile.txt
+
+  Scenario: Query profile by username
+    Tool: Bash (cargo + psql)
+    Preconditions: Profile exists
+    Steps:
+      1. cargo test --package uzume-profiles queries get_profile -- --nocapture
+    Expected Result: Returns profile data correctly
+    Failure Indicators: Wrong profile, query error
+    Evidence: .sisyphus/evidence/task-11-get-profile.txt
+
+  Scenario: Create follow relationship with transaction
+    Tool: Bash (cargo + psql)
+    Preconditions: Users exist
+    Steps:
+      1. cargo test --package uzume-profiles queries create_follow -- --nocapture
+      2. psql "$DATABASE_URL" -c "SELECT * FROM Uzume.follows WHERE user_id = 'user1' AND target_id = 'user2';"
+    Expected Result: Follow row inserted atomically
+    Failure Indicators: Partial insert, constraint violation
+    Evidence: .sisyphus/evidence/task-11-create-follow.txt
+
+  Scenario: Block prevents follow relationship
+    Tool: Bash (cargo + psql)
+    Preconditions: Block exists
+    Steps:
+      1. cargo test --package uzume-profiles queries create_follow_blocked -- --nocapture
+    Expected Result: Follow fails with constraint violation
+    Failure Indicators: Follow created despite block
+    Evidence: .sisyphus/evidence/task-11-block-prevents-follow.txt
+  \`\`\`
+
+  **Evidence to Capture**:
+  - [ ] Each evidence file named: task-{N}-{scenario-slug}.{ext}
+  - [ ] Test output and database query results captured
+
+  **Commit**: YES
+  - Message: `feat(uzume-profiles): add DB query layer for profiles/follows/blocks`
+  - Files: `apps/Uzume/Uzume-profiles/src/queries/*.rs`
+  - Pre-commit: `cargo test --package uzume-profiles --lib`
+
+> **NOTE**: Tasks 12-26 follow same pattern. Each task has:
+> - Clear "What to do" with RED-GREEN-REFACTOR TDD
+> - "Must NOT do" guardrails
+> - Recommended Agent Profile with category justification
+> - Parallelization info (wave membership, blocks/blocked-by)
+> - Exhaustive References (pattern, API, test, external)
+> - QA Scenarios (happy path + failure/edge case, agent-executed)
+> - Acceptance Criteria with specific commands
+> - Evidence capture requirements
+> - Commit message and pre-commit verification
+---
