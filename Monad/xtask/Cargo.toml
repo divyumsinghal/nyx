@@ -1,0 +1,35 @@
+[package]
+name = "nyx-xtask"
+description = "Nyx developer CLI: migrate, db-reset, seed, nats-setup, new-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "nyx-xtask"
+path = "src/main.rs"
+
+[lib]
+name = "nyx_xtask"
+path = "src/lib.rs"
+
+[dependencies]
+tokio      = { workspace = true }
+sqlx       = { workspace = true }
+async-nats = { workspace = true }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+anyhow     = { workspace = true }
+tracing    = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap       = { workspace = true }
+uuid       = { workspace = true }
+chrono     = { workspace = true }
+
+[dev-dependencies]
+tokio               = { workspace = true }
+testcontainers      = { workspace = true }
+testcontainers-modules = { workspace = true }
+tempfile            = { workspace = true }
