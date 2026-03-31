@@ -1,0 +1,21 @@
+[package]
+name = "events"
+description = "Typed Nyx event contracts and lifecycle subjects"
+version = "0.1.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/divyumsinghal/nyx"
+rust-version = "1.85"
+
+[lib]
+name = "events"
+path = "src/lib.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../Nun" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+chrono = { workspace = true }
