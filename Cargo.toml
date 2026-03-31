@@ -1,14 +1,18 @@
-[package]
-name = "nyx"
+[workspace]
+resolver = "2"
+members = [
+    "Monad/Nun",
+    "Monad/Heka",
+    "apps/Uzume/Uzume-profiles",
+    "apps/Uzume/Uzume-feed",
+]
+
+[workspace.package]
 version = "0.1.0"
-edition = "2024"
+edition = "2021"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/divyumsinghal/nyx"
 rust-version = "1.85"
-
-[workspace]
-resolver = "2"
-members = ["Monad/*", "apps/Anteros", "apps/Themis", "apps/Uzume"]
 
 [workspace.dependencies]
 # Async runtime
@@ -80,6 +84,10 @@ config = "0.14"
 
 # Validation
 validator = { version = "0.19", features = ["derive"] }
+
+# Cursor encoding (for pagination)
+rmp-serde = "1"
+base64 = "0.22"
 
 # API docs
 utoipa = { version = "5", features = ["axum_extras", "uuid", "chrono"] }

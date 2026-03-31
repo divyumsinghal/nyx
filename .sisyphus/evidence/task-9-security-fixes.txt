@@ -1,0 +1,13 @@
+test delete_post_allowed_for_author ... ok
+test delete_post_denied_for_non_author ... ok
+test get_home_timeline_denies_unauthenticated_access ... ok
+test get_home_timeline_rejects_empty_token ... ok
+test get_home_timeline_requires_valid_token ... ok
+test get_post_allows_author_to_view_own_post ... ok
+test get_post_denies_unauthenticated_access ... ok
+test get_post_enforces_visibility_policy ... ok
+test get_post_rejects_empty_token ... ok
+test post_response_only_exposes_alias_not_identity ... ok
+test get_post_requires_valid_token ... ok
+test post_serialization_does_not_expose_global_identity ... ok
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

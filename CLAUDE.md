@@ -90,6 +90,8 @@ nyx/
 │   ├── Monad/                 # nyx schema
 │   └── Uzume/                 # Uzume schema
 │
+├── Seshat/                    # Important files
+│
 ├── docs/                      # Architecture, API docs, ADRs
 └── tools/                     # Seed data, benchmarks (k6), scripts
 ```

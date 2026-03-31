@@ -177,16 +177,20 @@ impl<T> sqlx::Decode<'_, sqlx::Postgres> for Id<T> {
 pub mod entity {
     /// A Kratos identity — the real human behind all app-scoped aliases.
     /// One per user, holds phone + email + password hash.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct Identity;
 
     /// An app-scoped alias record. Maps (identity, app) → visible username.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct Alias;
 
     /// A cross-app consent link. Records that user A allows user B to see
     /// their profile across a specific app boundary.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct AppLink;
 
     /// A device push notification token (APNs or FCM).
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct PushToken;
 }
 
