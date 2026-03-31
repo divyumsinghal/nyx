@@ -22,7 +22,7 @@
 //! - **Distance + ID** — geo-sorted: Themis listings, Aengus profiles
 //! - **Arbitrary** — escape hatch via [`CursorValue`]
 
-use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -183,10 +183,7 @@ const MAX_LIMIT: u16 = 100;
 impl PageRequest {
     /// Decode the cursor string, if present.
     pub fn decode_cursor(&self) -> Result<Option<Cursor>> {
-        self.cursor
-            .as_deref()
-            .map(Cursor::decode)
-            .transpose()
+        self.cursor.as_deref().map(Cursor::decode).transpose()
     }
 
     /// The effective page size, clamped to the allowed range.
@@ -361,19 +358,31 @@ mod tests {
 
     #[test]
     fn page_request_clamps_limit() {
-        let req = PageRequest { cursor: None, limit: 0 };
+        let req = PageRequest {
+            cursor: None,
+            limit: 0,
+        };
         assert_eq!(req.effective_limit(), 1);
 
-        let req = PageRequest { cursor: None, limit: 500 };
+        let req = PageRequest {
+            cursor: None,
+            limit: 500,
+        };
         assert_eq!(req.effective_limit(), 100);
 
-        let req = PageRequest { cursor: None, limit: 50 };
+        let req = PageRequest {
+            cursor: None,
+            limit: 50,
+        };
         assert_eq!(req.effective_limit(), 50);
     }
 
     #[test]
     fn query_limit_is_effective_plus_one() {
-        let req = PageRequest { cursor: None, limit: 20 };
+        let req = PageRequest {
+            cursor: None,
+            limit: 20,
+        };
         assert_eq!(req.query_limit(), 21);
     }
 

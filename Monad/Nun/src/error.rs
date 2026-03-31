@@ -265,9 +265,7 @@ impl NyxError {
                     .collect();
                 (Some(fields), None)
             }
-            Some(ErrorMetadata::RateLimit { retry_after_secs }) => {
-                (None, Some(*retry_after_secs))
-            }
+            Some(ErrorMetadata::RateLimit { retry_after_secs }) => (None, Some(*retry_after_secs)),
             None => (None, None),
         };
 
@@ -293,7 +291,13 @@ impl Error for NyxError {
 
 impl fmt::Display for NyxError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "[{}] {}: {}", self.kind.as_str(), self.code, self.message)
+        write!(
+            f,
+            "[{}] {}: {}",
+            self.kind.as_str(),
+            self.code,
+            self.message
+        )
     }
 }
 
@@ -337,9 +341,7 @@ impl From<config::ConfigError> for NyxError {
 impl From<sqlx::Error> for NyxError {
     fn from(err: sqlx::Error) -> Self {
         match &err {
-            sqlx::Error::RowNotFound => {
-                Self::not_found("record_not_found", "Record not found")
-            }
+            sqlx::Error::RowNotFound => Self::not_found("record_not_found", "Record not found"),
             sqlx::Error::Database(db_err) => {
                 // PostgreSQL error codes:
                 // 23505 = unique_violation (duplicate key)
@@ -595,9 +597,11 @@ mod tests {
 
     #[test]
     fn validation_response_includes_fields() {
-        let err = NyxError::validation(vec![
-            FieldError::new("email", "required", "Email is required"),
-        ]);
+        let err = NyxError::validation(vec![FieldError::new(
+            "email",
+            "required",
+            "Email is required",
+        )]);
         let resp = err.to_error_response(None);
         let json = serde_json::to_value(&resp).unwrap();
         let fields = json["fields"].as_array().unwrap();

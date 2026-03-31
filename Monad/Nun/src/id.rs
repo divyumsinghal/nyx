@@ -162,9 +162,7 @@ impl<T> sqlx::Encode<'_, sqlx::Postgres> for Id<T> {
 
 #[cfg(feature = "sqlx")]
 impl<T> sqlx::Decode<'_, sqlx::Postgres> for Id<T> {
-    fn decode(
-        value: sqlx::postgres::PgValueRef<'_>,
-    ) -> Result<Self, sqlx::error::BoxDynError> {
+    fn decode(value: sqlx::postgres::PgValueRef<'_>) -> Result<Self, sqlx::error::BoxDynError> {
         <Uuid as sqlx::Decode<'_, sqlx::Postgres>>::decode(value).map(Self::from_uuid)
     }
 }
@@ -233,7 +231,10 @@ mod tests {
     fn debug_includes_type_name() {
         let id = PostId::from_uuid(Uuid::nil());
         let debug = format!("{id:?}");
-        assert!(debug.contains("Post"), "debug should include marker type name");
+        assert!(
+            debug.contains("Post"),
+            "debug should include marker type name"
+        );
         assert!(debug.contains("00000000"), "debug should include UUID");
     }
 

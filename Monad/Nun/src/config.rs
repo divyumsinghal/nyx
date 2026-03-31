@@ -85,9 +85,7 @@ impl NyxConfig {
             // Base config file (optional)
             .add_source(config::File::with_name("config").required(false))
             // Environment-specific override (optional)
-            .add_source(
-                config::File::with_name(&format!("config.{env}")).required(false),
-            )
+            .add_source(config::File::with_name(&format!("config.{env}")).required(false))
             // Environment variables: NYX_SERVER__PORT=3001
             .add_source(
                 config::Environment::with_prefix("NYX")

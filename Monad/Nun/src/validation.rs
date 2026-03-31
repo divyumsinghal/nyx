@@ -38,7 +38,11 @@ pub fn phone(phone: &str) -> Result<()> {
     let bytes = phone.as_bytes();
 
     if bytes.first() != Some(&b'+') {
-        return Err(field_error("phone", "invalid_format", "Must start with '+'"));
+        return Err(field_error(
+            "phone",
+            "invalid_format",
+            "Must start with '+'",
+        ));
     }
 
     let digits = &phone[1..];
@@ -73,7 +77,11 @@ pub fn email(email: &str) -> Result<()> {
     let email = email.trim();
 
     if email.len() > 254 {
-        return Err(field_error("email", "too_long", "Email must be at most 254 characters"));
+        return Err(field_error(
+            "email",
+            "too_long",
+            "Email must be at most 254 characters",
+        ));
     }
 
     let Some((local, domain)) = email.rsplit_once('@') else {
@@ -252,7 +260,11 @@ pub fn hashtag(tag: &str) -> Result<()> {
     let tag = tag.strip_prefix('#').unwrap_or(tag);
 
     if tag.is_empty() {
-        return Err(field_error("hashtag", "required", "Hashtag must not be empty"));
+        return Err(field_error(
+            "hashtag",
+            "required",
+            "Hashtag must not be empty",
+        ));
     }
 
     if tag.len() > HASHTAG_MAX_LEN {

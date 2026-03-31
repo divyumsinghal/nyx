@@ -47,5 +47,5 @@ pub use sensitive::Sensitive;
 pub use time::Timestamp;
 
 // Platform entity markers and their ID type aliases.
-pub use id::entity;
 pub use id::IdentityId;
+pub use id::entity;
