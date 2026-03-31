@@ -1,0 +1,11 @@
+# file|match_type|pattern|invariant_id
+Monad/Nun/src/types/app.rs|fixed|#[serde(rename_all = "lowercase")]|identity_privacy.app_aliases_are_app_scoped
+Monad/Nun/src/types/link_policy.rs|fixed|Self::Revoked|link_revoke.fail_closed_default_policy
+Monad/Nun/src/types/link_policy.rs|fixed|pub fn is_revoked(&self) -> bool {|link_revoke.revoke_semantics_supported
+Monad/Nun/src/types/link_policy.rs|fixed|Self::Revoked => false,|link_revoke.revoked_policy_does_not_apply
+Monad/Nun/src/types/feed_mode.rs|fixed|fn default_mode_is_chronological() {|feed.chronological_is_default
+Monad/Nun/src/types/feed_mode.rs|fixed|assert_eq!(FeedMode::default(), FeedMode::Chronological);|feed.default_must_stay_chronological
+Monad/Nun/src/types/feed_mode.rs|fixed|\"ranking\"|feed.future_modes_exist_but_not_default
+Monad/Nun/src/types/feed_mode.rs|fixed|\"custom\"|feed.future_modes_exist_but_not_default
+migrations/Monad/0003_nyx_app_links.up.sql|fixed|DEFAULT '{"type":"revoked"}'::jsonb|link_revoke.sql_fail_closed_default
+migrations/Monad/0003_nyx_app_links.up.sql|fixed|CHECK (source_app <> target_app)|link_revoke.cross_app_boundary_guard
