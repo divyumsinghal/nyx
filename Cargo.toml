@@ -1,14 +1,16 @@
-[package]
-name = "nyx"
+[workspace]
+resolver = "2"
+members = [
+    "Monad/*",
+    "apps/Uzume/*",
+]
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 license = "AGPL-3.0-or-later"
 repository = "https://github.com/divyumsinghal/nyx"
 rust-version = "1.85"
-
-[workspace]
-resolver = "2"
-members = ["Monad/*", "apps/Anteros", "apps/Themis", "apps/Uzume"]
 
 [workspace.dependencies]
 # Async runtime
@@ -88,3 +90,7 @@ utoipa-swagger-ui = { version = "9", features = ["axum"] }
 # Testing
 tokio-test = "0.4"
 testcontainers = "0.24"
+
+# Cursor encoding
+rmp-serde = "1"
+base64 = "0.22"
