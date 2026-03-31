@@ -83,3 +83,7 @@
 - Task 7 learning: privacy-safe alias/link policy evaluation is easiest to keep deterministic by evaluating direct tuple match first and reverse tuple fallback second, with default-deny when neither rule exists.
 - Task 7 learning: revoke semantics are most reliable when modeled as explicit `LinkPolicy::Revoked` upsert on the same tuple so visibility reverts immediately without implicit state transitions.
 - Task 7 learning: app-selective policy checks must validate the target app in the evaluated direction (`to_app` for direct, `from_app` for reverse) to avoid accidental cross-app leakage.
+
+- Task 7 learning: deterministic policy evaluation is safer when direct tuple match is checked first, reverse tuple fallback second, and no-match falls back to deny.
+- Task 7 learning: explicit `Revoked` as a stored policy state guarantees immediate privacy reversion without implicit transitions.
+- Task 7 learning: app-selective direction checks must evaluate target app by direction (`to_app` direct, `from_app` reverse) to prevent cross-app leakage.

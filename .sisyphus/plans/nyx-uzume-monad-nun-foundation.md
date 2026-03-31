@@ -377,7 +377,7 @@ Wave 3: Integration hardening + deferred boundary + runbook (Tasks 10-12)
 
   **Commit**: YES | Message: `feat(heka): implement kratos client core` | Files: `Monad/Heka/src/*`, `Monad/Heka/tests/*`
 
-- [ ] 7. Implement alias/link policy engine (one-way/two-way/app-selective)
+- [x] 7. Implement alias/link policy engine (one-way/two-way/app-selective)
 
   **What to do**:
   - Implement alias resolution and policy evaluation for one-way, two-way, app-selective linking.

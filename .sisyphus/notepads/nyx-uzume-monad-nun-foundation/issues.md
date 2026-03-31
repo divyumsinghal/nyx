@@ -37,3 +37,5 @@
 - Task 7 blocker reaffirmed: targeted policy RED and GREEN verification commands plus broader Heka checks fail in this environment because workspace root Cargo.toml parse fails with no targets specified before crate-level commands can execute.
 
 - Task 7 blocker reaffirmed: policy engine cargo verification remains blocked by workspace root Cargo manifest parse error (`no targets specified`).
+
+- Task 7 blocker reaffirmed: `cargo test --manifest-path Cargo.toml --test link_policy_engine`, `cargo test --manifest-path Cargo.toml`, and `cargo build --manifest-path Cargo.toml` fail because `/home/sin/nyx/Cargo.toml` parse fails with `no targets specified` before crate-level execution.

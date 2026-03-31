@@ -39,3 +39,6 @@
 
 - Task 7 decision: introduce a dedicated in-memory `LinkPolicyEngine` in Heka to make policy evaluation explicit, privacy-first, and testable before storage integration.
 - Task 7 decision: introduce in-memory LinkPolicyEngine in Heka for explicit privacy-first alias/link evaluation with deterministic precedence.
+
+- Task 7 decision: introduced `LinkPolicyEngine` in Heka to keep alias resolution and link policy evaluation explicit and privacy-first before persistence integration.
+- Task 7 decision: deterministic precedence is defined as `Revoked` deny over prior allow for the same tuple, with default private deny when no valid tuple exists.

@@ -45,7 +45,12 @@ impl LinkPolicyEngine {
             self.alias_lookup.remove(&(app, previous));
         }
 
-        self.alias_lookup.insert((app, alias), identity);
+        if let Some(previous_identity) = self.alias_lookup.insert((app, alias.clone()), identity) {
+            self.aliases.remove(&AliasKey {
+                identity: previous_identity,
+                app,
+            });
+        }
     }
 
     pub fn resolve_alias(&self, identity: IdentityId, app: NyxApp) -> Option<&str> {
