@@ -93,6 +93,14 @@ No cycles. Clean layers. Monad does the heavy lifting. Apps compose and speciali
 
 ---
 
+## Architectural Decision Records (ADRs)
+
+- [ADR-001: Identity Visibility and Linking](./ADR-001-identity-visibility-and-linking.md)
+- [ADR-002: App Isolation Invariants](./ADR-002-app-isolation-invariants.md)
+- [ADR-003: Platform App Boundaries](./ADR-003-platform-app-boundaries.md)
+
+---
+
 ## Tool Candidates: Still evaluating, some options, research others
 
 **Tool choice — HTTP framework:**
