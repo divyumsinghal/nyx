@@ -43,5 +43,11 @@ jobs:
         continue-on-error: true
         run: cargo install cargo-nextest --locked
 
+      - name: Run security scan gate bundle
+        run: just security
+
+      - name: Run cross-app unauthorized-access gate
+        run: just gate-cross-app-unauthorized
+
       - name: Run CI parity gate bundle
         run: just ci

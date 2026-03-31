@@ -56,3 +56,6 @@
 - Task 4 learning: replacing placeholder migration/validation recipes with concrete cargo gates (`cargo run -p nyx-xtask -- migrate`, `cargo check --workspace --all-targets --all-features`) makes local/CI checks explicit and reviewable.
 
 - Task 3 learning: step-1 migration baseline can be structured as plain SQL up/down files under `migrations/Monad` and `migrations/Uzume`, with privacy-critical integrity encoded via DB constraints (`UNIQUE (app, alias)`, cross-app link checks, and composite FK ties from app links/profiles back to `nyx.app_aliases`).
+
+- Task 5 learning: security baseline should map explicit threat categories to concrete deterministic gates (dependency policy, CVE audit, secret signatures, and cross-app unauthorized-access invariants) so local and CI enforcement stay aligned.
+- Task 5 learning: cross-app unauthorized-access gating can be made deterministic by asserting critical migration constraints (`source_app <> target_app`, no self-link, revoked default policy) rather than relying on runtime integration setup.

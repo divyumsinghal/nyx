@@ -15,3 +15,6 @@
 - Task 4 blocker reaffirmed: all cargo-based gates (`fmt`, `clippy`, `test`, migration, validation) currently fail in this environment due to root `/home/sin/nyx/Cargo.toml` parse error (`no targets specified`), so full local execution parity cannot be demonstrated until workspace manifest is fixed.
 
 - Task 3 blocker reaffirmed: runtime migration apply/revert verification is blocked in this environment because workspace `cargo run -p nyx-xtask -- migrate` / `db-reset` fails at `/home/sin/nyx/Cargo.toml` parse (`no targets specified`), `psql` is missing, and Docker is unavailable for containerized PostgreSQL fallback.
+
+- Task 5 blocker reaffirmed: local execution of just-based gates remains blocked in this runtime because `just` is not installed (`command not found: just`), so direct recipe execution evidence is limited to equivalent underlying command checks.
+- Task 5 blocker reaffirmed: local dependency/vulnerability commands (`cargo deny check`, `cargo audit`) are unavailable because cargo-deny and cargo-audit are not installed here; CI remains authoritative because workflow provisions both tools before running mandatory gates.

@@ -12,7 +12,23 @@ lint:               cargo clippy --workspace --all-targets --all-features -- -D 
 # Security
 security-deny:      cargo deny check
 security-audit:     cargo audit
-security:           security-deny security-audit
+security-secret-scan:
+	@set -eu; \
+	if git grep -nEI '(AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|-----BEGIN (RSA|OPENSSH|EC|DSA|PGP) PRIVATE KEY-----|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z\\-_]{35})' -- .; then \
+	  echo 'Secret scan failed: potential credential material detected in tracked files.' >&2; \
+	  exit 1; \
+	else \
+	  echo 'Secret scan passed: no high-confidence secret signatures detected.'; \
+	fi
+security:           security-deny security-audit security-secret-scan
+
+gate-cross-app-unauthorized:
+	@set -eu; \
+	file='migrations/Monad/0003_nyx_app_links.up.sql'; \
+	grep -q "CHECK (source_app <> target_app)" "$file" || { echo 'Missing cross-app boundary check: source_app <> target_app' >&2; exit 1; }; \
+	grep -q "CHECK (source_nyx_identity_id <> target_nyx_identity_id)" "$file" || { echo 'Missing self-link prevention check' >&2; exit 1; }; \
+	grep -q "DEFAULT '{\"type\":\"revoked\"}'::jsonb" "$file" || { echo 'Missing fail-closed default policy (revoked)' >&2; exit 1; }; \
+	echo 'Cross-app unauthorized-access gate passed: required constraints present.'
 check:              security-deny
 
 # Testing (nextest with deterministic fallback)
@@ -40,7 +56,7 @@ migration-check:    cargo run -p nyx-xtask -- migrate
 validation-check:   cargo check --workspace --all-targets --all-features
 
 # Full CI-equivalent local gate
-ci:                 fmt-check lint security migration-check validation-check test
+ci:                 fmt-check lint security gate-cross-app-unauthorized migration-check validation-check test
 
 # Database
 db-migrate:         cargo run -p nyx-xtask -- migrate

@@ -288,7 +288,7 @@ Wave 3: Integration hardening + deferred boundary + runbook (Tasks 10-12)
 
   **Commit**: YES | Message: `chore(ci): replace placeholder workflow and commands` | Files: `justfile`, `.github/workflows/ci.yml`
 
-- [ ] 5. Establish security-first baseline (threat model + scanners)
+- [x] 5. Establish security-first baseline (threat model + scanners)
 
   **What to do**:
   - Create security baseline document with threat categories, controls, and abuse-case expectations.

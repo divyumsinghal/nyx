@@ -23,3 +23,7 @@
 
 - Task 3 decision: modeled `nyx.app_aliases` with app-scoped alias uniqueness (`UNIQUE (app, alias)`) and `nyx.app_links` with composite source/target FK references to `(nyx_identity_id, app)` in `nyx.app_aliases` to enforce explicit app-boundary link integrity at the database layer.
 - Task 3 decision: constrained `Uzume.profiles` to `app = uzume` and added composite FK `(nyx_identity_id, app, alias) -> nyx.app_aliases` so Uzume-facing aliases cannot drift from platform alias records.
+
+- Task 5 decision: introduced `Seshat/SECURITY-BASELINE.md` as the actionable security-first baseline artifact, including threat categories, controls, abuse-case expectations, and mandatory local/CI gate mapping.
+- Task 5 decision: wired `security-secret-scan` and `gate-cross-app-unauthorized` as mandatory just recipes and included the unauthorized-access gate in `just ci` so it is blocking by default.
+- Task 5 decision: updated `.github/workflows/ci.yml` to run `just security` and `just gate-cross-app-unauthorized` explicitly before `just ci` to make security gating visible and non-optional in CI execution logs.
