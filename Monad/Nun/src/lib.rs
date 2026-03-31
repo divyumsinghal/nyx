@@ -24,13 +24,13 @@
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::must_use_candidate)]
 
-pub mod app;
 pub mod config;
 pub mod error;
 pub mod id;
 pub mod pagination;
 pub mod sensitive;
 pub mod time;
+pub mod types;
 pub mod validation;
 
 #[cfg(any(test, feature = "test"))]
@@ -39,12 +39,12 @@ pub mod testing;
 // ── Prelude-style re-exports ────────────────────────────────────────────────
 // The most commonly used types, importable with `use nun::*` or individually.
 
-pub use app::NyxApp;
 pub use error::{ErrorKind, NyxError, Result};
 pub use id::Id;
 pub use pagination::{Cursor, PageRequest, PageResponse};
 pub use sensitive::Sensitive;
 pub use time::Timestamp;
+pub use types::{FeedMode, LinkDirection, LinkPolicy, NyxApp};
 
 // Platform entity markers and their ID type aliases.
 pub use id::entity;

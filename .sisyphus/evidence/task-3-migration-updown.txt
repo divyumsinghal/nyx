@@ -1,0 +1,49 @@
+Task 3 QA Evidence: Migration up/down
+
+Date: 2026-03-31
+Workspace: /home/sin/nyx
+
+Command:
+  cargo run -p nyx-xtask -- migrate
+
+Output:
+  error: failed to parse manifest at `/home/sin/nyx/Cargo.toml`
+
+  Caused by:
+    no targets specified in the manifest
+    either src/lib.rs, src/main.rs, a [lib] section, or [[bin]] section must be present
+
+Command:
+  cargo run --manifest-path Monad/xtask/Cargo.toml -- migrate
+
+Output:
+  error: manifest path `Monad/xtask/Cargo.toml` does not exist
+
+Command:
+  cargo run -p nyx-xtask -- db-reset
+
+Output:
+  error: failed to parse manifest at `/home/sin/nyx/Cargo.toml`
+
+  Caused by:
+    no targets specified in the manifest
+    either src/lib.rs, src/main.rs, a [lib] section, or [[bin]] section must be present
+
+Command:
+  psql --version
+
+Output:
+  zsh:1: command not found: psql
+
+Command:
+  docker --version
+
+Output:
+  The command 'docker' could not be found in this WSL 2 distro.
+  We recommend to activate the WSL integration in Docker Desktop settings.
+
+Conclusion:
+  Runtime migration apply/revert could not be executed in this environment due to missing database runtime tools and workspace manifest/xtask limitations.
+  Migration assets were still created with reversible up/down files under:
+  - migrations/Monad/
+  - migrations/Uzume/

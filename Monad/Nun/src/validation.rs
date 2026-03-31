@@ -25,6 +25,7 @@
 //! ```
 
 use crate::error::{FieldError, NyxError, Result};
+use crate::LinkPolicy;
 
 // ── Phone ───────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,11 @@ pub fn phone(phone: &str) -> Result<()> {
     let bytes = phone.as_bytes();
 
     if bytes.first() != Some(&b'+') {
-        return Err(field_error("phone", "invalid_format", "Must start with '+'"));
+        return Err(field_error(
+            "phone",
+            "invalid_format",
+            "Must start with '+'",
+        ));
     }
 
     let digits = &phone[1..];
@@ -73,7 +78,11 @@ pub fn email(email: &str) -> Result<()> {
     let email = email.trim();
 
     if email.len() > 254 {
-        return Err(field_error("email", "too_long", "Email must be at most 254 characters"));
+        return Err(field_error(
+            "email",
+            "too_long",
+            "Email must be at most 254 characters",
+        ));
     }
 
     let Some((local, domain)) = email.rsplit_once('@') else {
@@ -252,7 +261,11 @@ pub fn hashtag(tag: &str) -> Result<()> {
     let tag = tag.strip_prefix('#').unwrap_or(tag);
 
     if tag.is_empty() {
-        return Err(field_error("hashtag", "required", "Hashtag must not be empty"));
+        return Err(field_error(
+            "hashtag",
+            "required",
+            "Hashtag must not be empty",
+        ));
     }
 
     if tag.len() > HASHTAG_MAX_LEN {
@@ -279,6 +292,33 @@ pub fn hashtag(tag: &str) -> Result<()> {
             "invalid_format",
             "Must contain only letters, digits, and underscores",
         ));
+    }
+
+    Ok(())
+}
+
+pub fn link_policy(policy: &LinkPolicy) -> Result<()> {
+    if let LinkPolicy::AppSelective { apps, .. } = policy {
+        if apps.is_empty() {
+            return Err(field_error(
+                "link_policy",
+                "invalid_value",
+                "app_selective policy must include at least one app",
+            ));
+        }
+
+        let unique_count = apps
+            .iter()
+            .copied()
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        if unique_count != apps.len() {
+            return Err(field_error(
+                "link_policy",
+                "invalid_value",
+                "app_selective policy must not contain duplicate apps",
+            ));
+        }
     }
 
     Ok(())
@@ -401,5 +441,36 @@ mod tests {
         assert!(hashtag("123abc").is_err()); // starts with digit
         assert!(hashtag("has space").is_err());
         assert!(hashtag("has-dash").is_err());
+    }
+
+    #[test]
+    fn valid_link_policies() {
+        assert!(link_policy(&crate::LinkPolicy::OneWay).is_ok());
+        assert!(link_policy(&crate::LinkPolicy::TwoWay).is_ok());
+        assert!(link_policy(&crate::LinkPolicy::Revoked).is_ok());
+        assert!(link_policy(&crate::LinkPolicy::AppSelective {
+            apps: vec![crate::NyxApp::Uzume],
+            direction: crate::LinkDirection::TwoWay,
+        })
+        .is_ok());
+    }
+
+    #[test]
+    fn invalid_link_policy_rejects_empty_app_selective_apps() {
+        let invalid = crate::LinkPolicy::AppSelective {
+            apps: vec![],
+            direction: crate::LinkDirection::OneWay,
+        };
+        assert!(link_policy(&invalid).is_err());
+    }
+
+    #[test]
+    fn invalid_link_policy_rejects_duplicate_app_selective_apps() {
+        let invalid = crate::LinkPolicy::AppSelective {
+            apps: vec![crate::NyxApp::Uzume, crate::NyxApp::Uzume],
+            direction: crate::LinkDirection::TwoWay,
+        };
+
+        assert!(link_policy(&invalid).is_err());
     }
 }

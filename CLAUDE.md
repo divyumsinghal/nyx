@@ -49,21 +49,22 @@ nyx/
 ├── Cargo.toml                 # Rust workspace (all platform + app crates)
 ├── rust-toolchain.toml        # Rust 1.85, clippy, rustfmt, rust-analyzer
 ├── justfile                   # Task runner
-├── package.json + pnpm-workspace.yaml  # Frontend workspace
+├── package.json               # Frontend workspace
+├── pnpm-workspace.yaml        # Frontend workspace
 │
 ├── Monad/                     # Nyx shared crates
 │   ├── Nun/                   # Types, errors, config, IDs (UUIDv7)
 │   ├── nyx-api/               # Axum framework: NyxServer builder, middleware, extractors
 │   ├── Mnemosyne/             # PostgreSQL pool, migrations, transactions
-│   ├── Heka/              # Ory Kratos client + app-scoped alias system
+│   ├── Heka/                  # Ory Kratos client + app-scoped alias system
 │   ├── nyx-events/            # NATS JetStream typed pub/sub
 │   ├── Lethe/                 # DragonflyDB client, rate limiting, sessions
 │   ├── Akash/                 # MinIO/S3 client, presigned URLs
 │   ├── Brizo/                 # Meilisearch client, index management
-│   ├── Ogma/         # Matrix/Continuwuity client, privacy enforcement
+│   ├── Ogma/                  # Matrix/Continuwuity client, privacy enforcement
 │   ├── Oya/                   # Image/video processing (lib + worker binary)
-│   ├── Ushas/            # Push + in-app notifications (lib + worker binary)
-│   ├── Heimdall/           # API gateway binary (thin reverse proxy)
+│   ├── Ushas/                 # Push + in-app notifications (lib + worker binary)
+│   ├── Heimdall/              # API gateway binary (thin reverse proxy)
 │   └── nyx-xtask/             # Dev CLI: migrate, seed, openapi
 │
 ├── apps/Uzume/                # Uzume microservices - Social media app

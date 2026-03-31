@@ -1,0 +1,25 @@
+Task 3 QA Evidence: Duplicate alias prevention
+
+Date: 2026-03-31
+Workspace: /home/sin/nyx
+
+Target deterministic failure condition:
+  Duplicate alias inside the same app scope must fail via unique constraint.
+
+Implemented constraint:
+  File: migrations/Monad/0002_nyx_app_aliases.up.sql
+  Constraint: CONSTRAINT app_aliases_app_alias_uk UNIQUE (app, alias)
+
+Expected DB behavior when executable environment is available:
+  INSERT INTO nyx.app_aliases (nyx_identity_id, app, alias)
+  VALUES ('00000000-0000-0000-0000-000000000001', 'uzume', 'alice');
+
+  INSERT INTO nyx.app_aliases (nyx_identity_id, app, alias)
+  VALUES ('00000000-0000-0000-0000-000000000002', 'uzume', 'alice');
+
+  => ERROR: duplicate key value violates unique constraint "app_aliases_app_alias_uk"
+
+Blocker to executing this command path locally:
+  - `psql` is not installed in this environment.
+  - `docker` is unavailable for containerized PostgreSQL fallback.
+  - Workspace `cargo run -p nyx-xtask -- migrate` fails due to root manifest parse error.

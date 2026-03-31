@@ -1,0 +1,58 @@
+{
+  "active_plan": "/home/sin/nyx/.sisyphus/plans/nyx-uzume-monad-nun-foundation.md",
+  "started_at": "2026-03-31T13:51:58.238Z",
+  "session_ids": [
+    "ses_2bc366d72ffeFNWlgFxkCmeUQo",
+    "ses_2bbd0c74bffeRYudvAOuHWSuGr",
+    "ses_2bbcccb53ffefT2fjRgbNKPNyh",
+    "ses_2bbc7b607ffe0wapAmwbxX1Aiz",
+    "ses_2bbb8194dffeNv6XvjjPxe0j7M",
+    "ses_2bbb817f8ffejfl3SqTI6TqNUp",
+    "ses_2bbaa304effeOZ8kSSWj8NTFBt",
+    "ses_2bba37e48ffeGNynbnIGQ3JLmb",
+    "ses_2bba37f7effeOLnfLCq7f6ObvT",
+    "ses_2bb9b9930ffeyP0K07FEC4yuR9",
+    "ses_2bb935632ffeGhuQZkOAEnyETW",
+    "ses_2bb88f4b5ffeXeM82kD5lbNCqb",
+    "ses_2bb88f4dbffeu5OdMhTDN5Gz4R",
+    "ses_2bb81f302ffe0CRYEQ7Ju9UOHg",
+    "ses_2bb7c97e6ffee9pO1nPHxawF9K",
+    "ses_2bb7c976bffeZ6NVHvozsDdBGM",
+    "ses_2bb7c97a2ffez2o2HBex5KJTAJ",
+    "ses_2bb79c352ffeGnsEA8qhYzwvh4",
+    "ses_2bb743105ffe0eUH7xtRrqKV6G",
+    "ses_2bb74313effey0NneYgt4xF1Y2",
+    "ses_2bb6a02edffeqShbN5CBpuiU1I"
+  ],
+  "plan_name": "nyx-uzume-monad-nun-foundation",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "Lock architecture invariants and app-boundary ADRs",
+      "session_id": "ses_2bbcccb53ffefT2fjRgbNKPNyh",
+      "agent": "Sisyphus-Junior",
+      "category": "writing",
+      "updated_at": "2026-03-31T14:03:06.731Z"
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "Implement Nun app/identity/feed-mode contracts",
+      "session_id": "ses_2bb79c352ffeGnsEA8qhYzwvh4",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-03-31T15:35:26.461Z"
+    },
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "Create step-1 migration baseline (`nyx` + `Uzume`)",
+      "session_id": "ses_2bb74313effey0NneYgt4xF1Y2",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-03-31T15:46:17.267Z"
+    }
+  }
+}

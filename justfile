@@ -5,13 +5,42 @@ dev-aengus:         cargo run -p aengus
 dev-themis:         cargo run -p themis
 dev-gateway:        cargo run -p Heimdall
 
-# Testing
-test:               cargo nextest run --workspace
-test-unit:          cargo nextest run --workspace --lib
-test-integration:   cargo nextest run --workspace --test '*'
-lint:               cargo clippy --workspace --all-targets --all-features -- -D warnings
+# Quality gates (used by CI)
 fmt-check:          cargo fmt --all -- --check
-check:              cargo deny check
+lint:               cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+# Security
+security-deny:      cargo deny check
+security-audit:     cargo audit
+security:           security-deny security-audit
+check:              security-deny
+
+# Testing (nextest with deterministic fallback)
+test:
+    @if cargo nextest --version >/dev/null 2>&1; then \
+      cargo nextest run --workspace; \
+    else \
+      cargo test --workspace --all-targets; \
+    fi
+test-unit:
+    @if cargo nextest --version >/dev/null 2>&1; then \
+      cargo nextest run --workspace --lib; \
+    else \
+      cargo test --workspace --lib; \
+    fi
+test-integration:
+    @if cargo nextest --version >/dev/null 2>&1; then \
+      cargo nextest run --workspace --test '*'; \
+    else \
+      cargo test --workspace --test '*'; \
+    fi
+
+# Migration + validation gates
+migration-check:    cargo run -p nyx-xtask -- migrate
+validation-check:   cargo check --workspace --all-targets --all-features
+
+# Full CI-equivalent local gate
+ci:                 fmt-check lint security migration-check validation-check test
 
 # Database
 db-migrate:         cargo run -p nyx-xtask -- migrate
