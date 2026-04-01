@@ -22,3 +22,4 @@ target
 
 .env
 .sisyphus/boulder.json
+.opencode/oh-my-opencode.json

@@ -11,5 +11,20 @@ rust-version.workspace = true
 name = "ushas"
 path = "src/lib.rs"
 
+[[bin]]
+name = "ushas-worker"
+path = "src/bin/worker.rs"
+
 [dependencies]
 nun = { package = "Nun", path = "../Nun" }
+nyx-events = { package = "events", path = "../events" }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+async-nats = { workspace = true }

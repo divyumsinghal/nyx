@@ -14,57 +14,57 @@ All work merged into `Nun` branch:
 ## Phase Completion Status
 
 ### Phase 0 — Infrastructure (COMPLETE ✅)
-| Item | Status |
-|------|--------|
-| `Prithvi/compose/infra.yml` | ✅ Done |
-| `Prithvi/compose/platform.yml` | ✅ Done |
-| `Prithvi/compose/uzume.yml` | ✅ Done |
-| `Prithvi/compose/dev.yml` | ✅ Done |
-| `Prithvi/compose/prod.yml` | ✅ Done |
+| Item                                | Status |
+| ----------------------------------- | ------ |
+| `Prithvi/compose/infra.yml`         | ✅ Done |
+| `Prithvi/compose/platform.yml`      | ✅ Done |
+| `Prithvi/compose/uzume.yml`         | ✅ Done |
+| `Prithvi/compose/dev.yml`           | ✅ Done |
+| `Prithvi/compose/prod.yml`          | ✅ Done |
 | `Prithvi/docker/Dockerfile.service` | ✅ Done |
-| `Prithvi/docker/Dockerfile.worker` | ✅ Done |
-| `Prithvi/config/kratos/` | ✅ Done |
-| `Prithvi/config/nats/` | ✅ Done |
-| `Prithvi/config/prometheus/` | ✅ Done |
-| `Prithvi/config/grafana/` | ✅ Done |
-| `migrations/Monad/0001-0004` | ✅ Done |
-| `migrations/Uzume/0001-0008` | ✅ Done |
-| `tools/seed-data/` | ✅ Done |
-| `.env.example` | ✅ Done |
-| `justfile` | ✅ Done |
+| `Prithvi/docker/Dockerfile.worker`  | ✅ Done |
+| `Prithvi/config/kratos/`            | ✅ Done |
+| `Prithvi/config/nats/`              | ✅ Done |
+| `Prithvi/config/prometheus/`        | ✅ Done |
+| `Prithvi/config/grafana/`           | ✅ Done |
+| `migrations/Monad/0001-0004`        | ✅ Done |
+| `migrations/Uzume/0001-0008`        | ✅ Done |
+| `tools/seed-data/`                  | ✅ Done |
+| `.env.example`                      | ✅ Done |
+| `justfile`                          | ✅ Done |
 
 ### Phase 1 — Platform Foundation (COMPLETE ✅)
-| Crate | Status | Notes |
-|-------|--------|-------|
-| `Monad/Nun` | ✅ Done | Types, errors, config, IDs, pagination, validation |
-| `Monad/Heka` | ✅ Done | KratosClient, AppAlias, AliasResolver, LinkPolicyEngine |
-| `Monad/events` | ✅ Done | Full NATS JetStream + compat layer (EventPublisher trait) |
-| `Monad/Mnemosyne` | ✅ Done | PG pool, migrations, transactions, cursor pagination |
-| `Monad/Lethe` | ✅ Done | DragonflyDB cache, rate limiting, sessions, helpers |
-| `Monad/Akash` | ✅ Done | S3/MinIO client, presigned URLs, path conventions |
-| `Monad/api` | ✅ Done | NyxServer builder, middleware, extractors |
-| `Monad/Heimdall` | ✅ Done | Full API gateway with JWT auth, proxy, WS, health |
-| `Monad/xtask` | ✅ Done | CLI: migrate, seed, db-reset, new-app scaffold |
+| Crate             | Status | Notes                                                     |
+| ----------------- | ------ | --------------------------------------------------------- |
+| `Monad/Nun`       | ✅ Done | Types, errors, config, IDs, pagination, validation        |
+| `Monad/Heka`      | ✅ Done | KratosClient, AppAlias, AliasResolver, LinkPolicyEngine   |
+| `Monad/events`    | ✅ Done | Full NATS JetStream + compat layer (EventPublisher trait) |
+| `Monad/Mnemosyne` | ✅ Done | PG pool, migrations, transactions, cursor pagination      |
+| `Monad/Lethe`     | ✅ Done | DragonflyDB cache, rate limiting, sessions, helpers       |
+| `Monad/Akash`     | ✅ Done | S3/MinIO client, presigned URLs, path conventions         |
+| `Monad/api`       | ✅ Done | NyxServer builder, middleware, extractors                 |
+| `Monad/Heimdall`  | ✅ Done | Full API gateway with JWT auth, proxy, WS, health         |
+| `Monad/xtask`     | ✅ Done | CLI: migrate, seed, db-reset, new-app scaffold            |
 
 ### Phase 2 Agent 1 — Brizo + Ogma + Uzume-profiles (PARTIAL ⚠️)
-| Item | Status | Notes |
-|------|--------|-------|
-| `Monad/Brizo` | ⚠️ Basic | SearchClient + index constants. Missing: query.rs, sync.rs |
-| `Monad/Ogma` | ⚠️ Basic | MatrixClient, PrivacyGuard, room types. Missing: messages.rs, aliases.rs |
-| `Monad/Ushas` | ❌ Stub | Cargo.toml + empty lib.rs only |
+| Item             | Status        | Notes                                                                                      |
+| ---------------- | ------------- | ------------------------------------------------------------------------------------------ |
+| `Monad/Brizo`    | ⚠️ Basic       | SearchClient + index constants. Missing: query.rs, sync.rs                                 |
+| `Monad/Ogma`     | ⚠️ Basic       | MatrixClient, PrivacyGuard, room types. Missing: messages.rs, aliases.rs                   |
+| `Monad/Ushas`    | ❌ Stub        | Cargo.toml + empty lib.rs only                                                             |
 | `Uzume-profiles` | ❌ Domain Only | Has domain models + in-memory service. Missing HTTP handlers, sqlx queries, workers, tests |
 
 ### Phase 2 Agent 2 — Uzume-feed + Uzume-stories (NOT STARTED ❌)
-| Item | Status |
-|------|--------|
+| Item                       | Status    |
+| -------------------------- | --------- |
 | `Uzume-feed` HTTP handlers | ❌ Missing |
-| `Uzume-stories` service | ❌ Missing |
+| `Uzume-stories` service    | ❌ Missing |
 
 ### Phase 2 Agent 3 — Already Complete ✅
-| Item | Status |
-|------|--------|
+| Item             | Status                                   |
+| ---------------- | ---------------------------------------- |
 | `Monad/Heimdall` | ✅ Done (was in Nun before consolidation) |
-| `Monad/xtask` | ✅ Done (was in Nun before consolidation) |
+| `Monad/xtask`    | ✅ Done (was in Nun before consolidation) |
 
 ### Phase 3+ (NOT STARTED ❌)
 - `Uzume-reels` service
