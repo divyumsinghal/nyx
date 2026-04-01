@@ -12,13 +12,13 @@ use sqlx::PgPool;
 /// Application-wide state available to every handler.
 #[derive(Clone)]
 pub struct AppState {
-    /// PostgreSQL connection pool.
+    /// `PostgreSQL` connection pool.
     pub db: PgPool,
 
-    /// DragonflyDB / Redis cache connection.
+    /// `DragonflyDB` / Redis cache connection.
     pub cache: CacheClient,
 
-    /// NATS JetStream client for publishing domain events.
+    /// NATS `JetStream` client for publishing domain events.
     pub nats: NatsClient,
 
     /// Meilisearch client for syncing profiles to the search index.

@@ -23,7 +23,7 @@ use uuid::Uuid;
 /// JWT payload claims issued and validated by Heimdall.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
-    /// Subject — the Nyx identity ID (UUIDv7 string).
+    /// Subject — the Nyx identity ID (`UUIDv7` string).
     pub sub: String,
     /// Issued-at timestamp (Unix seconds).
     pub iat: i64,
@@ -58,10 +58,12 @@ pub enum JwtError {
 /// unlikely for well-formed inputs).
 pub fn encode_jwt(identity_id: &str, secret: &str, expiry_secs: u64) -> anyhow::Result<String> {
     let now = chrono::Utc::now().timestamp();
+    let expiry_secs = i64::try_from(expiry_secs)
+        .map_err(|_| anyhow::anyhow!("expiry_secs exceeds supported range"))?;
     let claims = Claims {
         sub: identity_id.to_owned(),
         iat: now,
-        exp: now + expiry_secs as i64,
+        exp: now + expiry_secs,
         jti: Uuid::new_v4().to_string(),
     };
 

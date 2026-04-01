@@ -1,6 +1,6 @@
 //! Database-mapped profile types.
 //!
-//! These types mirror the `uzume.profiles` PostgreSQL table and are used
+//! These types mirror the `uzume.profiles` `PostgreSQL` table and are used
 //! exclusively by the queries layer. Handler and service layers work with
 //! the domain types defined in `lib.rs`.
 

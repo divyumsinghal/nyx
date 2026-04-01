@@ -7,7 +7,7 @@ use events::subjects::{
 use events::{NatsClient, Publisher, Subscriber};
 use futures::StreamExt;
 use oya::config::ProcessingConfig;
-use oya::pipeline::{MediaPipeline, PipelineResult};
+use oya::pipeline::{MediaJob, MediaPipeline, PipelineResult};
 use tokio::signal;
 use tracing::{error, info, warn};
 
@@ -65,31 +65,24 @@ impl Worker {
         payload: &MediaUploadedPayload,
     ) -> Result<PipelineResult, Box<dyn std::error::Error + Send + Sync>> {
         let is_video = payload.mime_type.starts_with("video/");
+        let job = MediaJob {
+            job_id: payload.job_id,
+            entity_type: &payload.entity_type,
+            entity_id: &payload.entity_id,
+            mime_type: &payload.mime_type,
+        };
 
         if is_video {
             let input_path = PathBuf::from(&payload.source_path);
             let output_dir = self.temp_dir.join(&payload.entity_id);
 
-            let result = self.pipeline.process_video(
-                payload.job_id,
-                &payload.entity_type,
-                &payload.entity_id,
-                &input_path,
-                &output_dir,
-                &payload.mime_type,
-            )?;
+            let result = self.pipeline.process_video(job, &input_path, &output_dir)?;
 
             Ok(PipelineResult::Video(result))
         } else {
             let data = tokio::fs::read(&payload.source_path).await?;
 
-            let result = self.pipeline.process_image(
-                payload.job_id,
-                &payload.entity_type,
-                &payload.entity_id,
-                &data,
-                &payload.mime_type,
-            )?;
+            let result = self.pipeline.process_image(job, &data)?;
 
             Ok(PipelineResult::Image(result))
         }

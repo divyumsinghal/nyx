@@ -50,7 +50,7 @@ impl NyxServerBuilder {
             nun::NyxError::bad_request("missing_config", "NyxServer config is required")
         })?;
 
-        let app = self.routes.unwrap_or_else(Router::new);
+        let app = self.routes.unwrap_or_default();
 
         let router = app
             .route("/healthz", get(|| async { "ok" }))

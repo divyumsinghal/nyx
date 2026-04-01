@@ -2577,7 +2577,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "tempfile",
- "testcontainers 0.24.0",
+ "testcontainers 0.23.3",
  "testcontainers-modules",
  "tokio",
  "tracing",

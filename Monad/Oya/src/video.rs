@@ -124,11 +124,7 @@ fn transcode_variant(
             "-hls_playlist_type",
             "vod",
             "-hls_segment_filename",
-            &variant_dir
-                .join("%03d.ts")
-                .to_str()
-                .unwrap_or("")
-                .to_string(),
+            variant_dir.join("%03d.ts").to_str().unwrap_or(""),
             playlist_path.to_str().unwrap_or(""),
             "-y",
         ])

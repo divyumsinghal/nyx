@@ -1,5 +1,6 @@
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::missing_panics_doc)]
 
 pub mod auth_layer;
 pub mod config;

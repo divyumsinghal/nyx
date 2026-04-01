@@ -83,7 +83,7 @@ pub async fn health_handler(State(state): State<AppState>) -> impl IntoResponse 
 
             let status = match result {
                 Ok(Ok(_resp)) => {
-                    let latency = start.elapsed().as_millis() as u64;
+                    let latency = u64::try_from(start.elapsed().as_millis()).unwrap_or(u64::MAX);
                     debug!(upstream = %name, latency_ms = latency, "upstream reachable");
                     UpstreamStatus {
                         reachable: true,

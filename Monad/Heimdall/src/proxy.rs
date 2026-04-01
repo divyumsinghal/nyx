@@ -36,7 +36,7 @@
 
 use axum::body::Body;
 use axum::extract::Request;
-use axum::http::{HeaderName, HeaderValue, StatusCode};
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde_json::json;
 use tracing::{error, info};

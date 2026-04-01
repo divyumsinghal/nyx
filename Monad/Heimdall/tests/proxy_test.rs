@@ -6,8 +6,8 @@
 use std::net::SocketAddr;
 
 use axum::body::Body;
-use axum::extract::{Request, State};
-use axum::http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
+use axum::extract::Request;
+use axum::http::{HeaderValue, Method, StatusCode};
 use axum::routing::get;
 use axum::Router;
 use reqwest::Client;

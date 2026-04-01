@@ -11,7 +11,7 @@
 //! [`auth_middleware`](crate::auth_layer::auth_middleware)). If absent the
 //! handler returns `401` without upgrading the connection.
 
-use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
+use axum::extract::ws::{WebSocket, WebSocketUpgrade};
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -30,9 +30,9 @@ use crate::state::AppState;
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(_state): State<AppState>,
-    Extension(identity): Extension<Option<ValidatedIdentity>>,
+    identity: Option<Extension<ValidatedIdentity>>,
 ) -> Response {
-    let Some(identity) = identity else {
+    let Some(Extension(identity)) = identity else {
         warn!("WebSocket upgrade rejected: no authenticated identity");
         return (
             StatusCode::UNAUTHORIZED,

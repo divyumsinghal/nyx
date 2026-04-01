@@ -85,6 +85,7 @@ impl Profile {
         }
     }
 
+    #[must_use]
     pub fn with_private(mut self, is_private: bool) -> Self {
         self.is_private = is_private;
         self
@@ -210,7 +211,7 @@ where
             (EndpointMethod::Get, path) => {
                 let alias = path.trim_start_matches('/');
                 if alias.is_empty() {
-                    return error_response(NyxError::not_found(
+                    return error_response(&NyxError::not_found(
                         "route_not_found",
                         "Route was not found",
                     ));
@@ -222,7 +223,7 @@ where
                     .and_then(to_json_value);
                 map_endpoint_result(result)
             }
-            _ => error_response(NyxError::not_found(
+            _ => error_response(&NyxError::not_found(
                 "route_not_found",
                 "Route was not found",
             )),
@@ -233,11 +234,11 @@ where
 fn map_endpoint_result(result: Result<Value>) -> EndpointResponse {
     match result {
         Ok(body) => EndpointResponse { status: 200, body },
-        Err(error) => error_response(error),
+        Err(error) => error_response(&error),
     }
 }
 
-fn error_response(error: NyxError) -> EndpointResponse {
+fn error_response(error: &NyxError) -> EndpointResponse {
     EndpointResponse {
         status: error.status_code(),
         body: serde_json::to_value(error.to_error_response(None)).unwrap_or_else(|_| {

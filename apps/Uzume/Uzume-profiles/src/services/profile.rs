@@ -29,6 +29,7 @@ pub struct PatchProfileRequest {
 
 impl PatchProfileRequest {
     /// Convert the request body into a database update payload.
+    #[must_use]
     pub fn into_profile_update(self) -> ProfileUpdate {
         ProfileUpdate {
             display_name: self.display_name,

@@ -12,9 +12,12 @@ Current verified status:
 - Phase 0 infra/config/migrations: present and complete enough for development workflows.
 - Phase 1/2: partially complete; key blocker was `Uzume-stories` compile break from missing modules.
 - `Uzume-stories` now compiles and tests pass (`cargo test -p Uzume-stories`).
+- Workspace `just test` now passes end-to-end (338/338) after Heimdall + events test fixes.
+- `just ci` recipe invocation was fixed (now calls `just <recipe>` internally).
 
 Active risks:
 - Stories SQL query schema currently appears to differ from migration naming/shape (`uzume.*` vs `"Uzume".*`, and column naming differences). This is likely a runtime integration risk and needs reconciliation in follow-up tasks.
+- `just lint` still fails due widespread clippy pedantic/doc constraints in legacy modules (not limited to this session's changes), especially `apps/Uzume/Uzume-profiles` and some platform crates.
 
 
 ## STRUCTURE
@@ -90,7 +93,13 @@ Completed in this run:
 	- `src/workers/mod.rs`, `src/workers/expiry.rs`, `src/workers/reconciliation.rs`
 - Replaced empty `apps/Uzume/Uzume-stories/src/main.rs` with full startup flow.
 - Added and passed service-level unit tests for visibility/authz, idempotency, and ownership helpers.
+- Fixed failing full-test blockers outside stories:
+	- `Monad/Heimdall`: added `src/lib.rs`, repaired integration/auth extraction behavior, request-id propagation, and JWT test assertions.
+	- `Monad/events/tests/event_boundary.rs`: aligned with current events API.
+- Verified full test gate passes: `just test` (338/338).
+- Repaired `justfile` CI recipe command invocation wiring.
 
 Next deltas to reach stronger Phase 2 readiness:
 - Reconcile stories SQL layer with migration schema and add integration tests against real DB.
 - Continue through remaining service/gateway/event boundary gaps discovered by audit.
+- Resolve workspace-wide clippy/doc strictness issues so `just lint` and `just ci` pass cleanly.

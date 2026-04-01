@@ -1,6 +1,6 @@
 //! Database-mapped follow relationship types.
 //!
-//! These types mirror the `uzume.follows` PostgreSQL table.
+//! These types mirror the `uzume.follows` `PostgreSQL` table.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

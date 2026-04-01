@@ -14,29 +14,29 @@ use nun::NyxError;
 /// Silently succeeds if the relationship already exists (idempotent via
 /// `ON CONFLICT DO NOTHING`). Counter columns are updated atomically in the
 /// same transaction.
-pub async fn follow(pool: &PgPool, follower_id: Uuid, followee_id: Uuid) -> Result<(), NyxError> {
+pub async fn follow(pool: &PgPool, follower_id: Uuid, target_id: Uuid) -> Result<(), NyxError> {
     let mut tx = pool.begin().await.map_err(NyxError::from)?;
 
     sqlx::query(
-        r#"
+        r"
         INSERT INTO uzume.follows (follower_id, followee_id)
         VALUES ($1, $2)
         ON CONFLICT DO NOTHING
-        "#,
+        ",
     )
     .bind(follower_id)
-    .bind(followee_id)
+    .bind(target_id)
     .execute(&mut *tx)
     .await
     .map_err(NyxError::from)?;
 
     // Increment following_count for the follower.
     sqlx::query(
-        r#"
+        r"
         UPDATE uzume.profiles
         SET following_count = following_count + 1
         WHERE id = $1
-        "#,
+        ",
     )
     .bind(follower_id)
     .execute(&mut *tx)
@@ -45,13 +45,13 @@ pub async fn follow(pool: &PgPool, follower_id: Uuid, followee_id: Uuid) -> Resu
 
     // Increment follower_count for the followee.
     sqlx::query(
-        r#"
+        r"
         UPDATE uzume.profiles
         SET follower_count = follower_count + 1
         WHERE id = $1
-        "#,
+        ",
     )
-    .bind(followee_id)
+    .bind(target_id)
     .execute(&mut *tx)
     .await
     .map_err(NyxError::from)?;
@@ -63,17 +63,17 @@ pub async fn follow(pool: &PgPool, follower_id: Uuid, followee_id: Uuid) -> Resu
 /// Remove a follow relationship.
 ///
 /// Silently succeeds if the relationship does not exist.
-pub async fn unfollow(pool: &PgPool, follower_id: Uuid, followee_id: Uuid) -> Result<(), NyxError> {
+pub async fn unfollow(pool: &PgPool, follower_id: Uuid, target_id: Uuid) -> Result<(), NyxError> {
     let mut tx = pool.begin().await.map_err(NyxError::from)?;
 
     let result = sqlx::query(
-        r#"
+        r"
         DELETE FROM uzume.follows
         WHERE follower_id = $1 AND followee_id = $2
-        "#,
+        ",
     )
     .bind(follower_id)
-    .bind(followee_id)
+    .bind(target_id)
     .execute(&mut *tx)
     .await
     .map_err(NyxError::from)?;
@@ -81,11 +81,11 @@ pub async fn unfollow(pool: &PgPool, follower_id: Uuid, followee_id: Uuid) -> Re
     if result.rows_affected() > 0 {
         // Only adjust counters when a row was actually deleted.
         sqlx::query(
-            r#"
+            r"
             UPDATE uzume.profiles
             SET following_count = GREATEST(0, following_count - 1)
             WHERE id = $1
-            "#,
+            ",
         )
         .bind(follower_id)
         .execute(&mut *tx)
@@ -93,13 +93,13 @@ pub async fn unfollow(pool: &PgPool, follower_id: Uuid, followee_id: Uuid) -> Re
         .map_err(NyxError::from)?;
 
         sqlx::query(
-            r#"
+            r"
             UPDATE uzume.profiles
             SET follower_count = GREATEST(0, follower_count - 1)
             WHERE id = $1
-            "#,
+            ",
         )
-        .bind(followee_id)
+        .bind(target_id)
         .execute(&mut *tx)
         .await
         .map_err(NyxError::from)?;
@@ -113,18 +113,18 @@ pub async fn unfollow(pool: &PgPool, follower_id: Uuid, followee_id: Uuid) -> Re
 pub async fn get_follow_status(
     pool: &PgPool,
     follower_id: Uuid,
-    followee_id: Uuid,
+    target_id: Uuid,
 ) -> Result<FollowStatus, NyxError> {
     let row: (bool,) = sqlx::query_as(
-        r#"
+        r"
         SELECT EXISTS (
             SELECT 1 FROM uzume.follows
             WHERE follower_id = $1 AND followee_id = $2
         )
-        "#,
+        ",
     )
     .bind(follower_id)
-    .bind(followee_id)
+    .bind(target_id)
     .fetch_one(pool)
     .await
     .map_err(NyxError::from)?;
@@ -149,7 +149,7 @@ pub async fn get_followers(
 ) -> Result<Vec<FollowProfileRow>, NyxError> {
     if let (Some(after_ts), Some(after_uuid)) = (after_created_at, after_id) {
         sqlx::query_as::<_, FollowProfileRow>(
-            r#"
+            r"
             SELECT p.id, p.alias, p.display_name, p.avatar_url, p.is_verified,
                    f.created_at
             FROM uzume.follows f
@@ -158,7 +158,7 @@ pub async fn get_followers(
               AND (f.created_at, f.follower_id) < ($2, $3)
             ORDER BY f.created_at DESC, f.follower_id DESC
             LIMIT $4
-            "#,
+            ",
         )
         .bind(profile_id)
         .bind(after_ts)
@@ -169,7 +169,7 @@ pub async fn get_followers(
         .map_err(NyxError::from)
     } else {
         sqlx::query_as::<_, FollowProfileRow>(
-            r#"
+                 r"
             SELECT p.id, p.alias, p.display_name, p.avatar_url, p.is_verified,
                    f.created_at
             FROM uzume.follows f
@@ -177,7 +177,7 @@ pub async fn get_followers(
             WHERE f.followee_id = $1
             ORDER BY f.created_at DESC, f.follower_id DESC
             LIMIT $2
-            "#,
+            ",
         )
         .bind(profile_id)
         .bind(limit)
@@ -199,7 +199,7 @@ pub async fn get_following(
 ) -> Result<Vec<FollowProfileRow>, NyxError> {
     if let (Some(after_ts), Some(after_uuid)) = (after_created_at, after_id) {
         sqlx::query_as::<_, FollowProfileRow>(
-            r#"
+                 r"
             SELECT p.id, p.alias, p.display_name, p.avatar_url, p.is_verified,
                    f.created_at
             FROM uzume.follows f
@@ -208,7 +208,7 @@ pub async fn get_following(
               AND (f.created_at, f.followee_id) < ($2, $3)
             ORDER BY f.created_at DESC, f.followee_id DESC
             LIMIT $4
-            "#,
+            ",
         )
         .bind(profile_id)
         .bind(after_ts)
@@ -219,7 +219,7 @@ pub async fn get_following(
         .map_err(NyxError::from)
     } else {
         sqlx::query_as::<_, FollowProfileRow>(
-            r#"
+            r"
             SELECT p.id, p.alias, p.display_name, p.avatar_url, p.is_verified,
                    f.created_at
             FROM uzume.follows f
@@ -227,7 +227,7 @@ pub async fn get_following(
             WHERE f.follower_id = $1
             ORDER BY f.created_at DESC, f.followee_id DESC
             LIMIT $2
-            "#,
+            ",
         )
         .bind(profile_id)
         .bind(limit)
@@ -241,17 +241,17 @@ pub async fn get_following(
 pub async fn get_follow_row(
     pool: &PgPool,
     follower_id: Uuid,
-    followee_id: Uuid,
+    target_id: Uuid,
 ) -> Result<Option<FollowRow>, NyxError> {
     sqlx::query_as::<_, FollowRow>(
-        r#"
+        r"
         SELECT follower_id, followee_id, created_at
         FROM uzume.follows
         WHERE follower_id = $1 AND followee_id = $2
-        "#,
+        ",
     )
     .bind(follower_id)
-    .bind(followee_id)
+    .bind(target_id)
     .fetch_optional(pool)
     .await
     .map_err(NyxError::from)

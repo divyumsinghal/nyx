@@ -23,6 +23,10 @@ impl AppState {
     /// Construct a new `AppState` from the provided configuration.
     ///
     /// This builds the shared `reqwest::Client` with `rustls` TLS enabled.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the HTTP client cannot be constructed.
     #[must_use]
     pub fn new(config: HeimdallConfig) -> Self {
         let http = Client::builder()

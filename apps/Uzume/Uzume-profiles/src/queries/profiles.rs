@@ -23,14 +23,14 @@ pub async fn get_profile_by_alias(
     alias: &str,
 ) -> Result<Option<ProfileRow>, NyxError> {
     sqlx::query_as::<_, ProfileRow>(
-        r#"
+         r"
         SELECT id, identity_id, alias, display_name, bio, avatar_url,
                is_private, is_verified,
                follower_count, following_count, post_count,
                created_at, updated_at
         FROM uzume.profiles
         WHERE alias = $1
-        "#,
+         ",
     )
     .bind(alias)
     .fetch_optional(pool)
@@ -43,14 +43,14 @@ pub async fn get_profile_by_alias(
 /// Returns `None` when no matching profile exists.
 pub async fn get_profile_by_id(pool: &PgPool, id: Uuid) -> Result<Option<ProfileRow>, NyxError> {
     sqlx::query_as::<_, ProfileRow>(
-        r#"
+         r"
         SELECT id, identity_id, alias, display_name, bio, avatar_url,
                is_private, is_verified,
                follower_count, following_count, post_count,
                created_at, updated_at
         FROM uzume.profiles
         WHERE id = $1
-        "#,
+         ",
     )
     .bind(id)
     .fetch_optional(pool)
@@ -66,14 +66,14 @@ pub async fn get_profile_by_identity(
     identity_id: Uuid,
 ) -> Result<Option<ProfileRow>, NyxError> {
     sqlx::query_as::<_, ProfileRow>(
-        r#"
+         r"
         SELECT id, identity_id, alias, display_name, bio, avatar_url,
                is_private, is_verified,
                follower_count, following_count, post_count,
                created_at, updated_at
         FROM uzume.profiles
         WHERE identity_id = $1
-        "#,
+         ",
     )
     .bind(identity_id)
     .fetch_optional(pool)
@@ -87,14 +87,14 @@ pub async fn get_profile_by_identity(
 /// be unique within `uzume.profiles`.
 pub async fn create_profile(pool: &PgPool, insert: &ProfileInsert) -> Result<ProfileRow, NyxError> {
     sqlx::query_as::<_, ProfileRow>(
-        r#"
+        r"
         INSERT INTO uzume.profiles (id, identity_id, alias, display_name)
         VALUES ($1, $2, $3, $4)
         RETURNING id, identity_id, alias, display_name, bio, avatar_url,
                   is_private, is_verified,
                   follower_count, following_count, post_count,
                   created_at, updated_at
-        "#,
+        ",
     )
     .bind(insert.id)
     .bind(insert.identity_id)
@@ -115,7 +115,7 @@ pub async fn update_profile(
     update: &ProfileUpdate,
 ) -> Result<ProfileRow, NyxError> {
     sqlx::query_as::<_, ProfileRow>(
-        r#"
+        r"
         UPDATE uzume.profiles
         SET display_name  = COALESCE($2, display_name),
             bio           = COALESCE($3, bio),
@@ -127,7 +127,7 @@ pub async fn update_profile(
                   is_private, is_verified,
                   follower_count, following_count, post_count,
                   created_at, updated_at
-        "#,
+        ",
     )
     .bind(id)
     .bind(&update.display_name)

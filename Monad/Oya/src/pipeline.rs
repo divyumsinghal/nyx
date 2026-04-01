@@ -60,6 +60,15 @@ pub enum PipelineResult {
     Video(VideoPipelineResult),
 }
 
+/// Identifies a single media processing job.
+#[derive(Debug, Clone, Copy)]
+pub struct MediaJob<'a> {
+    pub job_id: uuid::Uuid,
+    pub entity_type: &'a str,
+    pub entity_id: &'a str,
+    pub mime_type: &'a str,
+}
+
 impl PipelineResult {
     pub fn job_id(&self) -> uuid::Uuid {
         match self {
@@ -106,18 +115,15 @@ impl MediaPipeline {
     /// Process an image through all configured variants.
     pub fn process_image(
         &self,
-        job_id: uuid::Uuid,
-        entity_type: &str,
-        entity_id: &str,
+        job: MediaJob<'_>,
         data: &[u8],
-        mime_type: &str,
     ) -> Result<ImagePipelineResult, PipelineError> {
         let entity = self
             .config
-            .get_entity(entity_type)
-            .ok_or_else(|| PipelineError::UnknownEntity(entity_type.to_string()))?;
+            .get_entity(job.entity_type)
+            .ok_or_else(|| PipelineError::UnknownEntity(job.entity_type.to_string()))?;
 
-        validate_mime_type(mime_type, entity)?;
+        validate_mime_type(job.mime_type, entity)?;
         validate_size(data.len() as u64, entity.max_image_size_bytes)?;
 
         let start = Instant::now();
@@ -125,9 +131,9 @@ impl MediaPipeline {
         let processing_ms = start.elapsed().as_millis() as u64;
 
         Ok(ImagePipelineResult {
-            job_id,
-            entity_type: entity_type.to_string(),
-            entity_id: entity_id.to_string(),
+            job_id: job.job_id,
+            entity_type: job.entity_type.to_string(),
+            entity_id: job.entity_id.to_string(),
             variants,
             processing_ms,
         })
@@ -136,19 +142,16 @@ impl MediaPipeline {
     /// Process a video through all configured HLS variants.
     pub fn process_video(
         &self,
-        job_id: uuid::Uuid,
-        entity_type: &str,
-        entity_id: &str,
+        job: MediaJob<'_>,
         input_path: &std::path::Path,
         output_dir: &std::path::Path,
-        mime_type: &str,
     ) -> Result<VideoPipelineResult, PipelineError> {
         let entity = self
             .config
-            .get_entity(entity_type)
-            .ok_or_else(|| PipelineError::UnknownEntity(entity_type.to_string()))?;
+            .get_entity(job.entity_type)
+            .ok_or_else(|| PipelineError::UnknownEntity(job.entity_type.to_string()))?;
 
-        validate_mime_type(mime_type, entity)?;
+        validate_mime_type(job.mime_type, entity)?;
 
         let file_size = std::fs::metadata(input_path).map(|m| m.len()).unwrap_or(0);
         validate_size(file_size, entity.max_video_size_bytes)?;
@@ -163,9 +166,9 @@ impl MediaPipeline {
         let processing_ms = start.elapsed().as_millis() as u64;
 
         Ok(VideoPipelineResult {
-            job_id,
-            entity_type: entity_type.to_string(),
-            entity_id: entity_id.to_string(),
+            job_id: job.job_id,
+            entity_type: job.entity_type.to_string(),
+            entity_id: job.entity_id.to_string(),
             video_result,
             processing_ms,
         })
@@ -224,11 +227,13 @@ mod tests {
     fn pipeline_rejects_unknown_entity() {
         let pipeline = MediaPipeline::new(test_config());
         let result = pipeline.process_image(
-            uuid::Uuid::now_v7(),
-            "unknown",
-            "test-id",
+            MediaJob {
+                job_id: uuid::Uuid::now_v7(),
+                entity_type: "unknown",
+                entity_id: "test-id",
+                mime_type: "image/jpeg",
+            },
             &[],
-            "image/jpeg",
         );
         assert!(matches!(result, Err(PipelineError::UnknownEntity(_))));
     }
@@ -236,8 +241,15 @@ mod tests {
     #[test]
     fn pipeline_rejects_unsupported_mime() {
         let pipeline = MediaPipeline::new(test_config());
-        let result =
-            pipeline.process_image(uuid::Uuid::now_v7(), "test", "test-id", &[], "image/gif");
+        let result = pipeline.process_image(
+            MediaJob {
+                job_id: uuid::Uuid::now_v7(),
+                entity_type: "test",
+                entity_id: "test-id",
+                mime_type: "image/gif",
+            },
+            &[],
+        );
         assert!(matches!(result, Err(PipelineError::UnsupportedMimeType(_))));
     }
 
@@ -246,11 +258,13 @@ mod tests {
         let pipeline = MediaPipeline::new(test_config());
         let large_data = vec![0u8; 2 * 1024 * 1024];
         let result = pipeline.process_image(
-            uuid::Uuid::now_v7(),
-            "test",
-            "test-id",
+            MediaJob {
+                job_id: uuid::Uuid::now_v7(),
+                entity_type: "test",
+                entity_id: "test-id",
+                mime_type: "image/jpeg",
+            },
             &large_data,
-            "image/jpeg",
         );
         assert!(matches!(result, Err(PipelineError::FileTooLarge { .. })));
     }

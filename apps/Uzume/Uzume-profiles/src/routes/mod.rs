@@ -4,13 +4,13 @@
 //!
 //! | Method   | Path                          | Auth | Handler              |
 //! |----------|-------------------------------|------|----------------------|
-//! | GET      | /profiles/me                  | yes  | get_my_profile       |
-//! | PATCH    | /profiles/me                  | yes  | patch_my_profile     |
-//! | GET      | /profiles/:alias              | opt  | get_profile          |
-//! | POST     | /profiles/:alias/follow       | yes  | follow_user          |
-//! | DELETE   | /profiles/:alias/follow       | yes  | unfollow_user        |
-//! | GET      | /profiles/:alias/followers    | no   | get_followers        |
-//! | GET      | /profiles/:alias/following    | no   | get_following        |
+//! | GET      | /profiles/me                  | yes  | `get_my_profile`     |
+//! | PATCH    | /profiles/me                  | yes  | `patch_my_profile`   |
+//! | GET      | /profiles/:alias              | opt  | `get_profile`        |
+//! | POST     | /profiles/:alias/follow       | yes  | `follow_user`        |
+//! | DELETE   | /profiles/:alias/follow       | yes  | `unfollow_user`      |
+//! | GET      | /profiles/:alias/followers    | no   | `get_followers`      |
+//! | GET      | /profiles/:alias/following    | no   | `get_following`      |
 //!
 //! The `/profiles/me` routes must be registered **before** `/profiles/:alias`
 //! so that Axum matches the literal `me` segment first.

@@ -57,8 +57,7 @@ pub async fn auth_middleware(
     let auth_header = req
         .headers()
         .get(header::AUTHORIZATION)
-        .and_then(|v| v.to_str().ok())
-        .map(ToOwned::to_owned);
+        .and_then(|v| v.to_str().ok());
 
     let Some(auth_value) = auth_header else {
         // No Authorization header — proceed without identity.

@@ -74,7 +74,7 @@ pub fn build_router(state: AppState) -> Router {
 async fn nyx_auth_proxy(State(state): State<AppState>, req: Request) -> Response {
     proxy_request(
         &state.http,
-        &state.config.kratos_public_url.clone(),
+        &state.config.kratos_public_url,
         "/api/nyx/auth",
         req,
         None,
@@ -95,7 +95,7 @@ async fn nyx_account_proxy(
     };
     proxy_request(
         &state.http,
-        &state.config.kratos_public_url.clone(),
+        &state.config.kratos_public_url,
         "/api/nyx/account",
         req,
         Some(&identity.identity_id),
@@ -114,7 +114,7 @@ async fn nyx_messaging_proxy(
     };
     proxy_request(
         &state.http,
-        &state.config.matrix_url.clone(),
+        &state.config.matrix_url,
         "/api/nyx/messaging",
         req,
         Some(&identity.identity_id),
@@ -133,7 +133,7 @@ async fn uzume_profiles_proxy(
     };
     proxy_request(
         &state.http,
-        &state.config.uzume_profiles_url.clone(),
+        &state.config.uzume_profiles_url,
         "/api/uzume/profiles",
         req,
         Some(&identity.identity_id),
@@ -152,7 +152,7 @@ async fn uzume_feed_proxy(
     };
     proxy_request(
         &state.http,
-        &state.config.uzume_feed_url.clone(),
+        &state.config.uzume_feed_url,
         "/api/uzume/feed",
         req,
         Some(&identity.identity_id),
@@ -171,7 +171,7 @@ async fn uzume_stories_proxy(
     };
     proxy_request(
         &state.http,
-        &state.config.uzume_stories_url.clone(),
+        &state.config.uzume_stories_url,
         "/api/uzume/stories",
         req,
         Some(&identity.identity_id),
@@ -190,7 +190,7 @@ async fn uzume_reels_proxy(
     };
     proxy_request(
         &state.http,
-        &state.config.uzume_reels_url.clone(),
+        &state.config.uzume_reels_url,
         "/api/uzume/reels",
         req,
         Some(&identity.identity_id),
@@ -209,7 +209,7 @@ async fn uzume_discover_proxy(
     };
     proxy_request(
         &state.http,
-        &state.config.uzume_discover_url.clone(),
+        &state.config.uzume_discover_url,
         "/api/uzume/discover",
         req,
         Some(&identity.identity_id),

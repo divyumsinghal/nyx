@@ -5,7 +5,7 @@
 
 use axum::body::Body;
 use axum::extract::{Extension, Request};
-use axum::http::{header, HeaderValue, StatusCode};
+use axum::http::{header, StatusCode};
 use axum::middleware;
 use axum::response::IntoResponse;
 use axum::routing::get;
