@@ -23,7 +23,7 @@ pub async fn get_profile_by_alias(
     alias: &str,
 ) -> Result<Option<ProfileRow>, NyxError> {
     sqlx::query_as::<_, ProfileRow>(
-         r"
+        r"
         SELECT id, identity_id, alias, display_name, bio, avatar_url,
                is_private, is_verified,
                follower_count, following_count, post_count,
@@ -43,7 +43,7 @@ pub async fn get_profile_by_alias(
 /// Returns `None` when no matching profile exists.
 pub async fn get_profile_by_id(pool: &PgPool, id: Uuid) -> Result<Option<ProfileRow>, NyxError> {
     sqlx::query_as::<_, ProfileRow>(
-         r"
+        r"
         SELECT id, identity_id, alias, display_name, bio, avatar_url,
                is_private, is_verified,
                follower_count, following_count, post_count,
@@ -66,7 +66,7 @@ pub async fn get_profile_by_identity(
     identity_id: Uuid,
 ) -> Result<Option<ProfileRow>, NyxError> {
     sqlx::query_as::<_, ProfileRow>(
-         r"
+        r"
         SELECT id, identity_id, alias, display_name, bio, avatar_url,
                is_private, is_verified,
                follower_count, following_count, post_count,

@@ -169,7 +169,7 @@ pub async fn get_followers(
         .map_err(NyxError::from)
     } else {
         sqlx::query_as::<_, FollowProfileRow>(
-                 r"
+            r"
             SELECT p.id, p.alias, p.display_name, p.avatar_url, p.is_verified,
                    f.created_at
             FROM uzume.follows f
@@ -199,7 +199,7 @@ pub async fn get_following(
 ) -> Result<Vec<FollowProfileRow>, NyxError> {
     if let (Some(after_ts), Some(after_uuid)) = (after_created_at, after_id) {
         sqlx::query_as::<_, FollowProfileRow>(
-                 r"
+            r"
             SELECT p.id, p.alias, p.display_name, p.avatar_url, p.is_verified,
                    f.created_at
             FROM uzume.follows f
