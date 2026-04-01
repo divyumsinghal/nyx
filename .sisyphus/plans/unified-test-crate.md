@@ -1,5 +1,8 @@
 # Unified Test Crate & Comprehensive TDD Strategy
 
+Implement this entire plan, your goal is to unify the testing in the @tests.
+Go hard, take your time, go long, odonot step until completed.
+
 ## TL;DR
 > **Summary**: Create workspace-wide unified test harness at `@tests/` with all 22 Seshat TESTING.md dependencies, migrate all 33 integration tests via big bang approach, establish comprehensive security sweep (privacy-focused, edge cases, user data safety), TDD enforcement (CI-gating with full TESTING.md validation), and E2E tests using real sandboxed infrastructure.
 >
