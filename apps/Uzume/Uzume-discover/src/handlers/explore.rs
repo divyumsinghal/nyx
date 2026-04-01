@@ -1,7 +1,7 @@
 //! Axum handlers for the explore and trending endpoints.
 
 use axum::{
-    extract::{FromRequestParts, Query, State},
+    extract::{FromRequestParts, State},
     http::request::Parts,
     response::IntoResponse,
 };

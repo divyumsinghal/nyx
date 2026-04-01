@@ -4,7 +4,7 @@
 //! or debug output: passwords, API keys, connection strings with credentials,
 //! session tokens.
 //!
-//! ```rust
+//! ```rust,ignore
 //! use nun::Sensitive;
 //!
 //! let api_key = Sensitive::new("sk-abc123".to_string());

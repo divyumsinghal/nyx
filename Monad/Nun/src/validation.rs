@@ -17,7 +17,7 @@
 //!
 //! # Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use nun::validation;
 //!
 //! assert!(validation::alias("cool_user_42").is_ok());

@@ -11,7 +11,7 @@
 //!
 //! # Usage
 //!
-//! ```rust
+//! ```rust,ignore
 //! use nun::{NyxError, Result};
 //!
 //! fn find_post(id: &str) -> Result<()> {

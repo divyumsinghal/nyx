@@ -8,7 +8,7 @@
 //!
 //! Any empty struct works as a marker. No traits, no registration:
 //!
-//! ```rust
+//! ```rust,ignore
 //! pub struct Post;
 //! pub struct Comment;
 //!

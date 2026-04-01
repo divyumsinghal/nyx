@@ -4,11 +4,6 @@
 //! test utilities. No real database or infrastructure is needed — they
 //! verify serialization, validation, and routing wiring.
 
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-};
-use tower::ServiceExt;
 use uzume_reels::services::reel_ranker::{compute_score, RankerConfig, ReelMetrics};
 
 // ── Ranker sanity checks accessible from the API test suite ───────────────
