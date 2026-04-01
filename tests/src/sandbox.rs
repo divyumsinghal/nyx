@@ -4,6 +4,7 @@
 //! for integration and E2E tests.
 
 use std::collections::HashMap;
+use std::time::Duration;
 use testcontainers::GenericImage;
 use testcontainers::ImageExt;
 use testcontainers::{core::WaitFor, runners::AsyncRunner, ContainerAsync, Image};
@@ -59,7 +60,8 @@ impl SandboxManager {
     /// Start a NATS JetStream container.
     pub async fn with_nats(mut self) -> anyhow::Result<Self> {
         let nats = GenericImage::new("nats", "2.10-alpine")
-            .with_wait_for(WaitFor::message_on_stdout("Server is ready"))
+            .with_wait_for(WaitFor::seconds(2))
+            .with_startup_timeout(Duration::from_secs(180))
             .with_cmd(vec!["-js", "-m", "8222"])
             .start()
             .await?;
@@ -154,7 +156,7 @@ impl Image for NatsImage {
     }
 
     fn ready_conditions(&self) -> Vec<WaitFor> {
-        vec![WaitFor::message_on_stdout("Server is ready")]
+        vec![WaitFor::seconds(2)]
     }
 
     fn env_vars(
