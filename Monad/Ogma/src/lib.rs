@@ -22,6 +22,9 @@
 
 #![warn(clippy::pedantic)]
 #![allow(clippy::module_name_repetitions)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::doc_markdown)]
 
 pub mod aliases;
 pub mod client;

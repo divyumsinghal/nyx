@@ -231,7 +231,7 @@ async fn feed_limit_respects_chronological_ordering() {
             Uuid::now_v7(),
             author,
             "test_user",
-            &format!("Post {}", i),
+            format!("Post {}", i),
             now - Duration::seconds(i as i64 * 10),
         );
         let mut endpoints = uzume_feed::FeedEndpoints::new(service);

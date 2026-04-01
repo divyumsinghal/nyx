@@ -3,9 +3,7 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use heka::link_policy::{LinkPolicyEngine, LinkRule};
 use nun::{IdentityId, LinkPolicy, NyxApp};
-use uzume_profiles::{
-    Authenticator, Profile, ProfilePatch, ProfilesService, PublicProfileResponse,
-};
+use uzume_profiles::{Authenticator, Profile, ProfilePatch, ProfilesService};
 
 #[derive(Clone, Default)]
 struct TestAuthenticator {
@@ -67,7 +65,7 @@ async fn me_profile_lifecycle_and_public_read() {
     // #then lifecycle state is consistent and response does not leak global identity internals
     assert_eq!(me_before.alias, "owner_alias");
     assert_eq!(me_after.display_name, "Owner Updated");
-    assert_eq!(public, PublicProfileResponse::from(me_after.clone()));
+    assert_eq!(public, me_after);
 
     let value = serde_json::to_value(public).unwrap();
     assert!(value.get("identity_id").is_none());

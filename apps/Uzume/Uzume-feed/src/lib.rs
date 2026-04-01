@@ -145,7 +145,7 @@ where
         self.posts_by_id.insert(post_id, post);
         self.posts_by_author
             .entry(author_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .insert(0, post_id);
         self.global_timeline.insert(0, post_id);
     }
@@ -174,7 +174,7 @@ where
         // Insert into author timeline (newest first)
         self.posts_by_author
             .entry(author_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .insert(0, post_id);
 
         // Insert into global timeline (newest first)
@@ -281,7 +281,7 @@ where
         Ok(posts
             .into_iter()
             .take(limit)
-            .map(|p| PostResponse::from(p))
+            .map(PostResponse::from)
             .collect())
     }
 
