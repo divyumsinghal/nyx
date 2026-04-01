@@ -1,0 +1,16 @@
+[package]
+name = "Uzume-discover"
+description = "Explore page, trending, search — :3005"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "uzume-discover"
+path = "src/main.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../../../Monad/Nun" }
+tokio = { workspace = true }

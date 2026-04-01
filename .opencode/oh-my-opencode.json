@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/oh-my-opencode.schema.json",
   "agents": {
     "sisyphus": {
-      "model": "opencode/qwen3.6-plus-free",
+      "model": "opencode/gpt-5-nano",
       "variant": "max"
     },
     "hephaestus": {
@@ -10,11 +10,11 @@
       "variant": "medium"
     },
     "oracle": {
-      "model": "github-copilot/gpt-5.3-codex",
+      "model": "zai-coding-plan/glm-4.7",
       "variant": "high"
     },
     "librarian": {
-      "model": "github-copilot/gemini-3.1-pro-preview"
+      "model": "opencode/minimax-m2.5-free"
     },
     "explore": {
       "model": "opencode/minimax-m2.5-free"
@@ -31,7 +31,7 @@
       "variant": "max"
     },
     "momus": {
-      "model": "github-copilot/gemini-3.1-pro-preview",
+      "model": "opencode/minimax-m2.5-free",
       "variant": "high"
     },
     "atlas": {
@@ -61,7 +61,7 @@
       "model": "opencode/qwen3.6-plus-free"
     },
     "unspecified-high": {
-      "model": "github-copilot/gpt-5.3-codex"
+      "model": "zai-coding-plan/glm-4.7"
     },
     "writing": {
       "model": "github-copilot/gemini-3-flash-preview"

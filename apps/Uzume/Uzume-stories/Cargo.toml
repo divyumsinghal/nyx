@@ -1,0 +1,16 @@
+[package]
+name = "Uzume-stories"
+description = "Stories, highlights, 24h TTL — :3003"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "uzume-stories"
+path = "src/main.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../../../Monad/Nun" }
+tokio = { workspace = true }

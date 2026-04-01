@@ -15,6 +15,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "Anteros"
+version = "0.1.0"
+dependencies = [
+ "Nun",
+]
+
+[[package]]
 name = "Brizo"
 version = "0.1.0"
 dependencies = [
@@ -34,10 +41,13 @@ dependencies = [
  "Nun",
  "Uzume-profiles",
  "async-trait",
+ "chrono",
+ "jsonwebtoken",
  "reqwest",
  "serde",
  "serde_json",
  "tokio",
+ "uuid",
 ]
 
 [[package]]
@@ -115,10 +125,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "Themis"
+version = "0.1.0"
+dependencies = [
+ "Nun",
+]
+
+[[package]]
 name = "Ushas"
 version = "0.1.0"
 dependencies = [
  "Nun",
+]
+
+[[package]]
+name = "Uzume-discover"
+version = "0.1.0"
+dependencies = [
+ "Nun",
+ "tokio",
 ]
 
 [[package]]
@@ -163,6 +188,22 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "validator",
+]
+
+[[package]]
+name = "Uzume-reels"
+version = "0.1.0"
+dependencies = [
+ "Nun",
+ "tokio",
+]
+
+[[package]]
+name = "Uzume-stories"
+version = "0.1.0"
+dependencies = [
+ "Nun",
+ "tokio",
 ]
 
 [[package]]

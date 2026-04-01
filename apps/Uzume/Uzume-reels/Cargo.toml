@@ -1,0 +1,16 @@
+[package]
+name = "Uzume-reels"
+description = "Short-form video, algorithmic feed — :3004"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "uzume-reels"
+path = "src/main.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../../../Monad/Nun" }
+tokio = { workspace = true }

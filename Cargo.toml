@@ -21,6 +21,12 @@ members = [
     # Uzume services
     "apps/Uzume/Uzume-profiles",
     "apps/Uzume/Uzume-feed",
+    "apps/Uzume/Uzume-stories",
+    "apps/Uzume/Uzume-reels",
+    "apps/Uzume/Uzume-discover",
+    # Future apps (stubs)
+    "apps/Anteros",
+    "apps/Themis",
 ]
 
 [workspace.package]
