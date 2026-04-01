@@ -109,6 +109,7 @@ version = "0.1.0"
 dependencies = [
  "Akash",
  "Nun",
+ "anyhow",
  "async-nats",
  "fast_image_resize",
  "futures",
@@ -136,6 +137,7 @@ name = "Ushas"
 version = "0.1.0"
 dependencies = [
  "Nun",
+ "anyhow",
  "async-nats",
  "chrono",
  "nyx-events",
@@ -146,6 +148,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "uuid",
 ]
 

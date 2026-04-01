@@ -12,3 +12,6 @@ mod cross_app;
 
 #[path = "e2e/security_regression.rs"]
 mod security_regression;
+
+#[path = "e2e/phase3_full_backend.rs"]
+mod phase3_full_backend;

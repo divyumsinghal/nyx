@@ -1,14 +1,9 @@
-//! # Ushas — Push + in-app notification dispatch for the Nyx platform
-//!
-//! Gorush HTTP client for APNs/FCM. In-app notification storage.
-//! Notification grouping ("X and 42 others liked your post").
-//! User preference management per app/event-type.
-//!
-//! ## Planned modules
-//! - `gorush` — Gorush HTTP client
-//! - `in_app` — PostgreSQL storage + WebSocket push
-//! - `grouping` — notification aggregation logic
-//! - `preferences` — per-app, per-event-type mute settings
-//! - `bin/worker` — NATS subscriber → dispatch
+//! Ushas — Push + in-app notification dispatch for the Nyx platform.
+#![warn(clippy::pedantic)]
+#![allow(clippy::missing_errors_doc)]
 
-// TODO: implement Ushas modules
+pub mod error;
+pub mod gorush;
+pub mod grouping;
+pub mod in_app;
+pub mod preferences;
