@@ -10,6 +10,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use validator::Validate;
 
 /// Story lifecycle states.
 ///
@@ -103,13 +104,16 @@ impl From<StoryRow> for StoryResponse {
 }
 
 /// Request body for creating a story.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct CreateStoryRequest {
     /// MIME type of the media to upload (e.g. `"image/jpeg"`, `"video/mp4"`).
+    #[validate(length(min = 1, max = 255, message = "content_type must be non-empty"))]
     pub content_type: String,
     /// Exact byte size of the media file to upload.
+    #[validate(range(min = 1, max = 104857600, message = "content_length must be between 1 and 104857600"))]
     pub content_length: u64,
     /// For videos: intended duration in seconds.
+    #[validate(range(min = 1, max = 3600, message = "duration_secs must be between 1 and 3600"))]
     pub duration_secs: Option<u32>,
 }
 

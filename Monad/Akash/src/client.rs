@@ -92,7 +92,10 @@ impl StorageClient {
             .map_err(map_storage_error)?;
 
         let mut headers = BTreeMap::new();
-        headers.insert("content-type".to_string(), metadata.content_type().to_string());
+        headers.insert(
+            "content-type".to_string(),
+            metadata.content_type().to_string(),
+        );
         headers.insert(
             "content-length".to_string(),
             metadata.content_length().to_string(),
@@ -117,7 +120,10 @@ impl StorageClient {
 
         let mut headers = BTreeMap::new();
         headers.insert("x-content-type-options".to_string(), "nosniff".to_string());
-        headers.insert("cache-control".to_string(), "private, max-age=60".to_string());
+        headers.insert(
+            "cache-control".to_string(),
+            "private, max-age=60".to_string(),
+        );
 
         Ok(PresignedDownload::new(url, "GET", headers))
     }

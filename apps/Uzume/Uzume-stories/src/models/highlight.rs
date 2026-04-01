@@ -8,6 +8,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
+use validator::Validate;
 
 /// Raw database row for a highlight.
 #[derive(Debug, Clone, FromRow)]
@@ -55,8 +56,9 @@ impl From<HighlightRow> for HighlightResponse {
 }
 
 /// Request body for creating a highlight.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Validate)]
 pub struct CreateHighlightRequest {
+    #[validate(length(min = 1, max = 150, message = "title must be 1-150 characters"))]
     pub title: String,
 }
 

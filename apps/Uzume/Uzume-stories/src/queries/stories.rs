@@ -3,7 +3,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::story::{MediaType, StoryInsert, StoryRow, StoryStatus};
+use crate::models::story::{StoryInsert, StoryRow};
 use nun::NyxError;
 
 const SELECT_COLS: &str = r#"
