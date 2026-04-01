@@ -11,6 +11,44 @@ rust-version.workspace = true
 name = "uzume-reels"
 path = "src/main.rs"
 
+[lib]
+name = "uzume_reels"
+path = "src/lib.rs"
+
+[[test]]
+name = "reel_ranker_test"
+path = "tests/services/reel_ranker_test.rs"
+
+[[test]]
+name = "reels_api_test"
+path = "tests/api/reels_test.rs"
+
 [dependencies]
-nun = { package = "Nun", path = "../../../Monad/Nun" }
+nun = { package = "Nun", path = "../../../Monad/Nun", features = ["sqlx", "validator"] }
+nyx-api = { package = "nyx-api", path = "../../../Monad/api" }
+mnemosyne = { package = "Mnemosyne", path = "../../../Monad/Mnemosyne" }
+lethe = { package = "Lethe", path = "../../../Monad/Lethe" }
+nyx-events = { package = "nyx-events", path = "../../../Monad/events" }
+akash = { package = "Akash", path = "../../../Monad/Akash" }
+brizo = { package = "Brizo", path = "../../../Monad/Brizo" }
+
+axum = { workspace = true }
 tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = "1"
+validator = { workspace = true, features = ["derive"] }
+async-trait = "0.1"
+futures = "0.3"
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+testcontainers = { workspace = true }
+testcontainers-modules = { workspace = true }
+tower = { workspace = true, features = ["full"] }

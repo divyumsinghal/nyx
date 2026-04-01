@@ -219,8 +219,30 @@ dependencies = [
 name = "Uzume-reels"
 version = "0.1.0"
 dependencies = [
+ "Akash",
+ "Brizo",
+ "Lethe",
+ "Mnemosyne",
  "Nun",
+ "anyhow",
+ "async-trait",
+ "axum",
+ "chrono",
+ "futures",
+ "nyx-api",
+ "nyx-events",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "testcontainers 0.24.0",
+ "testcontainers-modules 0.11.6",
+ "thiserror 2.0.18",
  "tokio",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "validator",
 ]
 
 [[package]]
