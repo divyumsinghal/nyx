@@ -1,7 +1,7 @@
 pub mod highlights;
 pub mod stories;
 
-use axum::{Json, http::StatusCode, response::IntoResponse};
+use axum::{http::StatusCode, response::IntoResponse, Json};
 use nun::NyxError;
 
 /// Wrapper that converts `NyxError` into an Axum response.

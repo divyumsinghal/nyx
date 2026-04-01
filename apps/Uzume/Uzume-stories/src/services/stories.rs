@@ -6,7 +6,10 @@ use chrono::Utc;
 use nun::{Cursor, NyxError, PageResponse};
 use uuid::Uuid;
 
-use crate::models::{story::{MediaType, StoryResponse, StoryRow, StoryStatus}, viewer::{StoryViewRow, ViewerResponse}};
+use crate::models::{
+    story::{MediaType, StoryResponse, StoryRow, StoryStatus},
+    viewer::{StoryViewRow, ViewerResponse},
+};
 
 /// Parse a content type into the supported story media type.
 pub fn media_type_from_content_type(content_type: &str) -> Result<MediaType, NyxError> {

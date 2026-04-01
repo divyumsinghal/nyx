@@ -1,29 +1,16 @@
 use nun::NyxApp;
-use nyx_events::{
-    subjects, DomainEvent, EventEnvelope, EventPublisher, InMemoryEventPublisher,
+use events::{
+    subjects, EventEnvelope, EventPublisher, InMemoryEventPublisher,
     NoopEventPublisher,
 };
-use serde::Serialize;
-
-#[derive(Debug, Clone, Serialize)]
-struct TestDomainEvent {
-    alias: String,
-}
-
-impl DomainEvent for TestDomainEvent {
-    const APP: NyxApp = NyxApp::Uzume;
-    const SUBJECT: &'static str = subjects::UZUME_PROFILE_UPDATED;
-}
 
 #[test]
 fn domain_event_envelope_builds_without_provider_metadata() {
     // #given a domain event payload
-    let event = TestDomainEvent {
-        alias: "owner_alias".to_string(),
-    };
+    let payload = serde_json::json!({ "alias": "owner_alias" });
 
     // #when creating a provider-agnostic event envelope
-    let envelope = EventEnvelope::from_domain(&event).unwrap();
+    let envelope = EventEnvelope::new(NyxApp::Uzume, subjects::UZUME_PROFILE_UPDATED, payload);
 
     // #then envelope carries app + subject + payload only
     assert_eq!(envelope.app, NyxApp::Uzume);
@@ -53,8 +40,10 @@ async fn in_memory_adapter_is_deterministic() {
     // #then snapshot preserves deterministic append order
     let snapshot = publisher.snapshot();
     assert_eq!(snapshot.len(), 2);
-    assert_eq!(snapshot[0], first);
-    assert_eq!(snapshot[1], second);
+    assert_eq!(snapshot[0].subject, first.subject);
+    assert_eq!(snapshot[0].payload, first.payload);
+    assert_eq!(snapshot[1].subject, second.subject);
+    assert_eq!(snapshot[1].payload, second.payload);
 }
 
 #[tokio::test]

@@ -1,10 +1,10 @@
 use axum::{
     extract::{FromRequestParts, Path, State},
-    http::{StatusCode, request::Parts},
+    http::{request::Parts, StatusCode},
     response::IntoResponse,
 };
-use nyx_api::{ApiResponse, AuthUser, CursorPagination, ValidatedJson};
 use nun::{Cursor, NyxError};
+use nyx_api::{ApiResponse, AuthUser, CursorPagination, ValidatedJson};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -55,7 +55,10 @@ pub async fn create_story(
     };
 
     let row = story_queries::create_story(&state.db, &insert).await?;
-    Ok((StatusCode::CREATED, ApiResponse::ok(StoryResponse::from(row))))
+    Ok((
+        StatusCode::CREATED,
+        ApiResponse::ok(StoryResponse::from(row)),
+    ))
 }
 
 #[instrument(skip(state), fields(story_id = %story_id))]
@@ -73,7 +76,9 @@ pub async fn get_story(
     if let Some(viewer_id) = viewer_identity_id {
         if should_record_view(&row, viewer_id) {
             let viewer_alias = viewer_id.to_string();
-            if let Err(err) = viewer_queries::record_view(&state.db, story_id, viewer_id, &viewer_alias).await {
+            if let Err(err) =
+                viewer_queries::record_view(&state.db, story_id, viewer_id, &viewer_alias).await
+            {
                 tracing::warn!(?err, %story_id, "failed to record story view");
             }
         }
@@ -154,14 +159,9 @@ pub async fn get_viewers(
     ensure_story_owner(&story, user.user_id)?;
 
     let (after_ts, after_id) = decode_cursor_opt(page.cursor.as_deref())?;
-    let rows = viewer_queries::get_viewers(
-        &state.db,
-        story_id,
-        after_ts,
-        after_id,
-        page.query_limit(),
-    )
-    .await?;
+    let rows =
+        viewer_queries::get_viewers(&state.db, story_id, after_ts, after_id, page.query_limit())
+            .await?;
 
     let page_resp = build_viewer_page(rows, page.effective_limit());
     let next = page_resp.next_cursor.clone();

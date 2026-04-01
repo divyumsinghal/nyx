@@ -1,13 +1,15 @@
 use axum::{
-    Router,
     middleware,
     routing::{delete, get, post},
+    Router,
 };
 use nyx_api::middleware::auth::auth;
 
 use crate::{
     handlers::{
-        highlights::{add_story, create_highlight, delete_highlight, list_highlights, remove_story},
+        highlights::{
+            add_story, create_highlight, delete_highlight, list_highlights, remove_story,
+        },
         stories::{create_story, delete_story, get_feed, get_story, get_viewers, mark_view},
     },
     state::AppState,
