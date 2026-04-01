@@ -75,14 +75,22 @@ dev-nuke:
 
 # ── Development: individual service runners (cargo) ───────────────────────────
 
-dev-gateway:        cargo run -p heimdall
-dev-oya:            cargo run -p oya
-dev-ushas:          cargo run -p ushas
-dev-profiles:       cargo run -p uzume-profiles
-dev-feed:           cargo run -p uzume-feed
-dev-stories:        cargo run -p uzume-stories
-dev-reels:          cargo run -p uzume-reels
-dev-discover:       cargo run -p uzume-discover
+dev-gateway:
+    cargo run -p heimdall
+dev-oya:
+    cargo run -p oya
+dev-ushas:
+    cargo run -p ushas
+dev-profiles:
+    cargo run -p uzume-profiles
+dev-feed:
+    cargo run -p uzume-feed
+dev-stories:
+    cargo run -p uzume-stories
+dev-reels:
+    cargo run -p uzume-reels
+dev-discover:
+    cargo run -p uzume-discover
 
 # ── Production ────────────────────────────────────────────────────────────────
 
@@ -138,15 +146,21 @@ nats-shell:
 
 # ── Quality gates (used by CI) ────────────────────────────────────────────────
 
-fmt-check:          cargo fmt --all -- --check
-fmt:                cargo fmt --all
-lint:               cargo clippy --workspace --all-targets --all-features -- -D warnings
-lint-fix:           cargo clippy --workspace --all-targets --all-features --fix -- -D warnings
+fmt-check:
+    cargo fmt --all -- --check
+fmt:
+    cargo fmt --all
+lint:
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
+lint-fix:
+    cargo clippy --workspace --all-targets --all-features --fix -- -D warnings
 
 # ── Security ──────────────────────────────────────────────────────────────────
 
-security-deny:      cargo deny check
-security-audit:     cargo audit
+security-deny:
+    cargo deny check
+security-audit:
+    cargo audit
 
 security-secret-scan:
 	@set -eu; \
@@ -210,13 +224,21 @@ test-crate crate:
 
 # ── Migrations validation gate ────────────────────────────────────────────────
 
-migration-check:    cargo run -p nyx-xtask -- migrate
-validation-check:   cargo check --workspace --all-targets --all-features
+migration-check:
+    cargo run -p nyx-xtask -- migrate
+validation-check:
+    cargo check --workspace --all-targets --all-features
 
 # ── Full CI-equivalent local gate ─────────────────────────────────────────────
 
 # Mirrors exactly what .github/workflows/ci.yml runs — run this before pushing.
-ci: fmt-check lint security gate-cross-app-unauthorized validation-check test
+ci:
+    fmt-check
+    lint
+    security
+    gate-cross-app-unauthorized
+    validation-check
+    test
     @echo "All CI gates passed locally."
 
 # ── Docker builds ─────────────────────────────────────────────────────────────
@@ -295,16 +317,23 @@ docker-build-all:
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 
-build-release:      cargo build --release --workspace
-build-check:        cargo check --workspace --all-targets --all-features
+build-release:
+    cargo build --release --workspace
+build-check:
+    cargo check --workspace --all-targets --all-features
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 
-ui-install:         cd Maya && pnpm install
-ui-dev-uzume:       cd Maya/Uzume-web && pnpm dev
-ui-dev-nyx:         cd Maya/nyx-web && pnpm dev
-ui-build:           cd Maya && pnpm build
-ui-lint:            cd Maya && pnpm lint
+ui-install:
+    cd Maya && pnpm install
+ui-dev-uzume:
+    cd Maya/Uzume-web && pnpm dev
+ui-dev-nyx:
+    cd Maya/nyx-web && pnpm dev
+ui-build:
+    cd Maya && pnpm build
+ui-lint:
+    cd Maya && pnpm lint
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 
