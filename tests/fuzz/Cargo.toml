@@ -1,0 +1,21 @@
+[package]
+name = "nyx-tests-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[workspace]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+jsonwebtoken = "9"
+serde = { version = "1", features = ["derive"] }
+
+[[bin]]
+name = "fuzz_target_token_validation"
+path = "fuzz_targets/fuzz_target_token_validation.rs"
+test = false
+doc = false

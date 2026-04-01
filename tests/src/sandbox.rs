@@ -4,6 +4,8 @@
 //! for integration and E2E tests.
 
 use std::collections::HashMap;
+use testcontainers::GenericImage;
+use testcontainers::ImageExt;
 use testcontainers::{core::WaitFor, runners::AsyncRunner, ContainerAsync, Image};
 use testcontainers_modules::{minio::MinIO, postgres::Postgres, redis::Redis};
 
@@ -12,6 +14,7 @@ pub struct SandboxManager {
     pub postgres: Option<ContainerAsync<Postgres>>,
     pub redis: Option<ContainerAsync<Redis>>,
     pub minio: Option<ContainerAsync<MinIO>>,
+    pub nats: Option<ContainerAsync<GenericImage>>,
     // Additional containers will be added as needed
 }
 
@@ -22,6 +25,7 @@ impl SandboxManager {
             postgres: None,
             redis: None,
             minio: None,
+            nats: None,
         }
     }
 
@@ -49,6 +53,17 @@ impl SandboxManager {
     pub async fn with_minio(mut self) -> anyhow::Result<Self> {
         let minio = MinIO::default().start().await?;
         self.minio = Some(minio);
+        Ok(self)
+    }
+
+    /// Start a NATS JetStream container.
+    pub async fn with_nats(mut self) -> anyhow::Result<Self> {
+        let nats = GenericImage::new("nats", "2.10-alpine")
+            .with_wait_for(WaitFor::message_on_stdout("Server is ready"))
+            .with_cmd(vec!["-js", "-m", "8222"])
+            .start()
+            .await?;
+        self.nats = Some(nats);
         Ok(self)
     }
 
@@ -87,6 +102,17 @@ impl SandboxManager {
             }
         } else {
             panic!("MinIO container not started");
+        }
+    }
+
+    /// Get NATS connection URL.
+    pub async fn nats_url(&self) -> String {
+        if let Some(ref container) = self.nats {
+            let host = container.get_host().await.unwrap();
+            let port = container.get_host_port_ipv4(4222).await.unwrap();
+            format!("nats://{host}:{port}")
+        } else {
+            panic!("NATS container not started");
         }
     }
 }
@@ -187,5 +213,17 @@ mod tests {
         let config = sandbox.minio_config().await;
         assert!(config.endpoint.starts_with("http://"));
         assert_eq!(config.access_key, "minioadmin");
+    }
+
+    #[tokio::test]
+    #[ignore = "requires Docker"]
+    async fn sandbox_manager_starts_nats() {
+        let sandbox = SandboxManager::new()
+            .with_nats()
+            .await
+            .expect("Failed to start nats");
+
+        let url = sandbox.nats_url().await;
+        assert!(url.starts_with("nats://"));
     }
 }

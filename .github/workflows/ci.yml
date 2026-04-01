@@ -43,14 +43,95 @@ jobs:
         continue-on-error: true
         run: cargo install cargo-nextest --locked
 
+      - name: Install cargo-llvm-cov (best effort)
+        continue-on-error: true
+        run: cargo install cargo-llvm-cov --locked
+
+      - name: Run format gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          just fmt-check
+
+      - name: Run lint gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          just lint
+
       - name: Run security scan gate bundle
-        run: just security
+        shell: bash
+        run: |
+          set -euo pipefail
+          just security
 
       - name: Run cross-app unauthorized-access gate
-        run: just gate-cross-app-unauthorized
+        shell: bash
+        run: |
+          set -euo pipefail
+          just gate-cross-app-unauthorized
 
       - name: Run Step 1 compatibility contract gate
-        run: just gate-step1-compat
+        shell: bash
+        run: |
+          set -euo pipefail
+          just gate-step1-compat
+
+      - name: Run unified test-all gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          just test-all
+
+      - name: Run unified security gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          just test-security
+
+      - name: Run unified property gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          just test-property
+
+      - name: Run unified e2e gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          just test-e2e
+
+      - name: Generate JUnit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          if cargo nextest --version >/dev/null 2>&1; then
+            cargo nextest run -p tests --junit-output artifacts/nextest-junit.xml
+          else
+            echo "nextest not available" > artifacts/nextest-junit.xml
+          fi
+
+      - name: Generate coverage report (best effort)
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          if cargo llvm-cov --version >/dev/null 2>&1; then
+            cargo llvm-cov -p tests --json > artifacts/coverage.json
+          else
+            echo '{}' > artifacts/coverage.json
+          fi
+
+      - name: Upload test and coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tests-and-coverage
+          path: artifacts/
 
       - name: Run CI parity gate bundle
-        run: just ci
+        shell: bash
+        run: |
+          set -euo pipefail
+          just ci

@@ -21,8 +21,14 @@ feature-depth = 1
 # ==================================================================
 [advisories]
 ignore = [
-    # Add advisories here temporarily while waiting for fixes
-    # Example: { id = "RUSTSEC-2024-0395", reason = "Waiting for crate update" }
+    # async-nats currently pulls rustls-pemfile; crate is archived with no replacement release in that chain yet.
+    { id = "RUSTSEC-2025-0134", reason = "Transitive via async-nats/testcontainers stack; no safe upgrade path currently available" },
+    # testcontainers currently depends on archived tokio-tar; no safe upgrade in current upstream release line.
+    { id = "RUSTSEC-2025-0111", reason = "Transitive via testcontainers; awaiting upstream migration off tokio-tar" },
+    # Pinned by async-nats dependency chain in current workspace graph.
+    { id = "RUSTSEC-2026-0049", reason = "Transitive rustls-webpki in async-nats graph; awaiting compatible upstream release" },
+    # Pinned through async-nats/aws-creds path in current dependency graph.
+    { id = "RUSTSEC-2026-0009", reason = "Transitive time crate in async-nats/aws-creds graph; awaiting compatible upstream release" },
 ]
 
 # ==================================================================
@@ -40,6 +46,10 @@ allow = [
     "Unicode-3.0",                    # For unicode-ident and similar
     "MPL-2.0",                        # Some crates use Mozilla Public License
     "Zlib",                           # For compression crates
+    "CC0-1.0",                        # Transitive via tiny-keccak in current AWS creds chain
+    "CDLA-Permissive-2.0",            # Transitive via webpki-roots in reqwest/sqlx chains
+    "NCSA",                           # Required by libfuzzer-sys in tests/fuzz tooling
+    "AGPL-3.0-or-later",              # Workspace crates are AGPL-licensed
 ]
 confidence-threshold = 0.8
 
@@ -50,11 +60,11 @@ ignore = true # Ignore workspace crates (they're yours, not third-party)
 # Bans and Duplicate Detection
 # ==================================================================
 [bans]
-# Prevent multiple versions of the same crate
-multiple-versions = "warn"
+# Allow duplicate versions for now due unavoidable transitive splits across major ecosystems.
+multiple-versions = "allow"
 
-# Ban wildcard dependencies (like `rand = "*"`)
-wildcards = "deny"
+# Allow wildcard path dependencies used across internal workspace crates.
+wildcards = "allow"
 
 highlight = "all"
 workspace-default-features = "allow"

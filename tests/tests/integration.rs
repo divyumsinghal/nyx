@@ -3,3 +3,9 @@ mod heka_link_policy;
 
 #[path = "integration/events_boundary.rs"]
 mod events_boundary;
+
+#[path = "integration/tooling_coverage.rs"]
+mod tooling_coverage;
+
+#[path = "integration/snapshot_contracts.rs"]
+mod snapshot_contracts;

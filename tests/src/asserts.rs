@@ -92,7 +92,6 @@ macro_rules! assert_json_contains {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_json::json;
 
     #[test]

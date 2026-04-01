@@ -9,7 +9,11 @@ publish = false
 
 [dependencies]
 # Workspace crates - all platform and app crates for integration testing
-nun = { path = "../Monad/Nun", package = "Nun", features = ["test", "sqlx", "validator"] }
+nun = { path = "../Monad/Nun", package = "Nun", features = [
+    "test",
+    "sqlx",
+    "validator",
+] }
 nyx-api = { path = "../Monad/api" }
 mnemosyne = { path = "../Monad/Mnemosyne", package = "Mnemosyne" }
 heka = { path = "../Monad/Heka", package = "Heka" }

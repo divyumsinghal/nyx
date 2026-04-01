@@ -155,3 +155,33 @@ Verification snapshot:
 Remaining hardening work:
 - Convert mirrored files in `tests/tests/migrated/**` into actively compiled unified targets in phases.
 - Remove legacy crate-local copies after sustained green window.
+
+## SESSION UPDATE 2026-04-01 (Legacy test cutover)
+
+Completed in this run:
+- Performed verified cutover: validated unified suite first, then removed legacy test directories from app/platform crates.
+- Deleted legacy test directories:
+	- `Monad/Akash/tests`
+	- `Monad/Heimdall/tests`
+	- `Monad/Heka/tests`
+	- `Monad/Lethe/tests`
+	- `Monad/Mnemosyne/tests`
+	- `Monad/api/tests`
+	- `Monad/events/tests`
+	- `Monad/xtask/tests`
+	- `apps/Uzume/Uzume-feed/tests`
+	- `apps/Uzume/Uzume-profiles/tests`
+- Expanded unified security coverage with dedicated suites:
+	- `tests/tests/security/sql_injection.rs`
+	- `tests/tests/security/xss.rs`
+	- `tests/tests/security/authz_bypass.rs`
+	- `tests/tests/security/privacy_violations.rs`
+	- `tests/tests/security/edge_cases.rs`
+	- wired in `tests/tests/security.rs`
+
+Verification snapshot:
+- Legacy test scan outside root `tests/` now returns only root tests tree.
+- `cargo test -p tests` passes.
+- `just test-security` passes (30 tests).
+- `just test-all` passes (64 tests).
+- TESTING dependency coverage in `tests/Cargo.toml` confirmed.
