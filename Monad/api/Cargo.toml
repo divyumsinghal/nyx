@@ -1,0 +1,27 @@
+[package]
+name = "nyx-api"
+description = "Axum framework: middleware, extractors, server builder"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "nyx_api"
+path = "src/lib.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../Nun", default-features = false }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+utoipa = { workspace = true }
+jsonwebtoken = { workspace = true }
+validator = { workspace = true }
+tokio = { workspace = true }
+time = "=0.3.36"

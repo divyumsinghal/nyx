@@ -49,5 +49,8 @@ jobs:
       - name: Run cross-app unauthorized-access gate
         run: just gate-cross-app-unauthorized
 
+      - name: Run Step 1 compatibility contract gate
+        run: just gate-step1-compat
+
       - name: Run CI parity gate bundle
         run: just ci

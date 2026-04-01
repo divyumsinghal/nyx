@@ -2,7 +2,7 @@
   "$schema": "https://raw.githubusercontent.com/code-yeongyu/oh-my-openagent/dev/assets/oh-my-opencode.schema.json",
   "agents": {
     "sisyphus": {
-      "model": "github-copilot/gpt-5.3-codex",
+      "model": "opencode/qwen3.6-plus-free",
       "variant": "max"
     },
     "hephaestus": {
@@ -35,10 +35,10 @@
       "variant": "high"
     },
     "atlas": {
-      "model": "github-copilot/gpt-5.3-codex"
+      "model": "opencode/qwen3.6-plus-free"
     },
     "sisyphus-junior": {
-      "model": "github-copilot/gpt-5.3-codex"
+      "model": "opencode/qwen3.6-plus-free"
     }
   },
   "categories": {

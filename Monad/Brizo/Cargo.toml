@@ -1,0 +1,15 @@
+[package]
+name = "Brizo"
+description = "Meilisearch: index management, typed queries"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "brizo"
+path = "src/lib.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../Nun" }

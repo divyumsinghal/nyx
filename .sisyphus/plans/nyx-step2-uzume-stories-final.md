@@ -1,5 +1,13 @@
 # Nyx Step 2 — Uzume Stories Final (Monad-First, Production)
 
+-> FOLLOW TDD - Test driven development, 100 % extreme coverage with any edge case you can think of -> /superpowers:test-driven-development
+-> FOLLOW TDD - Test driven development, 100 % extreme coverage with any edge case you can think of -> /superpowers:test-driven-development
+-> FOLLOW TDD - Test driven development, 100 % extreme coverage with any edge case you can think of -> /superpowers:test-driven-development
+
+-> Delegate to Subagents -> Parallelise evertything -> This is a move fast and right projeect -> /superpowers:subagent-driven-development
+-> Delegate to Subagents -> Parallelise evertything -> This is a move fast and right projeect -> /superpowers:subagent-driven-development
+-> Delegate to Subagents -> Parallelise evertything -> This is a move fast and right projeect -> /superpowers:subagent-driven-development
+
 ## TL;DR
 > **Summary**: Deliver the final production Uzume Stories service end-to-end in a single release train, with shared capabilities implemented in Monad first and Uzume-specific domain logic implemented in Uzume-stories, while preserving all Step 1 contracts.
 > **Deliverables**:
@@ -95,22 +103,22 @@ Wave 3: Interactions + highlights + workers + media async finalization (Tasks 9-
 Wave 4: Security hardening + rollback + release validation (Tasks 13-14)
 
 ### Dependency Matrix (full, all tasks)
-| Task | Depends On | Blocks |
-| ---- | ---------- | ------ |
-| 1 | - | 2,3,4,5,6,7,8,9,10,11,12,13,14 |
-| 2 | 1 | 5,6,7,8,9,10,11,12 |
-| 3 | 1 | 5,9,10,11,12 |
-| 4 | 1 | 5,6,7,8,9,10,11,12 |
-| 5 | 1,2,3,4 | 6,7,8,9,10,11,12,13 |
-| 6 | 5 | 7,8,13 |
-| 7 | 5,6 | 8,13 |
-| 8 | 5,6,7 | 9,10,13 |
-| 9 | 5,8 | 10,12,13 |
-| 10 | 5,8,9 | 11,12,13 |
-| 11 | 3,5,10 | 12,13 |
-| 12 | 9,10,11 | 13,14 |
-| 13 | 6,7,8,9,10,11,12 | 14 |
-| 14 | 13 | Final verification |
+| Task | Depends On       | Blocks                         |
+| ---- | ---------------- | ------------------------------ |
+| 1    | -                | 2,3,4,5,6,7,8,9,10,11,12,13,14 |
+| 2    | 1                | 5,6,7,8,9,10,11,12             |
+| 3    | 1                | 5,9,10,11,12                   |
+| 4    | 1                | 5,6,7,8,9,10,11,12             |
+| 5    | 1,2,3,4          | 6,7,8,9,10,11,12,13            |
+| 6    | 5                | 7,8,13                         |
+| 7    | 5,6              | 8,13                           |
+| 8    | 5,6,7            | 9,10,13                        |
+| 9    | 5,8              | 10,12,13                       |
+| 10   | 5,8,9            | 11,12,13                       |
+| 11   | 3,5,10           | 12,13                          |
+| 12   | 9,10,11          | 13,14                          |
+| 13   | 6,7,8,9,10,11,12 | 14                             |
+| 14   | 13               | Final verification             |
 
 ### Agent Dispatch Summary (wave → task count → categories)
 - Wave 1 → 4 tasks → deep, unspecified-high
@@ -121,7 +129,7 @@ Wave 4: Security hardening + rollback + release validation (Tasks 13-14)
 ## TODOs
 > Implementation + Test = ONE task. Never separate.
 
-- [ ] 1. Contract lock + Step 1 compatibility guardrails
+- [x] 1. Contract lock + Step 1 compatibility guardrails
 
   **What to do**:
   - Encode explicit Step 1 compatibility checks for identity/privacy/feed invariants and CI/security gates.
@@ -165,7 +173,7 @@ Wave 4: Security hardening + rollback + release validation (Tasks 13-14)
 
   **Commit**: YES | Message: `test(contracts): lock step1 compatibility for step2` | Files: `contracts/*`, `tests/contracts/*`, `justfile` (if needed)
 
-- [ ] 2. Build Monad storage primitives for stories media (`Akash`)
+- [x] 2. Build Monad storage primitives for stories media (`Akash`)
 
   **What to do**:
   - Implement reusable stories storage path + object lifecycle helpers in `Monad/Akash`.
@@ -208,7 +216,7 @@ Wave 4: Security hardening + rollback + release validation (Tasks 13-14)
 
   **Commit**: YES | Message: `feat(akash): add stories media storage primitives` | Files: `Monad/Akash/src/*`, `Monad/Akash/tests/*`
 
-- [ ] 3. Build Monad async media pipeline primitives (`Oya` + `events`)
+- [x] 3. Build Monad async media pipeline primitives (`Oya` + `events`)
 
   **What to do**:
   - Implement shared async processing contract: upload accepted → event emitted → media processed → ready event.

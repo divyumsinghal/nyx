@@ -1,11 +1,11 @@
 [package]
 name = "heimdall"
+description = "Nyx API gateway — JWT-validating reverse proxy for all upstream services"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-description = "Nyx API gateway — JWT-validating reverse proxy for all upstream services"
 
 [[bin]]
 name = "heimdall"

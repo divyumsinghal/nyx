@@ -1,0 +1,2 @@
+# file|match_type|pattern|invariant_id
+Monad/Nun/src/types/feed_mode.rs|fixed|assert_eq!(FeedMode::default(), FeedMode::Ranking);|feed.default_must_never_be_ranking

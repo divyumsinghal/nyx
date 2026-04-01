@@ -1,5 +1,6 @@
 [package]
 name = "nyx-events"
+description = "Typed Nyx event contracts and lifecycle subjects — NATS JetStream pub/sub"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -7,16 +8,20 @@ repository.workspace = true
 rust-version.workspace = true
 
 [lib]
-name = "nyx_events"
+name = "events"
 path = "src/lib.rs"
 
 [dependencies]
 nun = { package = "Nun", path = "../Nun" }
-async-trait = "0.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
-chrono = { workspace = true }
 uuid = { workspace = true }
+async-nats = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+futures = "0.3"
+async-stream = "0.3"
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+chrono = { workspace = true }

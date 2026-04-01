@@ -1,0 +1,2 @@
+DRIFT: [feed.default_must_never_be_ranking] missing fixed pattern in Monad/Nun/src/types/feed_mode.rs :: assert_eq!(FeedMode::default(), FeedMode::Ranking);
+Step 1 compatibility contract FAILED (1/1 invariants drifted).

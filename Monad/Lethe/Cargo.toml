@@ -1,0 +1,21 @@
+[package]
+name = "Lethe"
+description = "DragonflyDB: cache-aside, rate limiting, sessions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "lethe"
+path = "src/lib.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../Nun" }
+fred = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }

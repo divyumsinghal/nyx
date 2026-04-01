@@ -1,11 +1,24 @@
 [workspace]
 resolver = "2"
 members = [
+    # Foundation
     "Monad/Nun",
+    # Platform crates
     "Monad/Heka",
+    "Monad/Mnemosyne",
+    "Monad/Lethe",
     "Monad/events",
+    "Monad/Akash",
+    "Monad/Brizo",
+    "Monad/Ogma",
+    "Monad/api",
+    # Workers + media
+    "Monad/Oya",
+    "Monad/Ushas",
+    # Gateway + tooling
     "Monad/Heimdall",
     "Monad/xtask",
+    # Uzume services
     "apps/Uzume/Uzume-profiles",
     "apps/Uzume/Uzume-feed",
 ]

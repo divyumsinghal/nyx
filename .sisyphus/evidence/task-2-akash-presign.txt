@@ -1,0 +1,14 @@
+error: failed to load manifest for workspace member `/home/sin/nyx-step2/Monad/Akash`
+referenced by workspace at `/home/sin/nyx-step2/Cargo.toml`
+
+Caused by:
+  failed to load manifest for dependency `Nun`
+
+Caused by:
+  failed to parse manifest at `/home/sin/nyx-step2/Monad/Nun/Cargo.toml`
+
+Caused by:
+  error inheriting `edition` from workspace root manifest's `workspace.package.edition`
+
+Caused by:
+  `workspace.package.edition` was not defined

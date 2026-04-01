@@ -1,0 +1,15 @@
+[package]
+name = "Anteros"
+description = "Dating app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "anteros"
+path = "src/lib.rs"
+
+[dependencies]
+nun = { package = "Nun", path = "../../Monad/Nun" }

@@ -168,6 +168,10 @@ gate-cross-app-unauthorized:
 	grep -q "DEFAULT '{\"type\":\"revoked\"}'::jsonb" "$$file" || { echo 'Missing fail-closed default policy (revoked)' >&2; exit 1; }; \
 	echo 'Cross-app unauthorized-access gate passed: required constraints present.'
 
+gate-step1-compat:
+	@set -eu; \
+	bash tests/contracts/verify_step1_contract_lock.sh contracts/step1-compat.lock
+
 check: security-deny
 
 # ── Testing ───────────────────────────────────────────────────────────────────
