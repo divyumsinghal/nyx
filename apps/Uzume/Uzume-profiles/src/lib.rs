@@ -1,3 +1,42 @@
+//! # uzume-profiles
+//!
+//! The Uzume profiles microservice: profile management, follow graph, and
+//! cross-app visibility enforcement.
+//!
+//! ## Module layout
+//!
+//! ```text
+//! lib.rs          — public crate interface
+//! config.rs       — NyxConfig loading helper
+//! state.rs        — AppState (db, cache, nats, search)
+//! models/         — sqlx FromRow structs (DB representation)
+//! queries/        — raw SQL functions
+//! services/       — pure domain logic (no I/O, fully unit-testable)
+//! handlers/       — Axum extractors → query/service calls → ApiResponse
+//! routes/         — Router construction
+//! workers/        — NATS background subscribers
+//! ```
+
+#![warn(clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+
+pub mod config;
+pub mod handlers;
+pub mod models;
+pub mod queries;
+pub mod routes;
+pub mod services;
+pub mod state;
+pub mod workers;
+
+// ── Legacy in-memory service (kept for existing tests) ───────────────────────
+//
+// The types and service below are the original in-memory implementation used
+// by the pre-HTTP test suite. They remain compilable so existing tests keep
+// passing while the real Axum service is being built out.
+
 use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;

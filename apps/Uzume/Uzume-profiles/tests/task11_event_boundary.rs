@@ -1,10 +1,34 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use heka::link_policy::LinkPolicyEngine;
 use nun::{IdentityId, NyxApp};
-use nyx_events::{InMemoryEventPublisher, subjects};
+use nyx_events::{subjects, EventEnvelope, EventPublisher};
 use uzume_profiles::{Authenticator, Profile, ProfilePatch, ProfilesService};
+
+// ── Local in-memory publisher for tests ──────────────────────────────────────
+
+#[derive(Clone, Default)]
+struct InMemoryEventPublisher {
+    events: Arc<Mutex<Vec<EventEnvelope>>>,
+}
+
+impl InMemoryEventPublisher {
+    fn snapshot(&self) -> Vec<EventEnvelope> {
+        self.events.lock().unwrap().clone()
+    }
+}
+
+#[async_trait]
+impl EventPublisher for InMemoryEventPublisher {
+    async fn publish(&self, event: EventEnvelope) -> nun::Result<()> {
+        self.events.lock().unwrap().push(event);
+        Ok(())
+    }
+}
+
+// ── Test authenticator ────────────────────────────────────────────────────────
 
 #[derive(Clone, Default)]
 struct TestAuthenticator {
