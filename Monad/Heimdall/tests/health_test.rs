@@ -8,6 +8,7 @@ use axum::http::StatusCode;
 use axum::routing::get;
 use axum::Router;
 use serde_json::Value;
+use serial_test::serial;
 use tokio::net::TcpListener;
 use tower::ServiceExt;
 
@@ -70,6 +71,7 @@ fn make_app(config: HeimdallConfig) -> Router {
 
 // 1. All upstreams respond → /healthz returns 200 with status:"ok".
 #[tokio::test]
+#[serial]
 async fn test_all_upstreams_healthy_returns_ok() {
     let addr = spawn_ok_upstream().await;
     let app = make_app(make_config_with_upstream(addr));
@@ -91,6 +93,7 @@ async fn test_all_upstreams_healthy_returns_ok() {
 
 // 2. One upstream unreachable → /healthz returns 200 with status:"degraded".
 #[tokio::test]
+#[serial]
 async fn test_one_upstream_unreachable_returns_degraded() {
     let good_addr = spawn_ok_upstream().await;
     let app = make_app(make_config_with_bad_upstream(good_addr));
@@ -113,6 +116,7 @@ async fn test_one_upstream_unreachable_returns_degraded() {
 
 // 3. Response is valid JSON with "upstreams" object.
 #[tokio::test]
+#[serial]
 async fn test_response_has_upstreams_object() {
     let addr = spawn_ok_upstream().await;
     let app = make_app(make_config_with_upstream(addr));
@@ -135,6 +139,7 @@ async fn test_response_has_upstreams_object() {
 
 // 4. Response includes latency_ms for each upstream.
 #[tokio::test]
+#[serial]
 async fn test_response_includes_latency_ms() {
     let addr = spawn_ok_upstream().await;
     let app = make_app(make_config_with_upstream(addr));

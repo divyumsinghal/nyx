@@ -2,20 +2,20 @@
 
 use chrono::{DateTime, Utc};
 use nun::id::Id;
-use nun::models::NyxApp;
+use nun::NyxApp;
 use uuid::Uuid;
 
 /// Marker types for test entities
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TestUser;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TestPost;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TestProfile;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TestStory;
 
 /// Fixed test UUIDs for deterministic tests.

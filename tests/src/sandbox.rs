@@ -148,6 +148,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "requires Docker"]
     async fn sandbox_manager_starts_postgres() {
         let sandbox = SandboxManager::new()
             .with_postgres()
@@ -160,6 +161,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires Docker"]
     async fn sandbox_manager_starts_redis() {
         let sandbox = SandboxManager::new()
             .with_redis()
@@ -171,6 +173,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires Docker"]
     async fn sandbox_manager_starts_minio() {
         let sandbox = SandboxManager::new()
             .with_minio()

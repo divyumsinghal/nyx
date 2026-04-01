@@ -66,12 +66,10 @@ pub async fn mock_meilisearch_server() -> Server {
 }
 
 /// Mock successful Meilisearch indexing.
-pub fn mock_meilisearch_index_documents(server: &Server, index_name: &str) {
+pub fn mock_meilisearch_index_documents(server: &Server, index_name: String) {
+    let path = format!("/indexes/{index_name}/documents");
     server.expect(
-        Expectation::matching(request::method_path(
-            "POST",
-            &format!("/indexes/{index_name}/documents"),
-        ))
+        Expectation::matching(request::method_path("POST", path))
         .respond_with(status_code(202).body(
             json!({
                 "taskUid": 123,
@@ -119,7 +117,7 @@ mod tests {
 
         let client = reqwest::Client::new();
         let response = client
-            .get(server.url("/sessions/whoami"))
+            .get(server.url("/sessions/whoami").to_string())
             .send()
             .await
             .unwrap();

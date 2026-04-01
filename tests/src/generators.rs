@@ -1,7 +1,7 @@
 //! Property-based testing generators (proptest, quickcheck, arbitrary).
 
 use nun::id::Id;
-use nun::models::NyxApp;
+use nun::NyxApp;
 use proptest::prelude::*;
 use uuid::Uuid;
 

@@ -9,6 +9,7 @@ use axum::extract::Request;
 use axum::http::StatusCode;
 use axum::routing::any;
 use axum::Router;
+use serial_test::serial;
 use tokio::net::TcpListener;
 use tower::ServiceExt;
 
@@ -59,6 +60,7 @@ fn bearer(token: &str) -> String {
 
 // 1. GET /healthz → 200 (no auth needed).
 #[tokio::test]
+#[serial]
 async fn test_healthz_no_auth_required() {
     let app = make_app().await;
 
@@ -73,6 +75,7 @@ async fn test_healthz_no_auth_required() {
 
 // 2. GET /api/nyx/auth/login → proxied without auth check (even without JWT).
 #[tokio::test]
+#[serial]
 async fn test_nyx_auth_routes_public() {
     let app = make_app().await;
 
@@ -92,6 +95,7 @@ async fn test_nyx_auth_routes_public() {
 
 // 3. GET /api/uzume/profiles/me without JWT → 401.
 #[tokio::test]
+#[serial]
 async fn test_protected_route_without_jwt_returns_401() {
     let app = make_app().await;
 
@@ -106,6 +110,7 @@ async fn test_protected_route_without_jwt_returns_401() {
 
 // 4. GET /api/uzume/profiles/me with valid JWT → proxied to upstream (200).
 #[tokio::test]
+#[serial]
 async fn test_protected_route_with_valid_jwt_proxied() {
     let app = make_app().await;
 
@@ -123,6 +128,7 @@ async fn test_protected_route_with_valid_jwt_proxied() {
 
 // 5. Unknown path → 404.
 #[tokio::test]
+#[serial]
 async fn test_unknown_path_returns_404() {
     let app = make_app().await;
 
@@ -137,6 +143,7 @@ async fn test_unknown_path_returns_404() {
 
 // 6. X-Request-ID header generated and present in response.
 #[tokio::test]
+#[serial]
 async fn test_request_id_header_present_in_response() {
     let app = make_app().await;
 
@@ -154,6 +161,7 @@ async fn test_request_id_header_present_in_response() {
 
 // 7. /api/nyx/account/* requires JWT.
 #[tokio::test]
+#[serial]
 async fn test_nyx_account_requires_jwt() {
     let app = make_app().await;
 
@@ -168,6 +176,7 @@ async fn test_nyx_account_requires_jwt() {
 
 // 8. /api/uzume/feed/* requires JWT.
 #[tokio::test]
+#[serial]
 async fn test_uzume_feed_requires_jwt() {
     let app = make_app().await;
 
@@ -182,6 +191,7 @@ async fn test_uzume_feed_requires_jwt() {
 
 // 9. Correct upstream chosen: /api/uzume/stories/* with JWT → upstream hit.
 #[tokio::test]
+#[serial]
 async fn test_correct_upstream_chosen_for_stories() {
     let app = make_app().await;
     let token = encode_jwt(IDENTITY, SECRET, 3600).unwrap();

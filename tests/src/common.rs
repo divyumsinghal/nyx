@@ -29,12 +29,10 @@ pub async fn test_sleep_ms(ms: u64) {
 
 /// Generate a random string of specified length (alphanumeric).
 pub fn random_string(len: usize) -> String {
-    use rand::Rng;
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let mut rng = rand::thread_rng();
     (0..len)
         .map(|_| {
-            let idx = rng.gen_range(0..CHARSET.len());
+            let idx = rand::random_range(0..CHARSET.len());
             CHARSET[idx] as char
         })
         .collect()
@@ -47,14 +45,19 @@ pub fn random_email() -> String {
 
 /// Generate a random phone number (E.164 format).
 pub fn random_phone() -> String {
-    use rand::Rng;
-    let mut rng = rand::thread_rng();
-    format!("+1555{:07}", rng.gen_range(1_000_000..10_000_000))
+    format!("+1555{:07}", rand::random_range(1_000_000..10_000_000))
 }
 
 /// Generate a random username (lowercase alphanumeric + underscore).
 pub fn random_username() -> String {
-    format!("user_{}", random_string(8).to_lowercase())
+    const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz0123456789";
+    let suffix: String = (0..8)
+        .map(|_| {
+            let idx = rand::random_range(0..CHARSET.len());
+            CHARSET[idx] as char
+        })
+        .collect();
+    format!("user_{suffix}")
 }
 
 #[cfg(test)]
@@ -85,7 +88,13 @@ mod tests {
     #[test]
     fn random_username_is_valid() {
         let username = random_username();
+        eprintln!("Generated username: {username}");
         assert!(username.starts_with("user_"));
-        assert!(username.chars().all(|c| c.is_ascii_lowercase() || c == '_'));
+        for (i, c) in username.chars().enumerate() {
+            if !(c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()) {
+                eprintln!("Invalid char at {i}: '{c}' (code: {})", c as u32);
+            }
+        }
+        assert!(username.chars().all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()));
     }
 }
