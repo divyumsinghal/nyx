@@ -39,7 +39,9 @@ fn payload_validation_contract_rejects_empty_text() {
 
 #[tokio::test]
 async fn validated_json_rejects_invalid_payload_with_422() {
-    async fn handler(ValidatedJson(_payload): ValidatedJson<CreateStoryPayload>) -> impl IntoResponse {
+    async fn handler(
+        ValidatedJson(_payload): ValidatedJson<CreateStoryPayload>,
+    ) -> impl IntoResponse {
         StatusCode::CREATED
     }
 

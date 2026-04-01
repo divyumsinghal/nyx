@@ -3,8 +3,8 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use nyx_api::{ApiResponse, AuthUser, ValidatedJson};
 use nun::NyxError;
+use nyx_api::{ApiResponse, AuthUser, ValidatedJson};
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -12,7 +12,9 @@ use crate::{
     handlers::ApiError,
     models::highlight::{CreateHighlightRequest, HighlightInsert, HighlightResponse},
     queries::{highlights as highlight_queries, stories as story_queries},
-    services::highlights::{build_highlight_page, ensure_highlight_owner, validate_highlight_title},
+    services::highlights::{
+        build_highlight_page, ensure_highlight_owner, validate_highlight_title,
+    },
     state::AppState,
 };
 
@@ -32,7 +34,10 @@ pub async fn create_highlight(
     };
 
     let row = highlight_queries::create_highlight(&state.db, &insert).await?;
-    Ok((StatusCode::CREATED, ApiResponse::ok(HighlightResponse::from(row))))
+    Ok((
+        StatusCode::CREATED,
+        ApiResponse::ok(HighlightResponse::from(row)),
+    ))
 }
 
 #[instrument(skip(state), fields(alias = %alias))]
@@ -94,7 +99,8 @@ pub async fn delete_highlight(
     user: AuthUser,
     Path(highlight_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let deleted = highlight_queries::delete_highlight(&state.db, highlight_id, user.user_id).await?;
+    let deleted =
+        highlight_queries::delete_highlight(&state.db, highlight_id, user.user_id).await?;
 
     if deleted {
         Ok(StatusCode::NO_CONTENT)

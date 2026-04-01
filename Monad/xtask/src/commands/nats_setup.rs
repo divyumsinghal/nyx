@@ -1,4 +1,4 @@
-//! NATS JetStream setup command.
+//! NATS `JetStream` setup command.
 //!
 //! Creates (or idempotently retrieves) the two top-level streams used by the
 //! Nyx platform:
@@ -7,7 +7,7 @@
 //! - `UZUME` — captures `Uzume.>` subjects (all Uzume app events).
 #![warn(clippy::pedantic)]
 
-/// Plain data describing a JetStream stream to create.
+/// Plain data describing a `JetStream` stream to create.
 ///
 /// Kept separate from `async_nats::jetstream::stream::Config` so that the
 /// pure config-building functions can be tested without any network dependency.

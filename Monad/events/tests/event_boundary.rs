@@ -1,8 +1,5 @@
+use events::{subjects, EventEnvelope, EventPublisher, InMemoryEventPublisher, NoopEventPublisher};
 use nun::NyxApp;
-use events::{
-    subjects, EventEnvelope, EventPublisher, InMemoryEventPublisher,
-    NoopEventPublisher,
-};
 
 #[test]
 fn domain_event_envelope_builds_without_provider_metadata() {

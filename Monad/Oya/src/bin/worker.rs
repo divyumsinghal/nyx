@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use events::subjects::{MediaProcessedPayload, MediaUploadedPayload, UZUME_MEDIA_PROCESSED, UZUME_MEDIA_UPLOADED};
+use events::subjects::{
+    MediaProcessedPayload, MediaUploadedPayload, UZUME_MEDIA_PROCESSED, UZUME_MEDIA_UPLOADED,
+};
 use events::{NatsClient, Publisher, Subscriber};
 use futures::StreamExt;
 use oya::config::ProcessingConfig;
@@ -102,24 +104,32 @@ impl Worker {
         match result {
             PipelineResult::Image(img_result) => {
                 for v in &img_result.variants {
-                    variants.insert(v.name.clone(), format!(
-                        "Uzume/{}/{}/{}.{}",
-                        img_result.entity_type, img_result.entity_id, v.name,
-                        match v.mime_type.as_str() {
-                            "image/jpeg" => "jpg",
-                            "image/png" => "png",
-                            "image/webp" => "webp",
-                            _ => "bin",
-                        }
-                    ));
+                    variants.insert(
+                        v.name.clone(),
+                        format!(
+                            "Uzume/{}/{}/{}.{}",
+                            img_result.entity_type,
+                            img_result.entity_id,
+                            v.name,
+                            match v.mime_type.as_str() {
+                                "image/jpeg" => "jpg",
+                                "image/png" => "png",
+                                "image/webp" => "webp",
+                                _ => "bin",
+                            }
+                        ),
+                    );
                 }
             }
             PipelineResult::Video(vid_result) => {
                 for v in &vid_result.video_result.variants {
-                    variants.insert(v.name.clone(), format!(
-                        "Uzume/{}/{}/hls/{}/",
-                        vid_result.entity_type, vid_result.entity_id, v.name
-                    ));
+                    variants.insert(
+                        v.name.clone(),
+                        format!(
+                            "Uzume/{}/{}/hls/{}/",
+                            vid_result.entity_type, vid_result.entity_id, v.name
+                        ),
+                    );
                 }
                 variants.insert(
                     "poster".to_string(),

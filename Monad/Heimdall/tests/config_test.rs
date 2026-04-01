@@ -61,7 +61,9 @@ fn test_missing_jwt_secret_returns_err() {
     let _lock = ENV_LOCK.lock().unwrap();
     clear_env();
     set_required_env("placeholder");
-    unsafe { std::env::remove_var("JWT_SECRET"); }
+    unsafe {
+        std::env::remove_var("JWT_SECRET");
+    }
 
     let result = HeimdallConfig::from_env();
     assert!(result.is_err(), "missing JWT_SECRET must return Err");
@@ -89,7 +91,9 @@ fn test_port_defaults_to_3000() {
     let _lock = ENV_LOCK.lock().unwrap();
     clear_env();
     set_required_env("secret-key-at-least-32-characters!!");
-    unsafe { std::env::remove_var("HEIMDALL_PORT"); }
+    unsafe {
+        std::env::remove_var("HEIMDALL_PORT");
+    }
 
     let config = HeimdallConfig::from_env().expect("should succeed");
     assert_eq!(config.port, 3000);
@@ -101,7 +105,9 @@ fn test_port_can_be_overridden() {
     let _lock = ENV_LOCK.lock().unwrap();
     clear_env();
     set_required_env("secret-key-at-least-32-characters!!");
-    unsafe { std::env::set_var("HEIMDALL_PORT", "8080"); }
+    unsafe {
+        std::env::set_var("HEIMDALL_PORT", "8080");
+    }
 
     let config = HeimdallConfig::from_env().expect("should succeed");
     assert_eq!(config.port, 8080);
@@ -113,7 +119,9 @@ fn test_jwt_expiry_defaults_to_3600() {
     let _lock = ENV_LOCK.lock().unwrap();
     clear_env();
     set_required_env("secret-key-at-least-32-characters!!");
-    unsafe { std::env::remove_var("JWT_EXPIRY_SECS"); }
+    unsafe {
+        std::env::remove_var("JWT_EXPIRY_SECS");
+    }
 
     let config = HeimdallConfig::from_env().expect("should succeed");
     assert_eq!(config.jwt_expiry_secs, 3600);

@@ -10,8 +10,9 @@
 
 /// Deserialised representation of a single entry in `tools/seed-data/users.json`.
 #[derive(Debug, serde::Deserialize)]
+#[allow(dead_code)]
 pub struct SeedUser {
-    /// Kratos identity UUID (UUIDv7 string).
+    /// Kratos identity UUID (`UUIDv7` string).
     pub nyx_identity_id: String,
     /// Primary email address.
     pub email: String,
@@ -31,8 +32,9 @@ pub struct SeedUser {
 
 /// Deserialised representation of a single entry in `tools/seed-data/uzume_posts.json`.
 #[derive(Debug, serde::Deserialize)]
+#[allow(dead_code)]
 pub struct SeedPost {
-    /// Deterministic post UUID (UUIDv7 string).
+    /// Deterministic post UUID (`UUIDv7` string).
     pub id: String,
     /// Alias of the author (matches [`SeedUser::username`]).
     pub author_username: String,
@@ -109,12 +111,11 @@ pub async fn run(db_url: &str, seed_dir: &std::path::Path) -> anyhow::Result<()>
         let post_id = uuid::Uuid::parse_str(&post.id)?;
 
         // Resolve author alias → profile id.
-        let profile: Option<(uuid::Uuid,)> = sqlx::query_as(
-            r#"SELECT id FROM "Uzume".profiles WHERE alias = $1"#,
-        )
-        .bind(&post.author_username)
-        .fetch_optional(&pool)
-        .await?;
+        let profile: Option<(uuid::Uuid,)> =
+            sqlx::query_as(r#"SELECT id FROM "Uzume".profiles WHERE alias = $1"#)
+                .bind(&post.author_username)
+                .fetch_optional(&pool)
+                .await?;
 
         let Some((author_profile_id,)) = profile else {
             tracing::warn!(

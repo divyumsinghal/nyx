@@ -43,10 +43,7 @@ impl Publisher {
     }
 
     /// Publish a pre-constructed event (for replay or testing).
-    pub async fn publish_event<T: Serialize>(
-        &self,
-        event: &NyxEvent<T>,
-    ) -> Result<(), NatsError> {
+    pub async fn publish_event<T: Serialize>(&self, event: &NyxEvent<T>) -> Result<(), NatsError> {
         let json = serde_json::to_vec(event)
             .map_err(|e| NatsError::Publish(format!("serialization failed: {e}")))?;
 
@@ -80,9 +77,13 @@ mod tests {
 
     #[test]
     fn event_envelope_serialization_is_valid() {
-        let event = NyxEvent::new("test.subject", "test-app", TestPayload {
-            key: "value".into(),
-        });
+        let event = NyxEvent::new(
+            "test.subject",
+            "test-app",
+            TestPayload {
+                key: "value".into(),
+            },
+        );
 
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains("test.subject"));

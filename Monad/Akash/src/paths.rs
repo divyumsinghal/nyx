@@ -1,6 +1,6 @@
 use std::fmt;
 
-use nun::{error::FieldError, NyxError, Result};
+use nun::{NyxError, Result, error::FieldError};
 
 const MAX_SEGMENT_LEN: usize = 128;
 const MAX_KEY_LEN: usize = 512;

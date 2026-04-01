@@ -24,8 +24,8 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 
-use brizo::indexes;
 use crate::state::AppState;
+use brizo::indexes;
 use nyx_events::{subjects, Subscriber};
 
 /// Search document indexed in Meilisearch for each profile.
@@ -91,7 +91,10 @@ async fn sync_profile(state: &AppState, payload: ProfileUpdatedPayload) {
         let index = state.search.index(indexes::UZUME_PROFILES);
         let id_str = payload.id.to_string();
         if let Err(err) = index.delete_document(&id_str).await {
-            warn!(?err, "search_sync: failed to remove private profile from index");
+            warn!(
+                ?err,
+                "search_sync: failed to remove private profile from index"
+            );
         } else {
             info!(profile_id = %payload.id, "search_sync: removed private profile from index");
         }

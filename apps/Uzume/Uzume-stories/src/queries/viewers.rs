@@ -44,9 +44,8 @@ pub async fn get_viewers(
     query_limit: i64,
 ) -> Result<Vec<StoryViewRow>, NyxError> {
     match (cursor_viewed_at, cursor_viewer_id) {
-        (Some(ts), Some(vid)) => {
-            sqlx::query_as::<_, StoryViewRow>(
-                r#"
+        (Some(ts), Some(vid)) => sqlx::query_as::<_, StoryViewRow>(
+            r#"
                 SELECT story_id, viewer_identity_id, viewer_alias, viewed_at
                 FROM uzume.story_views
                 WHERE story_id = $1
@@ -54,31 +53,28 @@ pub async fn get_viewers(
                 ORDER BY viewed_at DESC, viewer_identity_id DESC
                 LIMIT $4
                 "#,
-            )
-            .bind(story_id)
-            .bind(ts)
-            .bind(vid)
-            .bind(query_limit)
-            .fetch_all(pool)
-            .await
-            .map_err(NyxError::from)
-        }
-        _ => {
-            sqlx::query_as::<_, StoryViewRow>(
-                r#"
+        )
+        .bind(story_id)
+        .bind(ts)
+        .bind(vid)
+        .bind(query_limit)
+        .fetch_all(pool)
+        .await
+        .map_err(NyxError::from),
+        _ => sqlx::query_as::<_, StoryViewRow>(
+            r#"
                 SELECT story_id, viewer_identity_id, viewer_alias, viewed_at
                 FROM uzume.story_views
                 WHERE story_id = $1
                 ORDER BY viewed_at DESC, viewer_identity_id DESC
                 LIMIT $2
                 "#,
-            )
-            .bind(story_id)
-            .bind(query_limit)
-            .fetch_all(pool)
-            .await
-            .map_err(NyxError::from)
-        }
+        )
+        .bind(story_id)
+        .bind(query_limit)
+        .fetch_all(pool)
+        .await
+        .map_err(NyxError::from),
     }
 }
 

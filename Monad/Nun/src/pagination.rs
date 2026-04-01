@@ -333,7 +333,7 @@ mod tests {
     fn generic_cursor_round_trip() {
         let values = vec![
             CursorValue::Int(42),
-            CursorValue::Float(3.14),
+            CursorValue::Float(std::f64::consts::PI),
             CursorValue::String("hello".to_string()),
         ];
         let cursor = Cursor::from_values(&values);

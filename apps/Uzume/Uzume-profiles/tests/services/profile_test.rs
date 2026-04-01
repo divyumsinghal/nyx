@@ -6,9 +6,7 @@ use chrono::Utc;
 use uuid::Uuid;
 use uzume_profiles::{
     models::profile::{ProfileRow, ProfileUpdate},
-    services::profile::{
-        check_profile_visibility, PatchProfileRequest, ProfileResponse,
-    },
+    services::profile::{check_profile_visibility, PatchProfileRequest, ProfileResponse},
 };
 use validator::Validate;
 

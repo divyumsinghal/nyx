@@ -99,8 +99,12 @@ mod integration {
         nyx_xtask::commands::migrate::run(&url).await.unwrap();
         let workspace_root = find_workspace_root();
         let seed_dir = workspace_root.join("tools/seed-data");
-        nyx_xtask::commands::seed::run(&url, &seed_dir).await.unwrap();
+        nyx_xtask::commands::seed::run(&url, &seed_dir)
+            .await
+            .unwrap();
         // Second run must not error (ON CONFLICT DO NOTHING)
-        nyx_xtask::commands::seed::run(&url, &seed_dir).await.unwrap();
+        nyx_xtask::commands::seed::run(&url, &seed_dir)
+            .await
+            .unwrap();
     }
 }

@@ -110,10 +110,18 @@ pub struct CreateStoryRequest {
     #[validate(length(min = 1, max = 255, message = "content_type must be non-empty"))]
     pub content_type: String,
     /// Exact byte size of the media file to upload.
-    #[validate(range(min = 1, max = 104857600, message = "content_length must be between 1 and 104857600"))]
+    #[validate(range(
+        min = 1,
+        max = 104857600,
+        message = "content_length must be between 1 and 104857600"
+    ))]
     pub content_length: u64,
     /// For videos: intended duration in seconds.
-    #[validate(range(min = 1, max = 3600, message = "duration_secs must be between 1 and 3600"))]
+    #[validate(range(
+        min = 1,
+        max = 3600,
+        message = "duration_secs must be between 1 and 3600"
+    ))]
     pub duration_secs: Option<u32>,
 }
 

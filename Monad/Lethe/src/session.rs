@@ -35,7 +35,9 @@ impl SessionCache {
         session: &CachedSession,
         ttl: Duration,
     ) -> Result<()> {
-        self.cache.set_json(&self.key(app, token), session, ttl).await
+        self.cache
+            .set_json(&self.key(app, token), session, ttl)
+            .await
     }
 
     pub async fn get(&self, app: NyxApp, token: &str) -> Result<Option<CachedSession>> {

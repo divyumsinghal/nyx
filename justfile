@@ -233,12 +233,12 @@ validation-check:
 
 # Mirrors exactly what .github/workflows/ci.yml runs — run this before pushing.
 ci:
-    fmt-check
-    lint
-    security
-    gate-cross-app-unauthorized
-    validation-check
-    test
+    just fmt-check
+    just lint
+    just security
+    just gate-cross-app-unauthorized
+    just validation-check
+    just test
     @echo "All CI gates passed locally."
 
 # ── Docker builds ─────────────────────────────────────────────────────────────

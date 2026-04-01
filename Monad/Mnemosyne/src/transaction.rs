@@ -3,10 +3,7 @@ use std::{future::Future, pin::Pin};
 use nun::Result;
 use sqlx::{PgPool, Postgres, Transaction};
 
-pub async fn with_transaction<T, F>(
-    pool: &PgPool,
-    f: F,
-) -> Result<T>
+pub async fn with_transaction<T, F>(pool: &PgPool, f: F) -> Result<T>
 where
     F: for<'a> FnOnce(
         &'a mut Transaction<'_, Postgres>,

@@ -234,7 +234,7 @@ pub fn display_name(name: &str) -> Result<()> {
         ));
     }
 
-    if name.chars().any(|c| c.is_control()) {
+    if name.chars().any(char::is_control) {
         return Err(field_error(
             "display_name",
             "invalid_format",

@@ -70,8 +70,7 @@ impl HeimdallConfig {
             .parse::<u16>()
             .context("HEIMDALL_PORT must be a valid port number (0–65535)")?;
 
-        let host =
-            std::env::var("HEIMDALL_HOST").unwrap_or_else(|_| "0.0.0.0".to_owned());
+        let host = std::env::var("HEIMDALL_HOST").unwrap_or_else(|_| "0.0.0.0".to_owned());
 
         let jwt_expiry_secs = std::env::var("JWT_EXPIRY_SECS")
             .unwrap_or_else(|_| "3600".to_owned())
@@ -104,6 +103,7 @@ impl HeimdallConfig {
 
 /// Read a required URL env var and strip trailing slashes.
 fn require_url(var: &str) -> Result<String> {
-    let raw = std::env::var(var).with_context(|| format!("{var} environment variable is required"))?;
+    let raw =
+        std::env::var(var).with_context(|| format!("{var} environment variable is required"))?;
     Ok(raw.trim_end_matches('/').to_owned())
 }

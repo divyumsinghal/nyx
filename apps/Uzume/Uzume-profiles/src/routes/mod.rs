@@ -48,8 +48,5 @@ pub fn router(state: AppState) -> Router {
         .route("/profiles/:alias/followers", get(get_followers))
         .route("/profiles/:alias/following", get(get_following));
 
-    Router::new()
-        .merge(authed)
-        .merge(public)
-        .with_state(state)
+    Router::new().merge(authed).merge(public).with_state(state)
 }

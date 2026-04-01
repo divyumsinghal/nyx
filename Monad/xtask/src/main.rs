@@ -25,7 +25,7 @@ enum Commands {
     DbReset,
     /// Seed the database with development fixture data.
     Seed,
-    /// Create NATS JetStream streams (NYX, UZUME).
+    /// Create NATS `JetStream` streams (NYX, UZUME).
     NatsSetup,
     /// Scaffold a new Nyx app directory structure.
     NewApp {

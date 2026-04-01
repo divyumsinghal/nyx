@@ -148,11 +148,7 @@ impl SearchClient {
     /// let resp = client.search::<MyDoc>(UZUME_POSTS, req).await?;
     /// ```
     #[instrument(skip(self), fields(index = index_name))]
-    pub async fn search<T>(
-        &self,
-        index_name: &str,
-        req: SearchRequest,
-    ) -> Result<SearchResponse<T>>
+    pub async fn search<T>(&self, index_name: &str, req: SearchRequest) -> Result<SearchResponse<T>>
     where
         T: DeserializeOwned + Send + Sync + 'static,
     {

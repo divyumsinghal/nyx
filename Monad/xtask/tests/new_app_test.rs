@@ -10,7 +10,10 @@ fn scaffold(tmp: &TempDir, name: &str) -> anyhow::Result<()> {
 fn creates_app_profiles_directory() {
     let tmp = tempfile::tempdir().unwrap();
     scaffold(&tmp, "Anteros").unwrap();
-    assert!(tmp.path().join("apps/Anteros/Anteros-profiles/src").exists());
+    assert!(tmp
+        .path()
+        .join("apps/Anteros/Anteros-profiles/src")
+        .exists());
 }
 
 #[test]
@@ -63,11 +66,9 @@ fn gitkeep_created_in_migrations_dir() {
 fn lib_rs_contains_service_comment() {
     let tmp = tempfile::tempdir().unwrap();
     scaffold(&tmp, "Anteros").unwrap();
-    let content = std::fs::read_to_string(
-        tmp.path()
-            .join("apps/Anteros/Anteros-profiles/src/lib.rs"),
-    )
-    .unwrap();
+    let content =
+        std::fs::read_to_string(tmp.path().join("apps/Anteros/Anteros-profiles/src/lib.rs"))
+            .unwrap();
     assert!(content.contains("Anteros"));
 }
 
@@ -75,11 +76,9 @@ fn lib_rs_contains_service_comment() {
 fn cargo_toml_contains_package_name() {
     let tmp = tempfile::tempdir().unwrap();
     scaffold(&tmp, "Anteros").unwrap();
-    let content = std::fs::read_to_string(
-        tmp.path()
-            .join("apps/Anteros/Anteros-profiles/Cargo.toml"),
-    )
-    .unwrap();
+    let content =
+        std::fs::read_to_string(tmp.path().join("apps/Anteros/Anteros-profiles/Cargo.toml"))
+            .unwrap();
     assert!(content.contains("anteros-profiles"));
 }
 

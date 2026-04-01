@@ -26,7 +26,7 @@ use axum::routing::{any, get};
 use axum::Router;
 use serde_json::json;
 use tower_http::cors::CorsLayer;
-use tower_http::request_id::{MakeRequestUuid, SetRequestIdLayer};
+use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::auth_layer::{auth_middleware, ValidatedIdentity};
@@ -61,6 +61,7 @@ pub fn build_router(state: AppState) -> Router {
             state.clone(),
             auth_middleware,
         ))
+        .layer(PropagateRequestIdLayer::x_request_id())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
         .layer(CorsLayer::permissive())
@@ -86,10 +87,10 @@ async fn nyx_auth_proxy(State(state): State<AppState>, req: Request) -> Response
 /// Proxy `ANY /api/nyx/account/*` → Kratos (JWT required).
 async fn nyx_account_proxy(
     State(state): State<AppState>,
-    Extension(identity): Extension<Option<ValidatedIdentity>>,
+    identity: Option<Extension<ValidatedIdentity>>,
     req: Request,
 ) -> Response {
-    let Some(identity) = identity else {
+    let Some(Extension(identity)) = identity else {
         return require_auth();
     };
     proxy_request(
@@ -105,10 +106,10 @@ async fn nyx_account_proxy(
 /// Proxy `ANY /api/nyx/messaging/*` → Continuwuity (JWT required).
 async fn nyx_messaging_proxy(
     State(state): State<AppState>,
-    Extension(identity): Extension<Option<ValidatedIdentity>>,
+    identity: Option<Extension<ValidatedIdentity>>,
     req: Request,
 ) -> Response {
-    let Some(identity) = identity else {
+    let Some(Extension(identity)) = identity else {
         return require_auth();
     };
     proxy_request(
@@ -124,10 +125,10 @@ async fn nyx_messaging_proxy(
 /// Proxy `ANY /api/uzume/profiles/*` → Uzume-profiles (JWT required).
 async fn uzume_profiles_proxy(
     State(state): State<AppState>,
-    Extension(identity): Extension<Option<ValidatedIdentity>>,
+    identity: Option<Extension<ValidatedIdentity>>,
     req: Request,
 ) -> Response {
-    let Some(identity) = identity else {
+    let Some(Extension(identity)) = identity else {
         return require_auth();
     };
     proxy_request(
@@ -143,10 +144,10 @@ async fn uzume_profiles_proxy(
 /// Proxy `ANY /api/uzume/feed/*` → Uzume-feed (JWT required).
 async fn uzume_feed_proxy(
     State(state): State<AppState>,
-    Extension(identity): Extension<Option<ValidatedIdentity>>,
+    identity: Option<Extension<ValidatedIdentity>>,
     req: Request,
 ) -> Response {
-    let Some(identity) = identity else {
+    let Some(Extension(identity)) = identity else {
         return require_auth();
     };
     proxy_request(
@@ -162,10 +163,10 @@ async fn uzume_feed_proxy(
 /// Proxy `ANY /api/uzume/stories/*` → Uzume-stories (JWT required).
 async fn uzume_stories_proxy(
     State(state): State<AppState>,
-    Extension(identity): Extension<Option<ValidatedIdentity>>,
+    identity: Option<Extension<ValidatedIdentity>>,
     req: Request,
 ) -> Response {
-    let Some(identity) = identity else {
+    let Some(Extension(identity)) = identity else {
         return require_auth();
     };
     proxy_request(
@@ -181,10 +182,10 @@ async fn uzume_stories_proxy(
 /// Proxy `ANY /api/uzume/reels/*` → Uzume-reels (JWT required).
 async fn uzume_reels_proxy(
     State(state): State<AppState>,
-    Extension(identity): Extension<Option<ValidatedIdentity>>,
+    identity: Option<Extension<ValidatedIdentity>>,
     req: Request,
 ) -> Response {
-    let Some(identity) = identity else {
+    let Some(Extension(identity)) = identity else {
         return require_auth();
     };
     proxy_request(
@@ -200,10 +201,10 @@ async fn uzume_reels_proxy(
 /// Proxy `ANY /api/uzume/discover/*` → Uzume-discover (JWT required).
 async fn uzume_discover_proxy(
     State(state): State<AppState>,
-    Extension(identity): Extension<Option<ValidatedIdentity>>,
+    identity: Option<Extension<ValidatedIdentity>>,
     req: Request,
 ) -> Response {
-    let Some(identity) = identity else {
+    let Some(Extension(identity)) = identity else {
         return require_auth();
     };
     proxy_request(

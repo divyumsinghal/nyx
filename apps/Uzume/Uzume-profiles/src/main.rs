@@ -9,12 +9,7 @@
 //! 6. Serve.
 
 use tracing::info;
-use uzume_profiles::{
-    config,
-    routes,
-    state::AppState,
-    workers,
-};
+use uzume_profiles::{config, routes, state::AppState, workers};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

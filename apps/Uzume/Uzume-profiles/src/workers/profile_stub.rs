@@ -46,7 +46,10 @@ pub async fn run(state: AppState) {
         }
     };
 
-    info!("profile_stub worker: listening on {}", subjects::USER_CREATED);
+    info!(
+        "profile_stub worker: listening on {}",
+        subjects::USER_CREATED
+    );
 
     while let Some(result) = stream.next().await {
         match result {
@@ -60,10 +63,7 @@ pub async fn run(state: AppState) {
 
 #[instrument(skip(state), fields(identity_id = %payload.identity_id, alias = %payload.alias))]
 async fn handle_user_created(state: &AppState, payload: UserCreatedPayload) {
-    let display_name = payload
-        .display_name
-        .as_deref()
-        .unwrap_or(&payload.alias);
+    let display_name = payload.display_name.as_deref().unwrap_or(&payload.alias);
 
     match create_profile_stub(&state.db, payload.identity_id, &payload.alias, display_name).await {
         Ok(profile) => {

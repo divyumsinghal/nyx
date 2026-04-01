@@ -42,7 +42,7 @@ use std::{collections::HashMap, sync::Arc};
 use async_trait::async_trait;
 use heka::link_policy::LinkPolicyEngine;
 use nun::{IdentityId, NyxApp, NyxError, Result};
-use nyx_events::{EventEnvelope, EventPublisher, NoopEventPublisher, subjects};
+use nyx_events::{subjects, EventEnvelope, EventPublisher, NoopEventPublisher};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

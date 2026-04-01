@@ -79,11 +79,7 @@ pub async fn health_handler(State(state): State<AppState>) -> impl IntoResponse 
         let name = *name;
         async move {
             let start = Instant::now();
-            let result = timeout(
-                Duration::from_secs(5),
-                client.get(&probe_url).send(),
-            )
-            .await;
+            let result = timeout(Duration::from_secs(5), client.get(&probe_url).send()).await;
 
             let status = match result {
                 Ok(Ok(_resp)) => {

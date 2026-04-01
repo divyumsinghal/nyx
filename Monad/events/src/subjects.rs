@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-/// Event subject constants following `{app}.{entity}.{action}` convention.
-///
-/// Platform-level events use `nyx.` prefix. App-level events use the app name
-/// (e.g., `Uzume.`). New apps add their own subjects below the app section.
+// Event subject constants follow `{app}.{entity}.{action}` convention.
+// Platform-level events use `nyx.` prefix. App-level events use the app name
+// (e.g., `Uzume.`). New apps add their own subjects below the app section.
 
 // ── Platform-level ──────────────────────────────────────────────────────────
 
@@ -40,7 +39,7 @@ pub const ANTEROS_MATCH_CREATED: &str = "Anteros.match.created";
 pub const THEMIS_LISTING_CREATED: &str = "Themis.listing.created";
 pub const THEMIS_REVIEW_CREATED: &str = "Themis.review.created";
 
-/// Typed media lifecycle event payloads.
+// Typed media lifecycle event payloads.
 
 /// Payload for `Uzume.media.uploaded` — emitted when a raw file lands in storage.
 #[derive(Debug, Clone, Serialize, Deserialize)]

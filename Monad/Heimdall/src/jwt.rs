@@ -14,9 +14,7 @@
 //! assert_eq!(claims.sub, "identity-id-here");
 //! ```
 
-use jsonwebtoken::{
-    decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation,
-};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -58,11 +56,7 @@ pub enum JwtError {
 ///
 /// Returns an error if the JWT library fails to serialize the claims (extremely
 /// unlikely for well-formed inputs).
-pub fn encode_jwt(
-    identity_id: &str,
-    secret: &str,
-    expiry_secs: u64,
-) -> anyhow::Result<String> {
+pub fn encode_jwt(identity_id: &str, secret: &str, expiry_secs: u64) -> anyhow::Result<String> {
     let now = chrono::Utc::now().timestamp();
     let claims = Claims {
         sub: identity_id.to_owned(),

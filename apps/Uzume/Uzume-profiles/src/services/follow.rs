@@ -32,10 +32,7 @@ impl From<FollowProfileRow> for FollowProfileResponse {
 // ── Domain logic ─────────────────────────────────────────────────────────────
 
 /// Guard: prevent a user from following themselves.
-pub fn validate_not_self_follow(
-    follower_id: Uuid,
-    followee_id: Uuid,
-) -> Result<(), NyxError> {
+pub fn validate_not_self_follow(follower_id: Uuid, followee_id: Uuid) -> Result<(), NyxError> {
     if follower_id == followee_id {
         return Err(NyxError::bad_request(
             "self_follow_not_allowed",

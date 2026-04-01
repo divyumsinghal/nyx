@@ -63,11 +63,7 @@ pub async fn follow(pool: &PgPool, follower_id: Uuid, followee_id: Uuid) -> Resu
 /// Remove a follow relationship.
 ///
 /// Silently succeeds if the relationship does not exist.
-pub async fn unfollow(
-    pool: &PgPool,
-    follower_id: Uuid,
-    followee_id: Uuid,
-) -> Result<(), NyxError> {
+pub async fn unfollow(pool: &PgPool, follower_id: Uuid, followee_id: Uuid) -> Result<(), NyxError> {
     let mut tx = pool.begin().await.map_err(NyxError::from)?;
 
     let result = sqlx::query(

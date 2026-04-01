@@ -74,11 +74,7 @@ impl NatsClient {
     }
 
     /// Publish raw bytes to a subject.
-    pub async fn publish_raw(
-        &self,
-        subject: String,
-        payload: Vec<u8>,
-    ) -> Result<(), NatsError> {
+    pub async fn publish_raw(&self, subject: String, payload: Vec<u8>) -> Result<(), NatsError> {
         self.jetstream
             .publish(subject, payload.into())
             .await
@@ -87,10 +83,7 @@ impl NatsClient {
     }
 
     /// Subscribe to a subject, returning a message stream.
-    pub async fn subscribe(
-        &self,
-        subject: String,
-    ) -> Result<async_nats::Subscriber, NatsError> {
+    pub async fn subscribe(&self, subject: String) -> Result<async_nats::Subscriber, NatsError> {
         self.client
             .subscribe(subject)
             .await

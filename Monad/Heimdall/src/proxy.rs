@@ -81,9 +81,7 @@ pub async fn proxy_request(
 
     // ── 2. Build upstream URL ─────────────────────────────────────────────
     let path = uri.path();
-    let remaining = path
-        .strip_prefix(prefix_to_strip)
-        .unwrap_or(path);
+    let remaining = path.strip_prefix(prefix_to_strip).unwrap_or(path);
 
     // Ensure remaining path starts with '/' (strip_prefix may produce "").
     let remaining = if remaining.is_empty() { "/" } else { remaining };
@@ -101,8 +99,7 @@ pub async fn proxy_request(
 
     // ── 3. Build upstream request ─────────────────────────────────────────
     let mut upstream_req = http_client.request(
-        reqwest::Method::from_bytes(method.as_str().as_bytes())
-            .unwrap_or(reqwest::Method::GET),
+        reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
         &upstream_url,
     );
 
@@ -175,9 +172,5 @@ fn bad_gateway(message: &str) -> Response {
         "error": message,
         "code": "bad_gateway"
     });
-    (
-        StatusCode::BAD_GATEWAY,
-        axum::Json(body),
-    )
-        .into_response()
+    (StatusCode::BAD_GATEWAY, axum::Json(body)).into_response()
 }

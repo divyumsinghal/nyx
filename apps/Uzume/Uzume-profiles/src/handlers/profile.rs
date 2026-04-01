@@ -21,9 +21,7 @@ use uuid::Uuid;
 use crate::{
     models::profile::ProfileInsert,
     queries::profiles as profile_queries,
-    services::profile::{
-        check_profile_visibility, PatchProfileRequest, ProfileResponse,
-    },
+    services::profile::{check_profile_visibility, PatchProfileRequest, ProfileResponse},
     state::AppState,
 };
 use nun::NyxError;
@@ -110,7 +108,10 @@ pub async fn patch_my_profile(
         "is_private": updated.is_private,
         "is_verified": updated.is_verified,
     });
-    if let Err(err) = publisher.publish(subjects::UZUME_PROFILE_UPDATED, payload).await {
+    if let Err(err) = publisher
+        .publish(subjects::UZUME_PROFILE_UPDATED, payload)
+        .await
+    {
         // Log but don't fail the request — the DB write already succeeded.
         tracing::warn!(?err, "failed to publish profile.updated event");
     }
@@ -153,7 +154,8 @@ impl From<NyxError> for ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
-        let status = StatusCode::from_u16(self.0.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        let status =
+            StatusCode::from_u16(self.0.status_code()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         let body = Json(self.0.to_error_response(None));
         (status, body).into_response()
     }

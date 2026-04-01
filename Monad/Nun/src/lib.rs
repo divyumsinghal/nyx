@@ -29,6 +29,7 @@
 #![allow(clippy::new_without_default)]
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::derivable_impls)]
+#![allow(non_snake_case)]
 
 pub mod config;
 pub mod error;

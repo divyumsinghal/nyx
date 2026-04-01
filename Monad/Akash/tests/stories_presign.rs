@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use akash::{ObjectKey, StorageClient, UploadMetadata};
-use nun::{config::StorageConfig, ErrorKind, Sensitive};
+use nun::{ErrorKind, Sensitive, config::StorageConfig};
 
 fn storage_config() -> StorageConfig {
     StorageConfig {

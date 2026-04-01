@@ -67,10 +67,7 @@ async fn test_no_auth_header_proceeds_without_identity() {
     let state = make_state();
     let app = echo_identity_router(state);
 
-    let req = Request::builder()
-        .uri("/test")
-        .body(Body::empty())
-        .unwrap();
+    let req = Request::builder().uri("/test").body(Body::empty()).unwrap();
 
     let resp = app.oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
@@ -151,8 +148,14 @@ async fn test_expired_jwt_returns_401() {
         .await
         .unwrap();
     let json: Value = serde_json::from_slice(&body).expect("body should be JSON");
-    assert!(json.get("error").is_some(), "response must have 'error' field");
-    assert!(json.get("code").is_some(), "response must have 'code' field");
+    assert!(
+        json.get("error").is_some(),
+        "response must have 'error' field"
+    );
+    assert!(
+        json.get("code").is_some(),
+        "response must have 'code' field"
+    );
 }
 
 // 4. Malformed Bearer JWT → 401.

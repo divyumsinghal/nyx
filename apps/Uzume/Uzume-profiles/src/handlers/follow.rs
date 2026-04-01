@@ -8,16 +8,13 @@ use axum::{
 use nyx_api::{ApiResponse, AuthUser, CursorPagination};
 use tracing::instrument;
 
+use super::profile::ApiError;
 use crate::{
-    queries::{
-        follow as follow_queries,
-        profiles as profile_queries,
-    },
+    queries::{follow as follow_queries, profiles as profile_queries},
     services::follow::{build_follow_page, validate_not_self_follow},
     state::AppState,
 };
 use nun::{Cursor, NyxError};
-use super::profile::ApiError;
 
 // ── POST /profiles/:alias/follow ─────────────────────────────────────────────
 
@@ -132,13 +129,7 @@ pub async fn get_following(
 /// Decode an optional cursor string into `(timestamp, uuid)` components.
 fn decode_cursor_opt(
     cursor: Option<&str>,
-) -> Result<
-    (
-        Option<chrono::DateTime<chrono::Utc>>,
-        Option<uuid::Uuid>,
-    ),
-    NyxError,
-> {
+) -> Result<(Option<chrono::DateTime<chrono::Utc>>, Option<uuid::Uuid>), NyxError> {
     match cursor {
         None => Ok((None, None)),
         Some(s) => {

@@ -28,11 +28,14 @@ pub fn find_workspace_root() -> anyhow::Result<std::path::PathBuf> {
                 return Ok(dir);
             }
         }
-        anyhow::ensure!(dir.pop(), "Could not find workspace root (no Cargo.toml with [workspace] found)");
+        anyhow::ensure!(
+            dir.pop(),
+            "Could not find workspace root (no Cargo.toml with [workspace] found)"
+        );
     }
 }
 
-/// Run all pending database migrations against the given PostgreSQL URL.
+/// Run all pending database migrations against the given `PostgreSQL` URL.
 ///
 /// Migrations are applied in two passes to respect the FK dependency:
 /// - `migrations/Monad/` first (creates `nyx` schema)

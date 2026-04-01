@@ -40,10 +40,28 @@ async fn api_smoke_tests_compile() {
 fn assert_profile_response_shape(data: &serde_json::Value) {
     assert!(data["id"].is_string(), "id must be a UUID string");
     assert!(data["alias"].is_string(), "alias must be a string");
-    assert!(data["display_name"].is_string(), "display_name must be a string");
-    assert!(data["is_private"].is_boolean(), "is_private must be a boolean");
-    assert!(data["is_verified"].is_boolean(), "is_verified must be a boolean");
-    assert!(data["follower_count"].is_number(), "follower_count must be a number");
-    assert!(data["following_count"].is_number(), "following_count must be a number");
-    assert!(data["post_count"].is_number(), "post_count must be a number");
+    assert!(
+        data["display_name"].is_string(),
+        "display_name must be a string"
+    );
+    assert!(
+        data["is_private"].is_boolean(),
+        "is_private must be a boolean"
+    );
+    assert!(
+        data["is_verified"].is_boolean(),
+        "is_verified must be a boolean"
+    );
+    assert!(
+        data["follower_count"].is_number(),
+        "follower_count must be a number"
+    );
+    assert!(
+        data["following_count"].is_number(),
+        "following_count must be a number"
+    );
+    assert!(
+        data["post_count"].is_number(),
+        "post_count must be a number"
+    );
 }

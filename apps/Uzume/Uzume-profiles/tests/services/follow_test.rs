@@ -100,5 +100,7 @@ fn cursor_in_page_is_decodable() {
 
     let cursor_str = page.next_cursor.as_ref().expect("cursor should be present");
     let cursor = Cursor::decode(cursor_str).expect("cursor should be decodable");
-    let (_ts, _id) = cursor.as_timestamp_id().expect("cursor should be timestamp+id");
+    let (_ts, _id) = cursor
+        .as_timestamp_id()
+        .expect("cursor should be timestamp+id");
 }

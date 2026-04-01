@@ -67,9 +67,8 @@ pub async fn get_stories_feed(
 ) -> Result<Vec<StoryRow>, NyxError> {
     // When a cursor is provided, paginate past it; otherwise start from the top.
     match (cursor_created_at, cursor_id) {
-        (Some(ts), Some(cid)) => {
-            sqlx::query_as::<_, StoryRow>(&format!(
-                r#"
+        (Some(ts), Some(cid)) => sqlx::query_as::<_, StoryRow>(&format!(
+            r#"
                 SELECT {SELECT_COLS}
                 FROM uzume.stories s
                 WHERE s.status = 'active'
@@ -82,18 +81,16 @@ pub async fn get_stories_feed(
                 ORDER BY s.created_at DESC, s.id DESC
                 LIMIT $4
                 "#
-            ))
-            .bind(viewer_identity_id)
-            .bind(ts)
-            .bind(cid)
-            .bind(query_limit)
-            .fetch_all(pool)
-            .await
-            .map_err(NyxError::from)
-        }
-        _ => {
-            sqlx::query_as::<_, StoryRow>(&format!(
-                r#"
+        ))
+        .bind(viewer_identity_id)
+        .bind(ts)
+        .bind(cid)
+        .bind(query_limit)
+        .fetch_all(pool)
+        .await
+        .map_err(NyxError::from),
+        _ => sqlx::query_as::<_, StoryRow>(&format!(
+            r#"
                 SELECT {SELECT_COLS}
                 FROM uzume.stories s
                 WHERE s.status = 'active'
@@ -105,13 +102,12 @@ pub async fn get_stories_feed(
                 ORDER BY s.created_at DESC, s.id DESC
                 LIMIT $2
                 "#
-            ))
-            .bind(viewer_identity_id)
-            .bind(query_limit)
-            .fetch_all(pool)
-            .await
-            .map_err(NyxError::from)
-        }
+        ))
+        .bind(viewer_identity_id)
+        .bind(query_limit)
+        .fetch_all(pool)
+        .await
+        .map_err(NyxError::from),
     }
 }
 
@@ -124,9 +120,8 @@ pub async fn get_my_stories(
     query_limit: i64,
 ) -> Result<Vec<StoryRow>, NyxError> {
     match (cursor_created_at, cursor_id) {
-        (Some(ts), Some(cid)) => {
-            sqlx::query_as::<_, StoryRow>(&format!(
-                r#"
+        (Some(ts), Some(cid)) => sqlx::query_as::<_, StoryRow>(&format!(
+            r#"
                 SELECT {SELECT_COLS}
                 FROM uzume.stories
                 WHERE author_identity_id = $1
@@ -134,31 +129,28 @@ pub async fn get_my_stories(
                 ORDER BY created_at DESC, id DESC
                 LIMIT $4
                 "#
-            ))
-            .bind(author_identity_id)
-            .bind(ts)
-            .bind(cid)
-            .bind(query_limit)
-            .fetch_all(pool)
-            .await
-            .map_err(NyxError::from)
-        }
-        _ => {
-            sqlx::query_as::<_, StoryRow>(&format!(
-                r#"
+        ))
+        .bind(author_identity_id)
+        .bind(ts)
+        .bind(cid)
+        .bind(query_limit)
+        .fetch_all(pool)
+        .await
+        .map_err(NyxError::from),
+        _ => sqlx::query_as::<_, StoryRow>(&format!(
+            r#"
                 SELECT {SELECT_COLS}
                 FROM uzume.stories
                 WHERE author_identity_id = $1
                 ORDER BY created_at DESC, id DESC
                 LIMIT $2
                 "#
-            ))
-            .bind(author_identity_id)
-            .bind(query_limit)
-            .fetch_all(pool)
-            .await
-            .map_err(NyxError::from)
-        }
+        ))
+        .bind(author_identity_id)
+        .bind(query_limit)
+        .fetch_all(pool)
+        .await
+        .map_err(NyxError::from),
     }
 }
 

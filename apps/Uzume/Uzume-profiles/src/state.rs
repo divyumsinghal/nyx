@@ -6,8 +6,8 @@
 
 use brizo::SearchClient;
 use lethe::CacheClient;
-use sqlx::PgPool;
 use nyx_events::NatsClient;
+use sqlx::PgPool;
 
 /// Application-wide state available to every handler.
 #[derive(Clone)]

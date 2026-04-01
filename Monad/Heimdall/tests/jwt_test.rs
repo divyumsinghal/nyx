@@ -33,14 +33,14 @@ fn test_expired_token_returns_expired_error() {
 fn test_wrong_secret_returns_invalid() {
     let token = encode_jwt(IDENTITY, SECRET, 3600).expect("encode should succeed");
     let result = decode_jwt(&token, WRONG_SECRET);
-    assert_eq!(result, Err(JwtError::Invalid));
+    assert!(matches!(result, Err(JwtError::Invalid)));
 }
 
 // 4. Malformed string "not.a.token" → JwtError::Invalid.
 #[test]
 fn test_malformed_token_returns_invalid() {
     let result = decode_jwt("not.a.token", SECRET);
-    assert_eq!(result, Err(JwtError::Invalid));
+    assert!(matches!(result, Err(JwtError::Invalid)));
 }
 
 // 5. Claims contain correct iat/exp window.
@@ -53,7 +53,10 @@ fn test_claims_contain_correct_time_window() {
 
     let claims = decode_jwt(&token, SECRET).expect("decode should succeed");
 
-    assert!(claims.iat >= before, "iat should be >= time before encoding");
+    assert!(
+        claims.iat >= before,
+        "iat should be >= time before encoding"
+    );
     assert!(claims.iat <= after, "iat should be <= time after encoding");
     assert_eq!(
         claims.exp - claims.iat,
@@ -102,5 +105,5 @@ fn test_explicitly_expired_token_returns_expired() {
     .expect("encode should succeed");
 
     let result = decode_jwt(&token, SECRET);
-    assert_eq!(result, Err(JwtError::Expired));
+    assert!(matches!(result, Err(JwtError::Expired)));
 }

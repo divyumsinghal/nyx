@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use nun::{error::FieldError, NyxError, Result};
+use nun::{NyxError, Result, error::FieldError};
 
 const MAX_UPLOAD_SIZE_BYTES: u64 = 100 * 1024 * 1024;
 const ALLOWED_MIME_TYPES: [&str; 6] = [

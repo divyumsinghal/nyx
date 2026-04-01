@@ -26,6 +26,11 @@
 /// Returns [`anyhow::Error`] when the name is invalid or a filesystem
 /// operation fails.
 ///
+/// # Panics
+///
+/// Panics if the computed `apps/{name}/{name}-profiles/src` path has no parent
+/// directory. This is treated as an invariant violation in scaffold generation.
+///
 /// # Examples
 ///
 /// ```no_run

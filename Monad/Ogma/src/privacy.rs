@@ -78,10 +78,7 @@ impl PrivacyGuard {
     /// ```
     pub fn room_metadata(app: NyxApp, room_type: &str) -> HashMap<String, String> {
         let mut map = HashMap::new();
-        map.insert(
-            "nyx.app".to_owned(),
-            app.subject_prefix().to_lowercase(),
-        );
+        map.insert("nyx.app".to_owned(), app.subject_prefix().to_lowercase());
         map.insert("nyx.room_type".to_owned(), room_type.to_owned());
         map
     }
@@ -94,13 +91,22 @@ mod tests {
     #[test]
     fn same_app_always_allowed() {
         assert!(PrivacyGuard::can_cross_link(NyxApp::Uzume, NyxApp::Uzume));
-        assert!(PrivacyGuard::can_cross_link(NyxApp::Anteros, NyxApp::Anteros));
+        assert!(PrivacyGuard::can_cross_link(
+            NyxApp::Anteros,
+            NyxApp::Anteros
+        ));
     }
 
     #[test]
     fn cross_app_denied_without_consent() {
-        assert!(!PrivacyGuard::can_cross_link(NyxApp::Uzume, NyxApp::Anteros));
-        assert!(!PrivacyGuard::can_cross_link(NyxApp::Anteros, NyxApp::Uzume));
+        assert!(!PrivacyGuard::can_cross_link(
+            NyxApp::Uzume,
+            NyxApp::Anteros
+        ));
+        assert!(!PrivacyGuard::can_cross_link(
+            NyxApp::Anteros,
+            NyxApp::Uzume
+        ));
         assert!(!PrivacyGuard::can_cross_link(NyxApp::Uzume, NyxApp::Themis));
     }
 
