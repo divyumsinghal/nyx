@@ -13,3 +13,9 @@ path = "src/lib.rs"
 
 [dependencies]
 nun = { package = "Nun", path = "../Nun" }
+meilisearch-sdk = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

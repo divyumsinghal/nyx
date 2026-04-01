@@ -14,12 +14,14 @@
 //! `{app_or_nyx}.{entity}.{action}` — see [`subjects`] for all constants.
 
 pub mod client;
+pub mod compat;
 pub mod envelope;
 pub mod publisher;
 pub mod subjects;
 pub mod subscriber;
 
 pub use client::{NatsClient, NatsError};
+pub use compat::{EventEnvelope, EventPublisher, NoopEventPublisher};
 pub use envelope::NyxEvent;
 pub use publisher::Publisher;
 pub use subscriber::Subscriber;

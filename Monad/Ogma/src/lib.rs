@@ -1,13 +1,22 @@
-//! # Ogma — Matrix/Continuwuity messaging client for the Nyx platform
+//! # Ogma — Matrix/Continuwuity messaging + privacy enforcement
 //!
-//! Privacy-isolated messaging. App-scoped rooms tagged with `nyx.app` state events.
-//! Cross-app visibility requires explicit consent via Heka linking.
+//! Privacy-isolated messaging for the Nyx platform. Each app creates
+//! Matrix rooms tagged with `nyx.app` state events. Cross-app visibility
+//! requires explicit user consent via Heka linking.
 //!
-//! ## Planned modules
-//! - `client` — `MatrixClient` wrapping Continuwuity HTTP API
-//! - `rooms` — room lifecycle, app-scoped creation, invite
-//! - `messages` — send/receive, media attachments
-//! - `aliases` — `NyxId + NyxApp → Matrix user` mapping
-//! - `privacy` — filter by app tag, cross-app link checks
+//! ## Usage
+//!
+//! ```rust,ignore
+//! let client = ogma::MatrixClient::new(&config.messaging, server_token);
+//! let room_id = client.create_dm_room(&matrix_user_id).await?;
+//! ```
 
-// TODO: implement Ogma modules
+#![warn(clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)]
+
+pub mod client;
+pub mod privacy;
+pub mod room;
+
+pub use client::MatrixClient;
+pub use privacy::PrivacyGuard;

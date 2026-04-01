@@ -17,7 +17,7 @@ path = "src/bin/worker.rs"
 
 [dependencies]
 nun = { package = "Nun", path = "../Nun" }
-events = { path = "../events" }
+events = { package = "nyx-events", path = "../events" }
 akash = { package = "Akash", path = "../Akash" }
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -9,6 +9,19 @@ pub enum NyxApp {
     Themis,
 }
 
+impl NyxApp {
+    /// Returns the subject prefix for NATS subjects and namespacing.
+    ///
+    /// Matches the serialized (lowercase) name of the app variant.
+    pub fn subject_prefix(self) -> &'static str {
+        match self {
+            NyxApp::Uzume => "Uzume",
+            NyxApp::Anteros => "Anteros",
+            NyxApp::Themis => "Themis",
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

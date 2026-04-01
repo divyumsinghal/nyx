@@ -1,11 +1,19 @@
-//! # Brizo — Meilisearch search client for the Nyx platform
+//! # Brizo — Meilisearch search client
 //!
-//! Index convention: `{app}_{entity}` (e.g. `uzume_posts`, `uzume_profiles`).
+//! Index convention: `{app}_{entity}` (e.g. `Uzume_posts`, `Uzume_profiles`).
 //!
-//! ## Planned modules
-//! - `client` — `SearchClient` wrapping `meilisearch-sdk`
-//! - `index` — index management: create, update settings, sync
-//! - `query` — typed search request/response
-//! - `sync` — event-driven index sync via NATS
+//! ## Usage
+//!
+//! ```rust,ignore
+//! let client = brizo::connect(&config.search);
+//! let index = client.index(brizo::indexes::UZUME_POSTS);
+//! index.search().with_query("hello").execute::<Post>().await?;
+//! ```
 
-// TODO: implement Brizo modules
+#![warn(clippy::pedantic)]
+#![allow(clippy::module_name_repetitions)]
+
+pub mod client;
+pub mod indexes;
+
+pub use client::{connect, SearchClient};
