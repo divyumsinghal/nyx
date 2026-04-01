@@ -214,6 +214,40 @@ test-integration:
       cargo test --workspace --test '*'; \
     fi
 
+# Unified crate: security-focused suites
+test-security:
+        @if cargo nextest --version >/dev/null 2>&1; then \
+            cargo nextest run -p tests --test security; \
+        else \
+            cargo test -p tests --test security; \
+        fi
+
+# Unified crate: property-based suites
+test-property:
+        @if cargo nextest --version >/dev/null 2>&1; then \
+            cargo nextest run -p tests --test property; \
+        else \
+            cargo test -p tests --test property; \
+        fi
+
+# Unified crate: E2E sandbox suites (ignored tests require --run-ignored)
+test-e2e:
+        @if [ ! -S /var/run/docker.sock ]; then \
+            echo "Skipping e2e tests: Docker socket not available"; \
+        elif cargo nextest --version >/dev/null 2>&1; then \
+            cargo nextest run -p tests --test e2e --run-ignored all; \
+        else \
+            cargo test -p tests --test e2e -- --ignored; \
+        fi
+
+# Unified crate: run all crate-level suites
+test-all:
+        @if cargo nextest --version >/dev/null 2>&1; then \
+            cargo nextest run -p tests; \
+        else \
+            cargo test -p tests; \
+        fi
+
 # Run tests for a specific crate (e.g.: just test-crate uzume-feed)
 test-crate crate:
     @if cargo nextest --version >/dev/null 2>&1; then \

@@ -5021,6 +5021,7 @@ dependencies = [
  "arbitrary",
  "assert_cmd",
  "async-nats",
+ "async-trait",
  "axum",
  "axum-extra",
  "chrono",

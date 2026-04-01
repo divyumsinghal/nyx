@@ -103,3 +103,55 @@ Next deltas to reach stronger Phase 2 readiness:
 - Reconcile stories SQL layer with migration schema and add integration tests against real DB.
 - Continue through remaining service/gateway/event boundary gaps discovered by audit.
 - Resolve workspace-wide clippy/doc strictness issues so `just lint` and `just ci` pass cleanly.
+
+## SESSION UPDATE 2026-04-01 (Unified tests crate)
+
+Completed in this run:
+- Expanded root `tests` crate into a unified harness with dedicated suites under:
+	- `tests/tests/integration/`
+	- `tests/tests/security/`
+	- `tests/tests/property/`
+	- `tests/tests/e2e/`
+- Migrated key cross-component tests into unified crate (non-destructive phase):
+	- `Monad/Heka/tests/integration_privacy_matrix.rs` -> `tests/tests/integration/heka_link_policy.rs`
+	- `Monad/events/tests/event_boundary.rs` -> `tests/tests/integration/events_boundary.rs`
+	- `apps/Uzume/Uzume-feed/tests/security_tests.rs` -> `tests/tests/security/feed_security.rs`
+- Added new unified test suites:
+	- `tests/tests/security/payload_sweep.rs`
+	- `tests/tests/property/generators_property.rs`
+	- `tests/tests/e2e/sandbox_smoke.rs`
+- Added unified test documentation at `tests/README.md`.
+- Added dedicated just recipes for unified test gating:
+	- `test-security`, `test-property`, `test-e2e`, `test-all`
+
+Current migration status:
+- Root unified crate now hosts integration, security, property, and e2e suites.
+- Legacy crate-local tests are still present intentionally during stabilization.
+
+Next deltas:
+- Continue big-bang migration of remaining crate-local test files into `tests/tests/`.
+- Validate suite with `cargo test -p tests` and `just test-all`.
+- After green stabilization window, remove duplicated legacy test copies.
+
+## SESSION UPDATE 2026-04-01 (Unified migration completion)
+
+Completed in this run:
+- Performed big-bang mirror migration of all 33 legacy Rust test files into unified root crate under:
+	- `tests/tests/migrated/Monad/...`
+	- `tests/tests/migrated/apps/...`
+- Preserved existing crate-local tests during stabilization (non-destructive phase).
+- Kept unified executable suites active and green via top-level harness files:
+	- `tests/tests/integration.rs`
+	- `tests/tests/security.rs`
+	- `tests/tests/property.rs`
+	- `tests/tests/e2e.rs`
+
+Verification snapshot:
+- `cargo test -p tests` passes.
+- `just test-all` passes.
+- `just test-security` and `just test-property` pass.
+- `just test-e2e` now skips gracefully when Docker socket is unavailable.
+
+Remaining hardening work:
+- Convert mirrored files in `tests/tests/migrated/**` into actively compiled unified targets in phases.
+- Remove legacy crate-local copies after sustained green window.

@@ -95,6 +95,8 @@ mod tests {
                 eprintln!("Invalid char at {i}: '{c}' (code: {})", c as u32);
             }
         }
-        assert!(username.chars().all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()));
+        assert!(username
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c == '_' || c.is_ascii_digit()));
     }
 }

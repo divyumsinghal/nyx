@@ -94,6 +94,7 @@ jsonwebtoken = { workspace = true }
 httptest = "0.16"
 fake = { version = "3", features = ["derive", "chrono", "uuid"] }
 rand = { version = "0.10.0", features = ["thread_rng"] }
+async-trait = "0.1"
 
 [lib]
 name = "nyx_tests"

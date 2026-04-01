@@ -61,8 +61,7 @@ pub mod xss {
 pub mod privacy {
     /// Test that IdentityId is never exposed in API responses.
     pub fn should_not_expose_identity_id(json: &serde_json::Value) -> bool {
-        !json.to_string().contains("identity_id")
-            && !json.to_string().contains("identityId")
+        !json.to_string().contains("identity_id") && !json.to_string().contains("identityId")
     }
 
     /// Test that Kratos ID is never exposed in API responses.
@@ -73,10 +72,7 @@ pub mod privacy {
     }
 
     /// Test that cross-app aliases are not leaked.
-    pub fn should_not_leak_cross_app_alias(
-        json: &serde_json::Value,
-        current_app: &str,
-    ) -> bool {
+    pub fn should_not_leak_cross_app_alias(json: &serde_json::Value, current_app: &str) -> bool {
         let s = json.to_string();
         // Check that aliases from other apps aren't present
         if current_app == "uzume" {

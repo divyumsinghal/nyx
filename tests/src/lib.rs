@@ -42,6 +42,7 @@ pub use generators::*;
 pub use nun::testing::*;
 
 // Re-export testing dependencies for convenience
+pub use httptest;
 pub use pretty_assertions::{assert_eq, assert_ne};
 pub use proptest;
 pub use quickcheck;
@@ -49,4 +50,3 @@ pub use rstest;
 pub use serial_test::serial;
 pub use test_case::test_case;
 pub use testcontainers;
-pub use httptest;

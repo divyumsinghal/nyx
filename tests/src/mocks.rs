@@ -12,8 +12,8 @@ pub async fn mock_kratos_server() -> Server {
 pub fn mock_kratos_session_valid(server: &Server, identity_id: &str) {
     let identity_id = identity_id.to_string();
     server.expect(
-        Expectation::matching(request::method_path("GET", "/sessions/whoami"))
-            .respond_with(status_code(200).body(
+        Expectation::matching(request::method_path("GET", "/sessions/whoami")).respond_with(
+            status_code(200).body(
                 json!({
                     "id": "session-123",
                     "identity": {
@@ -25,15 +25,16 @@ pub fn mock_kratos_session_valid(server: &Server, identity_id: &str) {
                     "active": true
                 })
                 .to_string(),
-            )),
+            ),
+        ),
     );
 }
 
 /// Mock a failed Kratos session check (401 Unauthorized).
 pub fn mock_kratos_session_invalid(server: &Server) {
     server.expect(
-        Expectation::matching(request::method_path("GET", "/sessions/whoami"))
-            .respond_with(status_code(401).body(
+        Expectation::matching(request::method_path("GET", "/sessions/whoami")).respond_with(
+            status_code(401).body(
                 json!({
                     "error": {
                         "code": 401,
@@ -42,7 +43,8 @@ pub fn mock_kratos_session_invalid(server: &Server) {
                     }
                 })
                 .to_string(),
-            )),
+            ),
+        ),
     );
 }
 
@@ -55,8 +57,11 @@ pub async fn mock_matrix_server() -> Server {
 pub fn mock_matrix_create_room(server: &Server, room_id: &str) {
     let room_id = room_id.to_string();
     server.expect(
-        Expectation::matching(request::method_path("POST", "/_matrix/client/v3/createRoom"))
-            .respond_with(status_code(200).body(json!({"room_id": room_id}).to_string())),
+        Expectation::matching(request::method_path(
+            "POST",
+            "/_matrix/client/v3/createRoom",
+        ))
+        .respond_with(status_code(200).body(json!({"room_id": room_id}).to_string())),
     );
 }
 
@@ -69,15 +74,16 @@ pub async fn mock_meilisearch_server() -> Server {
 pub fn mock_meilisearch_index_documents(server: &Server, index_name: String) {
     let path = format!("/indexes/{index_name}/documents");
     server.expect(
-        Expectation::matching(request::method_path("POST", path))
-        .respond_with(status_code(202).body(
-            json!({
-                "taskUid": 123,
-                "indexUid": index_name,
-                "status": "enqueued"
-            })
-            .to_string(),
-        )),
+        Expectation::matching(request::method_path("POST", path)).respond_with(
+            status_code(202).body(
+                json!({
+                    "taskUid": 123,
+                    "indexUid": index_name,
+                    "status": "enqueued"
+                })
+                .to_string(),
+            ),
+        ),
     );
 }
 
@@ -89,14 +95,15 @@ pub async fn mock_gorush_server() -> Server {
 /// Mock successful push notification sending.
 pub fn mock_gorush_send_notification(server: &Server) {
     server.expect(
-        Expectation::matching(request::method_path("POST", "/api/push"))
-            .respond_with(status_code(200).body(
+        Expectation::matching(request::method_path("POST", "/api/push")).respond_with(
+            status_code(200).body(
                 json!({
                     "success": "ok",
                     "counts": 1
                 })
                 .to_string(),
-            )),
+            ),
+        ),
     );
 }
 
