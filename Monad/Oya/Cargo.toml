@@ -1,0 +1,49 @@
+[package]
+name = "Oya"
+description = "Media processing pipeline (library + worker binary)"
+version = "0.1.0"
+edition = "2021"
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/divyumsinghal/nyx"
+rust-version = "1.85"
+
+[lib]
+name = "oya"
+path = "src/lib.rs"
+
+[[bin]]
+name = "oya-worker"
+path = "src/bin/worker.rs"
+
+[workspace]
+
+[dependencies]
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# IDs
+uuid = { version = "1", features = ["v7", "serde"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Image processing
+image = { version = "0.24", default-features = false, features = ["jpeg", "png", "webp"] }
+fast_image_resize = "3"
+
+# NATS event bus (direct — no platform wrapper in this worktree)
+async-nats = "0.39"
+futures = "0.3"
+
+
+[dev-dependencies]
+tempfile = "3"
