@@ -27,6 +27,8 @@ members = [
     # Future apps (stubs)
     "apps/Anteros",
     "apps/Themis",
+    # Unified test crate
+    "tests",
 ]
 
 [workspace.package]

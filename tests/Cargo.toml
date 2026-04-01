@@ -1,0 +1,100 @@
+[package]
+name = "tests"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+# Workspace crates - all platform and app crates for integration testing
+nun = { path = "../Monad/Nun", package = "Nun" }
+nyx-api = { path = "../Monad/api" }
+mnemosyne = { path = "../Monad/Mnemosyne", package = "Mnemosyne" }
+heka = { path = "../Monad/Heka", package = "Heka" }
+nyx-events = { path = "../Monad/events" }
+lethe = { path = "../Monad/Lethe", package = "Lethe" }
+akash = { path = "../Monad/Akash", package = "Akash" }
+brizo = { path = "../Monad/Brizo", package = "Brizo" }
+ogma = { path = "../Monad/Ogma", package = "Ogma" }
+oya = { path = "../Monad/Oya", package = "Oya" }
+ushas = { path = "../Monad/Ushas", package = "Ushas" }
+heimdall-lib = { path = "../Monad/Heimdall", package = "heimdall" }
+uzume-profiles = { path = "../apps/Uzume/Uzume-profiles", package = "Uzume-profiles" }
+uzume-feed = { path = "../apps/Uzume/Uzume-feed", package = "Uzume-feed" }
+uzume-stories = { path = "../apps/Uzume/Uzume-stories", package = "Uzume-stories" }
+uzume-reels = { path = "../apps/Uzume/Uzume-reels", package = "Uzume-reels" }
+uzume-discover = { path = "../apps/Uzume/Uzume-discover", package = "Uzume-discover" }
+
+# Async runtime & HTTP
+tokio = { workspace = true, features = ["test-util", "macros"] }
+axum = { workspace = true }
+axum-extra = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+reqwest = { workspace = true }
+
+# Database & cache
+sqlx = { workspace = true }
+fred = { workspace = true }
+
+# Event bus
+async-nats = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# IDs & time
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+# Errors
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+
+# Tracing
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# Testing dependencies (from Seshat/TESTING.md)
+proptest = "1"
+criterion = { version = "0.5", features = ["html_reports", "async_tokio"] }
+assert_cmd = "2"
+predicates = "3"
+insta = { version = "1", features = ["json", "yaml"] }
+rstest = "0.24"
+test-case = "3"
+serial_test = "3"
+mockall = "0.13"
+loom = "0.7"
+quickcheck = "1"
+arbitrary = { version = "1", features = ["derive"] }
+libfuzzer-sys = "0.4"
+tempfile = "3"
+pretty_assertions = "1"
+
+# Testcontainers for E2E tests with real infrastructure
+testcontainers = "0.24"
+testcontainers-modules = { version = "0.12", features = [
+    "postgres",
+    "redis",
+    "minio",
+] }
+
+# HTTP testing
+hyper = { version = "1", features = ["full"] }
+http-body-util = "0.1"
+
+# JWT for auth testing
+jsonwebtoken = { workspace = true }
+
+# Additional testing utilities
+httptest = "0.16"
+fake = { version = "3", features = ["derive", "chrono", "uuid"] }
+rand = "0.10.0"
+
+[lib]
+name = "nyx_tests"
+path = "src/lib.rs"
