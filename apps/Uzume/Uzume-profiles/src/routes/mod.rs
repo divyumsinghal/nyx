@@ -38,15 +38,15 @@ pub fn router(state: AppState) -> Router {
     let authed = Router::new()
         .route("/profiles/me", get(get_my_profile))
         .route("/profiles/me", patch(patch_my_profile))
-        .route("/profiles/:alias/follow", post(follow_user))
-        .route("/profiles/:alias/follow", delete(unfollow_user))
+        .route("/profiles/{alias}/follow", post(follow_user))
+        .route("/profiles/{alias}/follow", delete(unfollow_user))
         .route_layer(middleware::from_fn(auth));
 
     // Public routes — no auth required (but auth is optional for get_profile).
     let public = Router::new()
-        .route("/profiles/:alias", get(get_profile))
-        .route("/profiles/:alias/followers", get(get_followers))
-        .route("/profiles/:alias/following", get(get_following));
+        .route("/profiles/{alias}", get(get_profile))
+        .route("/profiles/{alias}/followers", get(get_followers))
+        .route("/profiles/{alias}/following", get(get_following));
 
     Router::new().merge(authed).merge(public).with_state(state)
 }

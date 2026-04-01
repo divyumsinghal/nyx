@@ -20,18 +20,18 @@ pub fn router(state: AppState) -> Router {
     let authed = Router::new()
         .route("/stories", post(create_story))
         .route("/stories/feed", get(get_feed))
-        .route("/stories/:id", delete(delete_story))
-        .route("/stories/:id/view", post(mark_view))
-        .route("/stories/:id/viewers", get(get_viewers))
+        .route("/stories/{id}", delete(delete_story))
+        .route("/stories/{id}/view", post(mark_view))
+        .route("/stories/{id}/viewers", get(get_viewers))
         .route("/highlights", post(create_highlight))
-        .route("/highlights/:id", delete(delete_highlight))
-        .route("/highlights/:id/stories/:story_id", post(add_story))
-        .route("/highlights/:id/stories/:story_id", delete(remove_story))
+        .route("/highlights/{id}", delete(delete_highlight))
+        .route("/highlights/{id}/stories/{story_id}", post(add_story))
+        .route("/highlights/{id}/stories/{story_id}", delete(remove_story))
         .route_layer(middleware::from_fn(auth));
 
     let public = Router::new()
-        .route("/stories/:id", get(get_story))
-        .route("/profiles/:alias/highlights", get(list_highlights));
+        .route("/stories/{id}", get(get_story))
+        .route("/profiles/{alias}/highlights", get(list_highlights));
 
     Router::new().merge(authed).merge(public).with_state(state)
 }

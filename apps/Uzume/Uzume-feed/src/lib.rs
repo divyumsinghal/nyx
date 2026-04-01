@@ -1,3 +1,13 @@
+// ── Service modules (Axum HTTP layer) ────────────────────────────────────────
+pub mod config;
+pub mod handlers;
+pub mod models;
+pub mod queries;
+pub mod routes;
+pub mod services;
+pub mod state;
+
+// ── Legacy in-memory service (kept for existing tests) ───────────────────────
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use heka::link_policy::LinkPolicyEngine;

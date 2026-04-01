@@ -1,0 +1,94 @@
+name: nyx-sandbox
+
+services:
+  sandbox-postgres:
+    image: postgres:17-alpine
+    container_name: nyx-sandbox-postgres
+    environment:
+      POSTGRES_DB: nyx
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: sandbox_root_pw
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    command:
+      - postgres
+      - -c
+      - max_connections=100
+    volumes:
+      - /home/dsinghal/nyx/Prithvi/postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "54321:5432"
+    networks:
+      - nyx-sandbox
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nyx"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  sandbox-redis:
+    image: redis:7-alpine
+    container_name: nyx-sandbox-redis
+    command: redis-server --requirepass sandbox_dragonfly
+    ports:
+      - "63791:6379"
+    networks:
+      - nyx-sandbox
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "sandbox_dragonfly", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  sandbox-nats:
+    image: nats:2.10-alpine
+    container_name: nyx-sandbox-nats
+    command: ["--js", "--store_dir=/data"]
+    ports:
+      - "42221:4222"
+    networks:
+      - nyx-sandbox
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz 2>/dev/null || true"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  sandbox-meilisearch:
+    image: getmeili/meilisearch:v1.7
+    container_name: nyx-sandbox-meilisearch
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: sandbox_meili_key
+      MEILI_NO_ANALYTICS: "true"
+    ports:
+      - "47701:7700"
+    networks:
+      - nyx-sandbox
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:7700/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  sandbox-minio:
+    image: minio/minio:latest
+    container_name: nyx-sandbox-minio
+    environment:
+      MINIO_ROOT_USER: minio_sandbox
+      MINIO_ROOT_PASSWORD: minio_sandbox_pw
+    command: server /data
+    ports:
+      - "49001:9000"
+    networks:
+      - nyx-sandbox
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/minio/health/ready"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+networks:
+  nyx-sandbox:
+    name: nyx-sandbox
+    driver: bridge
