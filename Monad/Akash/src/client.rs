@@ -10,6 +10,10 @@ pub struct StorageClient {
     bucket: Box<Bucket>,
 }
 
+pub fn connect(config: &StorageConfig) -> Result<StorageClient> {
+    StorageClient::new(config)
+}
+
 impl std::fmt::Debug for StorageClient {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("StorageClient").finish_non_exhaustive()
@@ -116,6 +120,41 @@ impl StorageClient {
         headers.insert("cache-control".to_string(), "private, max-age=60".to_string());
 
         Ok(PresignedDownload::new(url, "GET", headers))
+    }
+
+    pub async fn upload(
+        &self,
+        object_key: &ObjectKey,
+        data: &[u8],
+        content_type: &str,
+    ) -> Result<()> {
+        self.bucket
+            .put_object_with_content_type(object_key.as_str(), data, content_type)
+            .await
+            .map_err(map_storage_error)?;
+        Ok(())
+    }
+
+    pub async fn delete(&self, object_key: &ObjectKey) -> Result<()> {
+        self.bucket
+            .delete_object(object_key.as_str())
+            .await
+            .map_err(map_storage_error)?;
+        Ok(())
+    }
+
+    pub async fn exists(&self, object_key: &ObjectKey) -> Result<bool> {
+        match self.bucket.head_object(object_key.as_str()).await {
+            Ok(_) => Ok(true),
+            Err(err) => {
+                let message = err.to_string();
+                if message.contains("404") || message.contains("NoSuchKey") {
+                    Ok(false)
+                } else {
+                    Err(map_storage_error(err))
+                }
+            }
+        }
     }
 }
 

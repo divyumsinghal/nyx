@@ -10,6 +10,7 @@
 
 use nun::{NyxApp, NyxError};
 use serde_json::Value;
+use std::sync::{Arc, Mutex};
 use uuid::Uuid;
 
 /// A serialized event ready to publish over any transport.
@@ -44,6 +45,40 @@ pub struct NoopEventPublisher;
 #[async_trait::async_trait]
 impl EventPublisher for NoopEventPublisher {
     async fn publish(&self, _event: EventEnvelope) -> Result<(), NyxError> {
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct InMemoryEventPublisher {
+    events: Arc<Mutex<Vec<EventEnvelope>>>,
+}
+
+impl InMemoryEventPublisher {
+    pub fn snapshot(&self) -> Vec<EventEnvelope> {
+        self.events
+            .lock()
+            .expect("in-memory events mutex should not be poisoned")
+            .clone()
+    }
+
+    pub fn drain(&self) -> Vec<EventEnvelope> {
+        std::mem::take(
+            &mut *self
+                .events
+                .lock()
+                .expect("in-memory events mutex should not be poisoned"),
+        )
+    }
+}
+
+#[async_trait::async_trait]
+impl EventPublisher for InMemoryEventPublisher {
+    async fn publish(&self, event: EventEnvelope) -> Result<(), NyxError> {
+        self.events
+            .lock()
+            .expect("in-memory events mutex should not be poisoned")
+            .push(event);
         Ok(())
     }
 }

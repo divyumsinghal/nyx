@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -19,6 +21,30 @@ impl NyxApp {
             NyxApp::Anteros => "Anteros",
             NyxApp::Themis => "Themis",
         }
+    }
+
+    /// Returns the PostgreSQL schema name for this app.
+    pub fn schema(self) -> &'static str {
+        match self {
+            NyxApp::Uzume => "Uzume",
+            NyxApp::Anteros => "Anteros",
+            NyxApp::Themis => "Themis",
+        }
+    }
+
+    /// Returns the Heimdall API path prefix for this app.
+    pub fn path_prefix(self) -> &'static str {
+        match self {
+            NyxApp::Uzume => "/api/Uzume",
+            NyxApp::Anteros => "/api/Anteros",
+            NyxApp::Themis => "/api/Themis",
+        }
+    }
+}
+
+impl fmt::Display for NyxApp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.subject_prefix())
     }
 }
 
@@ -58,5 +84,24 @@ mod tests {
     #[test]
     fn serde_rejects_unknown_value() {
         assert!(serde_json::from_str::<NyxApp>("\"unknown\"").is_err());
+    }
+
+    #[test]
+    fn schema_is_correct() {
+        assert_eq!(NyxApp::Uzume.schema(), "Uzume");
+        assert_eq!(NyxApp::Anteros.schema(), "Anteros");
+        assert_eq!(NyxApp::Themis.schema(), "Themis");
+    }
+
+    #[test]
+    fn path_prefix_is_correct() {
+        assert_eq!(NyxApp::Uzume.path_prefix(), "/api/Uzume");
+        assert_eq!(NyxApp::Anteros.path_prefix(), "/api/Anteros");
+        assert_eq!(NyxApp::Themis.path_prefix(), "/api/Themis");
+    }
+
+    #[test]
+    fn display_shows_subject_prefix() {
+        assert_eq!(NyxApp::Uzume.to_string(), "Uzume");
     }
 }

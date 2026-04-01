@@ -21,7 +21,7 @@ pub mod subjects;
 pub mod subscriber;
 
 pub use client::{NatsClient, NatsError};
-pub use compat::{EventEnvelope, EventPublisher, NoopEventPublisher};
+pub use compat::{EventEnvelope, EventPublisher, InMemoryEventPublisher, NoopEventPublisher};
 pub use envelope::NyxEvent;
 pub use publisher::Publisher;
 pub use subscriber::Subscriber;
