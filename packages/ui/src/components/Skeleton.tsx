@@ -4,11 +4,12 @@ import { View } from "react-native";
 interface SkeletonProps {
   width?: string | number;
   height?: string | number;
-  rounded?: "sm" | "md" | "lg" | "xl" | "full";
+  rounded?: "none" | "sm" | "md" | "lg" | "xl" | "full";
   className?: string;
 }
 
 const roundedMap = {
+  none: "",
   sm: "rounded",
   md: "rounded-lg",
   lg: "rounded-xl",

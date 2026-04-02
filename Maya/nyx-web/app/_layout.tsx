@@ -18,7 +18,7 @@ function RootNavigation() {
     } else if (isAuthenticated && inAuthGroup) {
       router.replace("/");
     }
-  }, [isAuthenticated, isLoading, segments]);
+  }, [isAuthenticated, isLoading, segments, router]);
 
   return (
     <Stack screenOptions={{ headerShown: false, animation: "fade" }}>

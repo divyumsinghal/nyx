@@ -26,6 +26,8 @@ export interface WhoAmI {
   id: string;
   email: string;
   phone?: string;
+  /** Display name from profile / registration when available */
+  display_name?: string;
   created_at: string;
 }
 

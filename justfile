@@ -52,6 +52,12 @@ setup:
     @echo "  Run 'just start'  — launch the full dev stack"
     @echo "  Run 'just seed'   — load development fixture data"
 
+# ── Frontend ──────────────────────────────────────────────────────────────────
+
+# Start Uzume web frontend dev server (http://localhost:8081)
+web:
+    cd Maya/Uzume-web && pnpm dev
+
 # ── Runtime ───────────────────────────────────────────────────────────────────
 
 # Start the full local dev stack (builds images on first run, reuses on subsequent)

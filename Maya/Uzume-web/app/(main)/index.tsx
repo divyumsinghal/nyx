@@ -67,7 +67,7 @@ function StoryCircle({ group }: { group: StoryGroup }) {
     >
       <View
         style={
-          group.has_unseen
+          (group.has_unseen
             ? {
                 padding: 2,
                 borderRadius: 9999,
@@ -79,7 +79,7 @@ function StoryCircle({ group }: { group: StoryGroup }) {
                 borderRadius: 9999,
                 borderWidth: 2,
                 borderColor: "#2A2460",
-              }
+              }) as never
         }
       >
         <View className="w-[60px] h-[60px] rounded-full overflow-hidden bg-space-700">

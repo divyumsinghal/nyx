@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls C:/Users/divyu/nyx/Maya/Uzume-web/app/\\\\\\(auth\\\\\\)/)",
+      "Bash(ls C:/Users/divyu/nyx/Maya/Uzume-web/app/\\\\\\(main\\\\\\)/)",
+      "Bash(ls C:/Users/divyu/nyx/Maya/Uzume-web/app/\\\\\\(admin\\\\\\)/)",
+      "Bash(cat C:/Users/divyu/nyx/Maya/Uzume-web/app/\\\\\\(main\\\\\\)/_layout.tsx)",
+      "Bash(cat C:/Users/divyu/nyx/Maya/Uzume-web/app/\\\\\\(main\\\\\\)/index.tsx)",
+      "Bash(node -e \"require\\(''./Maya/Uzume-web/babel.config.js''\\)\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /PID 14676 /F)",
+      "Bash(powershell -Command \"Stop-Process -Id 14676 -Force -ErrorAction SilentlyContinue; Write-Output ''done''\")",
+      "Bash(powershell -Command \"Get-Process | Where-Object {$_Name -like ''*node*'' -or $_Name -like ''*expo*''} | Select-Object Id, Name, CPU | Format-Table\")",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Select-Object Id, CPU, WorkingSet | Format-Table\")",
+      "Bash(powershell -Command \"netstat -ano | Select-String '':8081.*LISTEN''\")",
+      "Bash(powershell -Command \"Remove-Item -Recurse -Force ''C:\\\\Users\\\\divyu\\\\nyx\\\\Maya\\\\Uzume-web\\\\.expo'' -ErrorAction SilentlyContinue; Remove-Item -Recurse -Force ''C:\\\\Users\\\\divyu\\\\AppData\\\\Local\\\\Temp\\\\metro-*'' -ErrorAction SilentlyContinue; Write-Output ''cache cleared''\")",
+      "Bash(powershell -Command \"netstat -ano | Select-String ''8081''\")",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Measure-Object | Select-Object Count\")",
+      "Bash(powershell -Command \"Start-Sleep 10; Get-Content ''C:\\\\Users\\\\divyu\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-divyu-nyx\\\\bc22c72e-9b7d-4631-b3c9-d56c527e18e0\\\\tasks\\\\b7wwjhohm.output'' -ErrorAction SilentlyContinue | Select-Object -First 40\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''version''''\\)\\); exports=d.get\\(''''exports'''',{}\\); print\\(''''exports keys:'''', list\\(exports.keys\\(\\)\\)[:10]\\)\")",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm run:*)"
+    ]
+  }
+}

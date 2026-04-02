@@ -63,7 +63,7 @@ export function TextInput({
         />
         {isPassword ? (
           <Pressable
-            onPress={() => setShowPassword((v) => !v)}
+            onPress={() => setShowPassword((v: boolean) => !v)}
             className="pr-3 cursor-pointer"
             accessibilityLabel={showPassword ? "Hide password" : "Show password"}
           >

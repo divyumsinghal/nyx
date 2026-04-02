@@ -2,7 +2,9 @@ import React from "react";
 import { Pressable, Text, View, ActivityIndicator } from "react-native";
 
 interface ButtonProps {
-  label: string;
+  /** Used when `children` is not provided */
+  label?: string;
+  children?: React.ReactNode;
   onPress?: () => void;
   variant?: "primary" | "secondary" | "ghost" | "danger" | "dawn";
   size?: "sm" | "md" | "lg";
@@ -44,6 +46,7 @@ const textSizeStyles = {
 
 export function Button({
   label,
+  children,
   onPress,
   variant = "primary",
   size = "md",
@@ -72,22 +75,24 @@ export function Button({
         .join(" ")}
       style={
         variant === "dawn"
-          ? {
+          ? ({
               background:
                 "linear-gradient(135deg, #FF6B9D 0%, #FF8C61 50%, #FFD93D 100%)",
-            }
+            } as never)
           : undefined
       }
     >
       {loading ? (
         <ActivityIndicator size="small" color="#F0EBF8" />
+      ) : children != null ? (
+        children
       ) : (
         <>
           {icon && iconPosition === "left" && (
             <View className="mr-2">{icon}</View>
           )}
           <Text className={`${textStyles[variant]} ${textSizeStyles[size]}`}>
-            {label}
+            {label ?? ""}
           </Text>
           {icon && iconPosition === "right" && (
             <View className="ml-2">{icon}</View>

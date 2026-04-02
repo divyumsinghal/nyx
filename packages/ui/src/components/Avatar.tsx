@@ -67,12 +67,12 @@ export function Avatar({
         .join(" ")}
       style={
         hasStory && hasUnseenStory
-          ? {
+          ? ({
               background:
                 "linear-gradient(135deg, #FF6B9D 0%, #FF8C61 50%, #FFD93D 100%)",
               padding: size === "2xl" ? 3 : size === "xl" ? 3 : 2,
               borderRadius: 9999,
-            }
+            } as never)
           : undefined
       }
     >

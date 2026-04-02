@@ -2,8 +2,16 @@
   "name": "@nyx/config",
   "version": "0.0.1",
   "private": true,
-  "main": "index.js",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./tailwind.config": "./tailwind.config.js",
+    "./tailwind.config.js": "./tailwind.config.js",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.expo.json": "./tsconfig.expo.json"
+  },
   "files": [
+    "index.js",
     "tailwind.config.js",
     "tsconfig.base.json",
     "tsconfig.expo.json"

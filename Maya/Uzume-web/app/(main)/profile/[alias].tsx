@@ -283,8 +283,9 @@ function ProfileHeader({
           />
         ) : (
           <View
-            style={{ width, height: headerHeight }}
             style={{
+              width,
+              height: headerHeight,
               background:
                 "linear-gradient(135deg, #1C1845 0%, #302A80 50%, #13103A 100%)",
             } as never}
@@ -340,18 +341,17 @@ function ProfileHeader({
           ) : (
             <Pressable
               onPress={onFollowToggle}
-              className="h-9 px-5 rounded-xl items-center justify-center cursor-pointer"
-              style={
-                following
-                  ? undefined
-                  : {
-                      background:
-                        "linear-gradient(135deg, #FF6B9D 0%, #FF8C61 100%)",
-                    }
-              }
               className={`h-9 px-5 rounded-xl items-center justify-center cursor-pointer ${
                 following ? "bg-space-700 border border-space-500" : ""
               }`}
+              style={
+                following
+                  ? undefined
+                  : ({
+                      background:
+                        "linear-gradient(135deg, #FF6B9D 0%, #FF8C61 100%)",
+                    } as never)
+              }
             >
               <Text
                 className={`text-sm font-semibold ${

@@ -229,10 +229,10 @@ function PeopleCard({ profile }: { profile: UzumeProfile }) {
         }`}
         style={
           !following
-            ? {
+            ? ({
                 background:
                   "linear-gradient(135deg, #FF6B9D 0%, #FF8C61 100%)",
-              }
+              } as never)
             : undefined
         }
       >

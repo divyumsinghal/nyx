@@ -12,6 +12,12 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "nativewind": "*"
+    "nativewind": "*",
+    "expo-image": "*"
+  },
+  "devDependencies": {
+    "@types/react": "~18.3.12",
+    "expo-image": "~2.0.7",
+    "typescript": "~5.3.3"
   }
 }
