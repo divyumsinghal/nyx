@@ -224,6 +224,7 @@ dependencies = [
  "async-trait",
  "axum",
  "chrono",
+ "fred",
  "futures",
  "nyx-api",
  "nyx-events",

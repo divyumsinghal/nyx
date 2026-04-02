@@ -8,6 +8,15 @@ Nyx is an open-source, privacy-first ecosystem of apps. The tagline: "Own your d
 
 Nyx is the **platform layer** — reusable microservices and library crates that any app can compose. Apps are thin domain-specific layers built on top. The litmus test for what belongs in Nyx vs an app: **"Would even a slightly different app clone also need this?"** Yes → Nyx. No → app-specific.
 
+## Source of Truth
+
+If you want to understanding the engineering, just understand: [Bible](Seshat/ARCHITECTURE.md)
+-> Read this before any change
+
+> Never MOCK Components - This is a production System - Dont create issues with Mocking.
+> Never MOCK Components - This is a production System - Dont create issues with Mocking.
+> Never MOCK Components - This is a production System - Dont create issues with Mocking.
+
 ## Current apps
 
 | App          | Name        | What it is                     | Status             |
@@ -22,24 +31,31 @@ Focus is currently on **Nyx + Uzume** only. Anteros and Themis are future work b
 ## Architecture — the key decisions
 
 ### Microservices, not monoliths
+
 Each app is composed of multiple microservices, each its own binary crate, process, and container. Uzume has 5 services: `Uzume-profiles`, `Uzume-feed`, `Uzume-stories`, `Uzume-reels`, `Uzume-discover`. Platform has 3 processes: `Heimdall`, `Oya` worker, `Ushas` worker.
 
 ### Platform crates are libraries, not services
+
 `Heka`, `Mnemosyne`, `Lethe`, `nyx-events`, `Akash`, `Brizo`, `Ogma` are Rust library crates. They compile directly into app service binaries. Zero network hops to the platform layer. They contain typed HTTP clients that talk to actual infrastructure (Kratos, Continuwuity, Meilisearch, etc.).
 
 ### REST everywhere
+
 One protocol: HTTP/JSON. No gRPC, no protobuf. Shared Rust types via library crates provide compile-time safety without code generation. Debuggable with curl.
 
 ### NATS JetStream for async events
+
 Synchronous service-to-service calls use HTTP (cached in DragonflyDB). Asynchronous events (post.created triggers media processing, search indexing, notifications) use NATS JetStream with at-least-once delivery.
 
 ### Privacy-isolated messaging
+
 One Continuwuity (Matrix) homeserver shared across all apps. Each app creates rooms tagged with `nyx.app` metadata. A user's Anteros match cannot discover their Uzume profile unless the user explicitly opts in via cross-app linking in Nyx account settings. The `Ogma` library crate enforces this.
 
 ### App-scoped aliases
+
 Every Nyx user has one Kratos identity (phone + email). Each app creates an **app-scoped alias** — the only identifier visible within that app. Aliases are stored in the `nyx.app_aliases` PostgreSQL table, not in Kratos.
 
 ### One PostgreSQL, separate schemas
+
 One instance, one connection pool. Schemas: `nyx` (aliases, links, push tokens), `Uzume` (profiles, posts, stories, reels), `Anteros` (future), `Themis` (future). Migrations are per-schema in `migrations/{app}/`.
 
 ## Monorepo structure
@@ -274,6 +290,7 @@ Zero changes to platform crate code. Zero changes to other apps.
 ## Project reference docs
 
 These files in the project contain the full detailed specs:
+
 - `nyx-architecture.md` — definitive folder-by-folder structure, all APIs, data models, service boundaries
 - `nyx-ecosystem-brainstorm.md` — naming research, "don't rewrite" toolkit, privacy model, fair dating algorithm, license rationale
 - `pixelgram-architecture.md` — original Pixelgram design (Uzume's origin), full data schemas, feed strategy, scaling path, security architecture
@@ -281,6 +298,7 @@ These files in the project contain the full detailed specs:
 ## Current state
 
 <!-- UPDATE THIS SECTION AS THE PROJECT PROGRESSES -->
+
 - [ ] Repository initialized
 - [ ] `Nun` crate created
 - [ ] `nyx-api` crate created (NyxServer builder)

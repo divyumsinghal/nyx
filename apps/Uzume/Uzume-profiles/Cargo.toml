@@ -15,10 +15,11 @@ name = "uzume_profiles"
 path = "src/lib.rs"
 
 [dependencies]
-nun = { package = "Nun", path = "../../../Monad/Nun", features = ["sqlx", "validator"] }
+ nun = { package = "Nun", path = "../../../Monad/Nun", features = ["sqlx", "validator"] }
 heka = { package = "Heka", path = "../../../Monad/Heka" }
 nyx-api = { package = "nyx-api", path = "../../../Monad/api" }
 mnemosyne = { package = "Mnemosyne", path = "../../../Monad/Mnemosyne" }
+fred = { workspace = true }
 lethe = { package = "Lethe", path = "../../../Monad/Lethe" }
 nyx-events = { package = "nyx-events", path = "../../../Monad/events" }
 brizo = { package = "Brizo", path = "../../../Monad/Brizo" }
