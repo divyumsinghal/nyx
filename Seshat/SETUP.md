@@ -1,0 +1,1 @@
+claude mcp add --transport http expo-mcp https://mcp.expo.dev/mcp
