@@ -31,7 +31,7 @@ function RootNavigation() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <View className="flex-1 bg-[#060412]">
+      <View className="flex-1 bg-space-900">
         <StatusBar style="light" backgroundColor="#060412" />
         <RootNavigation />
       </View>

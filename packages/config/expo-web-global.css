@@ -1,0 +1,82 @@
+/**
+ * Shared global styles for Expo web + NativeWind apps.
+ * Import after @tailwind base/components/utilities in each app’s global.css.
+ * Focus ring uses the shared dawn accent for consistent a11y across products.
+ */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --nyx-focus-ring: #ff6b9d;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    background-color: #060412;
+    color: #f0ebf8;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0d0a1e;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2a2460;
+    border-radius: 2px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #4a3f9a;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--nyx-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .text-dawn-gradient {
+    background: linear-gradient(135deg, #ff6b9d 0%, #ff8c61 50%, #ffd93d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-dawn-gradient {
+    background: linear-gradient(135deg, #ff6b9d 0%, #ff8c61 50%, #ffd93d 100%);
+  }
+
+  .border-dawn-gradient {
+    border-image: linear-gradient(135deg, #ff6b9d, #ff8c61, #ffd93d) 1;
+  }
+
+  .glass-card {
+    background: rgba(19, 16, 58, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(42, 36, 96, 0.6);
+  }
+
+  .star-field {
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255, 255, 255, 0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 60%, rgba(255, 255, 255, 0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 50% 10%, rgba(255, 255, 255, 0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 80%, rgba(255, 255, 255, 0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 40%, rgba(255, 255, 255, 0.6) 0%, transparent 100%),
+      radial-gradient(2px 2px at 20% 85%, rgba(167, 139, 250, 0.4) 0%, transparent 100%),
+      radial-gradient(2px 2px at 60% 30%, rgba(255, 107, 157, 0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 15%, rgba(255, 255, 255, 0.5) 0%, transparent 100%);
+  }
+}

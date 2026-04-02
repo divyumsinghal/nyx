@@ -84,6 +84,12 @@ importers:
       '@types/react':
         specifier: ~18.3.12
         version: 18.3.28
+      '@types/react-dom':
+        specifier: ~18.3.1
+        version: 18.3.7(@types/react@18.3.28)
+      babel-plugin-module-resolver:
+        specifier: ^5.0.2
+        version: 5.0.3
       eslint:
         specifier: ^8.57.1
         version: 8.57.1

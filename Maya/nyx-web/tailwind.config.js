@@ -1,11 +1,8 @@
 const baseConfig = require("@nyx/config/tailwind.config");
+const contentPaths = require("@nyx/config/tailwind-content");
 
-/** @type {import('tailwindcss').Config} */
 module.exports = {
   ...baseConfig,
-  content: [
-    "./app/**/*.{js,jsx,ts,tsx}",
-    "../../packages/ui/src/**/*.{js,jsx,ts,tsx}",
-  ],
+  content: contentPaths,
   presets: [require("nativewind/preset")],
 };

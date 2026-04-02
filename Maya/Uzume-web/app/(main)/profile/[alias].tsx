@@ -332,7 +332,7 @@ function ProfileHeader({
 
         <View className="flex-row gap-2 pb-1">
           {isOwn ? (
-            <Link href="/(main)/edit-profile" asChild>
+            <Link href="/edit-profile" asChild>
               <Pressable className="h-9 px-5 rounded-xl bg-space-700 border border-space-500 flex-row items-center gap-2 cursor-pointer active:bg-space-600">
                 <EditIcon size={15} color="#C4B5E8" />
                 <Text className="text-star-200 text-sm font-medium">Edit Profile</Text>
@@ -342,16 +342,8 @@ function ProfileHeader({
             <Pressable
               onPress={onFollowToggle}
               className={`h-9 px-5 rounded-xl items-center justify-center cursor-pointer ${
-                following ? "bg-space-700 border border-space-500" : ""
+                following ? "bg-space-700 border border-space-500" : "bg-dawn-gradient"
               }`}
-              style={
-                following
-                  ? undefined
-                  : ({
-                      background:
-                        "linear-gradient(135deg, #FF6B9D 0%, #FF8C61 100%)",
-                    } as never)
-              }
             >
               <Text
                 className={`text-sm font-semibold ${

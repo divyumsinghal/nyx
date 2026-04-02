@@ -1,8 +1,5 @@
+const { createExpoNativeWindBabelConfig } = require("@nyx/config/babel.config");
+
 module.exports = function (api) {
-  api.cache(true);
-  return {
-    presets: [
-      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
-    ],
-  };
+  return createExpoNativeWindBabelConfig(api, { projectRoot: __dirname });
 };

@@ -1,12 +1,61 @@
 /**
  * Base HTTP client for Heimdall gateway.
  * All requests go through /api/* — never direct service URLs.
+ *
+ * Browser (Expo web / RN): set `EXPO_PUBLIC_GATEWAY_URL` to the gateway origin (no `/api` suffix).
+ * Non-browser (SSR/tests/Node): `EXPO_PUBLIC_GATEWAY_URL` or `GATEWAY_URL` is read; same shape.
  */
 
-const GATEWAY_URL =
-  typeof window !== "undefined"
-    ? (process.env.EXPO_PUBLIC_GATEWAY_URL ?? "http://localhost:3000")
-    : (process.env.GATEWAY_URL ?? "http://localhost:3000");
+function stripTrailingSlash(url: string): string {
+  return url.replace(/\/+$/, "");
+}
+
+let warnedMissingGatewayUrl = false;
+
+function resolveGatewayUrl(): string {
+  const isBrowser = typeof window !== "undefined";
+  const fromEnv = isBrowser
+    ? process.env.EXPO_PUBLIC_GATEWAY_URL
+    : process.env.EXPO_PUBLIC_GATEWAY_URL ?? process.env.GATEWAY_URL;
+
+  const trimmed = fromEnv?.trim();
+  if (trimmed) {
+    return stripTrailingSlash(trimmed);
+  }
+
+  const fallback = "http://localhost:3000";
+  const requireGatewayUrl =
+    process.env.CI === "true" ||
+    process.env.NYX_REQUIRE_GATEWAY_URL === "1" ||
+    process.env.EXPO_PUBLIC_REQUIRE_GATEWAY_URL === "1";
+
+  if (process.env.NODE_ENV === "production" && requireGatewayUrl) {
+    throw new Error(
+      "EXPO_PUBLIC_GATEWAY_URL must be set when CI=true, NYX_REQUIRE_GATEWAY_URL=1, or EXPO_PUBLIC_REQUIRE_GATEWAY_URL=1 (production bundle). Use the Heimdall gateway origin only, e.g. https://api.example.com",
+    );
+  }
+
+  if (process.env.NODE_ENV === "production" && !requireGatewayUrl) {
+    if (!warnedMissingGatewayUrl && typeof console !== "undefined" && console.warn) {
+      warnedMissingGatewayUrl = true;
+      console.warn(
+        `[nyx/api] EXPO_PUBLIC_GATEWAY_URL is unset in a production bundle; using ${fallback}. ` +
+          "Set EXPO_PUBLIC_GATEWAY_URL before shipping, or run CI with EXPO_PUBLIC_GATEWAY_URL set.",
+      );
+    }
+    return fallback;
+  }
+
+  if (!warnedMissingGatewayUrl && typeof console !== "undefined" && console.warn) {
+    warnedMissingGatewayUrl = true;
+    console.warn(
+      `[nyx/api] EXPO_PUBLIC_GATEWAY_URL (or GATEWAY_URL in Node) is unset; using ${fallback}. Set it for real deployments.`,
+    );
+  }
+  return fallback;
+}
+
+export const GATEWAY_URL = resolveGatewayUrl();
 
 export interface ApiResponse<T> {
   data: T;

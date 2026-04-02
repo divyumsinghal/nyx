@@ -61,6 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(identifier: string, password: string) {
     const session = await authApi.login({ identifier, password });
+    setAuthToken(session.session_token);
     await AsyncStorage.setItem(TOKEN_KEY, session.session_token);
     const [whoami, myProfile] = await Promise.all([
       authApi.whoami(),
@@ -81,15 +82,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       display_name: displayName,
     });
+    setAuthToken(session.session_token);
     await AsyncStorage.setItem(TOKEN_KEY, session.session_token);
     const whoami = await authApi.whoami();
     setUser(whoami);
+    let myProfile: UzumeProfile | null = null;
+    try {
+      myProfile = await profilesApi.getMyProfile();
+    } catch {
+      myProfile = null;
+    }
+    setProfile(myProfile);
     setIsAuthenticated(true);
   }
 
   async function logout() {
-    await authApi.logout();
+    try {
+      await authApi.logout();
+    } catch {
+      // Still clear local session if the gateway is unreachable
+    }
     await AsyncStorage.removeItem(TOKEN_KEY);
+    setAuthToken(null);
     setUser(null);
     setProfile(null);
     setIsAuthenticated(false);

@@ -36,11 +36,10 @@ install-tools:
 
 # ── Bootstrap (run once, or after nuke) ───────────────────────────────────────
 
-# Full one-time environment bootstrap: env file → validate → build check →
+# Full one-time environment bootstrap: validate → build check →
 # start infra → wait → migrate → NATS streams.
 # To load development fixture data afterwards: just seed
 setup:
-    @just _env-init
     @just compose-validate
     @just build-check
     @just dev-infra
@@ -64,8 +63,7 @@ web-nyx:
 
 # Start both frontends in parallel via Turbo
 web-all:
-    pnpm run dev:uzume &
-    pnpm run dev:nyx
+    pnpm exec turbo run dev --parallel
 
 # ── Runtime ───────────────────────────────────────────────────────────────────
 
@@ -351,15 +349,6 @@ _print-urls:
     @echo "  Grafana:          http://localhost:3030"
     @echo "  Mailhog:          http://localhost:8025"
     @echo "  MinIO console:    http://localhost:9001"
-
-# Copy .env.example → .env if absent
-_env-init:
-    @if [ ! -f .env ]; then \
-        cp .env.example .env; \
-        echo "Created .env from .env.example — review secrets before production use."; \
-    else \
-        echo ".env exists — skipping."; \
-    fi
 
 # Block until postgres inside its container reports ready (max 120s)
 _wait-postgres:

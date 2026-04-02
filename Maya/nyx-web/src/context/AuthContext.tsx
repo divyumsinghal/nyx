@@ -1,3 +1,6 @@
+/**
+ * Nyx account portal auth — session + whoami only. Uzume profile state lives in uzume-web.
+ */
 import React, { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authApi, setAuthToken } from "@nyx/api";

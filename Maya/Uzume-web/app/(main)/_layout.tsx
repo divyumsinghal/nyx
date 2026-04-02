@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, Pressable, useWindowDimensions } from "react-native";
 import { Drawer } from "expo-router/drawer";
 import { Redirect, usePathname, Link } from "expo-router";
@@ -73,7 +73,7 @@ function NavItems(): NavItem[] {
 
 function Sidebar() {
   const pathname = usePathname();
-  const { profile, logout } = useAuth();
+  const { profile } = useAuth();
   const items = NavItems();
 
   const isActive = (href: string) => {
@@ -131,14 +131,8 @@ function Sidebar() {
 
       {/* New Post CTA */}
       <View className="px-4 mb-4">
-        <Link href="/(main)/new-post" asChild>
-          <Pressable
-            className="h-11 rounded-2xl flex-row items-center justify-center gap-2 cursor-pointer active:opacity-80"
-            style={{
-              background:
-                "linear-gradient(135deg, #FF6B9D 0%, #FF8C61 60%, #FFD93D 100%)",
-            } as never}
-          >
+        <Link href="/new-post" asChild>
+          <Pressable className="h-11 rounded-2xl flex-row items-center justify-center gap-2 cursor-pointer active:opacity-80 bg-dawn-gradient">
             <PlusIcon size={18} color="#030209" />
             <Text className="text-space-900 font-bold text-sm">New Post</Text>
           </Pressable>

@@ -1,18 +1,26 @@
 {
   "name": "@nyx/config",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "main": "./index.js",
   "exports": {
     ".": "./index.js",
+    "./babel.config": "./babel.config.js",
+    "./babel.config.js": "./babel.config.js",
+    "./expo-web-global.css": "./expo-web-global.css",
     "./tailwind.config": "./tailwind.config.js",
     "./tailwind.config.js": "./tailwind.config.js",
+    "./tailwind-content": "./tailwind-content.js",
+    "./tailwind-content.js": "./tailwind-content.js",
     "./tsconfig.base.json": "./tsconfig.base.json",
     "./tsconfig.expo.json": "./tsconfig.expo.json"
   },
   "files": [
     "index.js",
+    "babel.config.js",
+    "expo-web-global.css",
     "tailwind.config.js",
+    "tailwind-content.js",
     "tsconfig.base.json",
     "tsconfig.expo.json"
   ]
