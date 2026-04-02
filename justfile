@@ -1,47 +1,327 @@
 # =============================================================================
 # justfile — Nyx task runner
-# Install: cargo install just  (or: brew install just)
-# Usage:   just <recipe>
-#          just --list          (show all recipes)
+# Install: cargo install just
+# Usage:   just <recipe>  |  just --list
 # =============================================================================
 
-# ── Development: infrastructure ───────────────────────────────────────────────
+# ── Compose stacks ─────────────────────────────────────────────────────────────
+# To add a new app: add its overlay file here. Everything below picks it up.
 
-# Start all infrastructure services (postgres, dragonfly, nats, minio, kratos, …)
+_f_infra    := "Prithvi/compose/infra.yml"
+_f_platform := "Prithvi/compose/platform.yml"
+_f_uzume    := "Prithvi/compose/uzume.yml"
+_f_dev      := "Prithvi/compose/dev.yml"
+_f_build    := "Prithvi/compose/build.yml"   # local source-build overlay (dev only)
+_f_prod     := "Prithvi/compose/prod.yml"
+
+_dc_infra := "docker compose -f " + _f_infra
+_dc_plat  := _dc_infra  + " -f " + _f_platform
+_dc_uzume := _dc_plat   + " -f " + _f_uzume
+_dc_dev   := _dc_uzume  + " -f " + _f_dev
+_dc_local := _dc_dev    + " -f " + _f_build  # _dc_dev + build directives
+_dc_prod  := _dc_uzume  + " -f " + _f_prod
+
+# ── Default ───────────────────────────────────────────────────────────────────
+
+default:
+    @just --list
+
+# ── Toolchain ─────────────────────────────────────────────────────────────────
+
+# Install required cargo extras (call once after cloning)
+install-tools:
+    cargo install cargo-nextest cargo-deny cargo-audit
+
+# ── Bootstrap (run once, or after nuke) ───────────────────────────────────────
+
+# Full one-time environment bootstrap: env file → validate → build check →
+# start infra → wait → migrate → NATS streams.
+# To load development fixture data afterwards: just seed
+setup:
+    @just _env-init
+    @just compose-validate
+    @just build-check
+    @just dev-infra
+    @just _wait-postgres
+    @just db-migrate
+    @just nats-setup
+    @echo ""
+    @echo "Bootstrap complete."
+    @echo "  Run 'just start'  — launch the full dev stack"
+    @echo "  Run 'just seed'   — load development fixture data"
+
+# ── Runtime ───────────────────────────────────────────────────────────────────
+
+# Start the full local dev stack (builds images on first run, reuses on subsequent)
+start:
+    {{_dc_local}} up -d
+    @just _print-urls
+
+# Force-rebuild all service images from source and restart
+# Use after code changes or when images may be stale
+rebuild:
+    {{_dc_local}} up -d --build
+    @just _print-urls
+
+# Force-rebuild a single service (e.g.: just rebuild-service uzume-feed)
+rebuild-service service:
+    {{_dc_local}} up -d --build {{service}}
+
+# Stop everything (volumes preserved)
+stop:
+    {{_dc_local}} down
+
+# Restart a specific service without rebuilding (e.g.: just restart uzume-feed)
+restart service:
+    {{_dc_local}} restart {{service}}
+
+# Hard-reset: stop + destroy ALL data volumes. Requires re-running setup.
+nuke:
+    @echo "WARNING: All local data will be destroyed. Ctrl+C within 5s to cancel."
+    @sleep 5
+    {{_dc_local}} down -v --remove-orphans
+
+# ── Subsystem start/stop ──────────────────────────────────────────────────────
+
+# Start infrastructure services only (postgres, dragonfly, nats, minio, kratos, …)
 dev-infra:
-    docker compose -f Prithvi/compose/infra.yml -f Prithvi/compose/dev.yml up -d
-    @echo "Infra started. Mailhog UI: http://localhost:8025 | Grafana: http://localhost:3030 | MinIO: http://localhost:9001"
+    {{_dc_infra}} up -d
 
-# Stop all infrastructure services
+# Stop infrastructure services
 dev-infra-down:
-    docker compose -f Prithvi/compose/infra.yml -f Prithvi/compose/dev.yml down
+    {{_dc_infra}} down
 
-# Start platform workers (Heimdall gateway + Oya + Ushas)
+# Start platform workers only (Heimdall, Oya, Ushas)
 dev-platform:
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/dev.yml \
-        up -d heimdall oya ushas
+    {{_dc_local}} up -d heimdall oya ushas
 
-# Start all 5 Uzume microservices
+# Start Uzume microservices only
 dev-uzume:
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        -f Prithvi/compose/dev.yml \
-        up -d
+    {{_dc_local}} up -d uzume-profiles uzume-feed uzume-stories uzume-reels uzume-discover
 
-# Start the full dev stack (infra + platform + Uzume)
-dev-up: dev-infra
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        -f Prithvi/compose/dev.yml \
-        up -d
-    @echo "Full dev stack started."
+# ── Database ──────────────────────────────────────────────────────────────────
+
+# Run all pending migrations (Monad + Uzume schemas)
+db-migrate:
+    cargo run -p nyx-xtask -- migrate
+
+# Drop all schemas and re-run from scratch (DESTRUCTIVE — dev only)
+db-reset:
+    cargo run -p nyx-xtask -- db-reset
+
+# Interactive psql session — nyx database
+db-shell:
+    docker exec -it nyx-postgres psql -U postgres -d nyx
+
+# Interactive psql session — kratos database
+db-shell-kratos:
+    docker exec -it nyx-postgres psql -U postgres -d kratos
+
+# Load development fixture data: 10 users + 20 posts + sample content.
+# Safe to re-run (idempotent insert-or-ignore).
+seed:
+    cargo run -p nyx-xtask -- seed
+
+# ── NATS ─────────────────────────────────────────────────────────────────────
+
+# Create / verify JetStream streams (NYX + UZUME)
+nats-setup:
+    cargo run -p nyx-xtask -- nats-setup
+
+# Interactive NATS CLI shell (requires: brew install nats-io/nats-tools/nats)
+nats-shell:
+    nats --server nats://nyx:${NYX_NATS_PASSWORD:-changeme_nats}@localhost:4222
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+
+# Check the full workspace compiles (fast — no codegen, no linking)
+build-check:
+    cargo check --workspace --all-targets --all-features
+
+# Build release binaries for all crates
+build:
+    cargo build --release --workspace
+
+# ── Code quality ──────────────────────────────────────────────────────────────
+
+# Format all Rust source
+fmt:
+    cargo fmt --all
+
+# Check formatting without modifying files (CI gate)
+fmt-check:
+    cargo fmt --all -- --check
+
+# Run Clippy — all targets, all features, warnings as errors
+lint:
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+# Apply Clippy auto-fixes where possible
+lint-fix:
+    cargo clippy --workspace --all-targets --all-features --fix -- -D warnings
+
+# ── Security ──────────────────────────────────────────────────────────────────
+
+# Check licenses and banned crates (requires: just install-tools)
+security-deny:
+    cargo deny check
+
+# Check for known CVEs (requires: just install-tools)
+security-audit:
+    cargo audit
+
+# Scan tracked files for credential material
+security-secret-scan:
+    @set -eu; \
+    if git grep -nEI \
+        '(AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|-----BEGIN (RSA|OPENSSH|EC|DSA|PGP) PRIVATE KEY-----|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z\\-_]{35})' \
+        -- . ':(exclude).env.example'; then \
+        echo "Secret scan FAILED: potential credential material in tracked files." >&2; \
+        exit 1; \
+    else \
+        echo "Secret scan passed."; \
+    fi
+
+# Run all security checks
+security: security-deny security-audit security-secret-scan
+
+# ── Privacy gates ─────────────────────────────────────────────────────────────
+
+# Verify cross-app boundary constraints are present in migrations
+gate-cross-app:
+    @set -eu; \
+    file='migrations/Monad/0003_nyx_app_links.up.sql'; \
+    grep -q "CHECK (source_app <> target_app)" "$$file" \
+        || { echo "MISSING: cross-app boundary check (source_app <> target_app)" >&2; exit 1; }; \
+    grep -q "CHECK (source_nyx_identity_id <> target_nyx_identity_id)" "$$file" \
+        || { echo "MISSING: self-link prevention check" >&2; exit 1; }; \
+    grep -q "DEFAULT '{\"type\":\"revoked\"}'::jsonb" "$$file" \
+        || { echo "MISSING: fail-closed default policy (revoked)" >&2; exit 1; }; \
+    echo "Cross-app privacy gate passed."
+
+# Verify Step-1 API contract lock
+gate-step1-compat:
+    @bash tests/contracts/verify_step1_contract_lock.sh contracts/step1-compat.lock
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+# All test recipes require: just install-tools
+
+# Run the full test suite
+test:
+    cargo nextest run --workspace
+
+# Unit tests only — no Docker, no I/O (fast)
+test-unit:
+    cargo nextest run --workspace --lib
+
+# Integration tests only — requires Docker (testcontainers)
+test-integration:
+    cargo nextest run --workspace --test '*'
+
+# Run tests for a single crate (e.g.: just test-crate uzume-feed)
+test-crate crate:
+    cargo nextest run -p {{crate}}
+
+# ── Full CI gate ──────────────────────────────────────────────────────────────
+
+# Mirrors CI exactly. Run before pushing.
+ci:
+    just fmt-check
+    just lint
+    just security
+    just gate-cross-app
+    just gate-step1-compat
+    just build-check
+    just test
+    @echo ""
+    @echo "All CI gates passed."
+
+# ── Compose validation ────────────────────────────────────────────────────────
+
+# Parse-validate all compose file combinations
+compose-validate:
+    {{_dc_infra}}  config --quiet
+    {{_dc_plat}}   config --quiet
+    {{_dc_uzume}}  config --quiet
+    {{_dc_dev}}    config --quiet
+    {{_dc_local}}  config --quiet
+    {{_dc_prod}}   config --quiet
+    @echo "All compose files valid."
+
+# ── Docker image builds ───────────────────────────────────────────────────────
+
+# Build a service image (e.g.: just docker-build uzume-profiles)
+docker-build binary:
+    docker build \
+        --build-arg BINARY_NAME={{binary}} \
+        -f Prithvi/docker/Dockerfile.service \
+        -t ghcr.io/divyumsinghal/nyx/{{binary}}:latest \
+        .
+
+# Build Oya worker image (includes FFmpeg layer)
+docker-build-oya:
+    docker build \
+        --build-arg BINARY_NAME=oya \
+        --target runtime-ffmpeg \
+        -f Prithvi/docker/Dockerfile.worker \
+        -t ghcr.io/divyumsinghal/nyx/oya:latest \
+        .
+
+# Build Ushas worker image (distroless runtime)
+docker-build-ushas:
+    docker build \
+        --build-arg BINARY_NAME=ushas \
+        --target runtime-distroless \
+        -f Prithvi/docker/Dockerfile.worker \
+        -t ghcr.io/divyumsinghal/nyx/ushas:latest \
+        .
+
+# Build all service images
+docker-build-all:
+    just docker-build heimdall
+    just docker-build uzume-profiles
+    just docker-build uzume-feed
+    just docker-build uzume-stories
+    just docker-build uzume-reels
+    just docker-build uzume-discover
+    just docker-build-oya
+    just docker-build-ushas
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+
+# Tail logs for a specific service (e.g.: just logs uzume-feed)
+logs service:
+    {{_dc_local}} logs -f --tail=100 {{service}}
+
+# Tail all service logs
+logs-all:
+    {{_dc_local}} logs -f --tail=50
+
+# ── Production ────────────────────────────────────────────────────────────────
+
+# Start production stack
+prod-up:
+    {{_dc_prod}} up -d
+
+# Stop production stack
+prod-down:
+    {{_dc_prod}} down
+
+# Rolling restart of a production service (e.g.: just prod-restart uzume-feed)
+prod-restart service:
+    {{_dc_prod}} restart {{service}}
+
+# ── Scaffold ──────────────────────────────────────────────────────────────────
+
+# Scaffold a new Nyx app (e.g.: just new-app Anteros)
+new-app app:
+    cargo run -p nyx-xtask -- new-app {{app}}
+
+# ── Private helpers ───────────────────────────────────────────────────────────
+
+# Print service URLs
+_print-urls:
+    @echo ""
     @echo "  Gateway:          http://localhost:3000"
     @echo "  Uzume-profiles:   http://localhost:3001"
     @echo "  Uzume-feed:       http://localhost:3002"
@@ -53,363 +333,31 @@ dev-up: dev-infra
     @echo "  Meilisearch:      http://localhost:7700"
     @echo "  Grafana:          http://localhost:3030"
     @echo "  Mailhog:          http://localhost:8025"
+    @echo "  MinIO console:    http://localhost:9001"
 
-# Tear down the full dev stack (preserves volumes)
-dev-down:
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        -f Prithvi/compose/dev.yml \
-        down
-
-# Tear down and wipe all volumes (full reset — DESTROYS ALL DATA)
-dev-nuke:
-    @echo "⚠ This will destroy all local data (postgres, minio, nats, etc.). Press Ctrl+C to cancel."
-    @sleep 3
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        down -v --remove-orphans
-
-# ── Development: individual service runners (cargo) ───────────────────────────
-
-dev-gateway:
-    cargo run -p heimdall
-dev-oya:
-    cargo run -p oya
-dev-ushas:
-    cargo run -p ushas
-dev-profiles:
-    cargo run -p uzume-profiles
-dev-feed:
-    cargo run -p uzume-feed
-dev-stories:
-    cargo run -p uzume-stories
-dev-reels:
-    cargo run -p uzume-reels
-dev-discover:
-    cargo run -p uzume-discover
-
-# ── Production ────────────────────────────────────────────────────────────────
-
-# Start the full production stack
-prod-up:
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        -f Prithvi/compose/prod.yml \
-        up -d
-
-# Rolling restart of a specific service (e.g.: just prod-restart uzume-feed)
-prod-restart service:
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        -f Prithvi/compose/prod.yml \
-        restart {{service}}
-
-# ── Database ──────────────────────────────────────────────────────────────────
-
-# Run all pending migrations (Monad + Uzume schemas)
-db-migrate:
-    cargo run -p nyx-xtask -- migrate
-
-# Drop all schemas and re-run migrations from scratch (DESTROYS DATA — dev only)
-db-reset:
-    cargo run -p nyx-xtask -- db-reset
-
-# Load seed data (10 users + 20 posts) into a running dev database
-seed:
-    cargo run -p nyx-xtask -- seed
-
-# Open a psql session to the nyx database
-db-shell:
-    docker exec -it nyx-postgres psql -U postgres -d nyx
-
-# Open a psql session to the kratos database
-db-shell-kratos:
-    docker exec -it nyx-postgres psql -U postgres -d kratos
-
-# ── NATS ─────────────────────────────────────────────────────────────────────
-
-# Create/verify NATS JetStream streams (NYX + UZUME)
-nats-setup:
-    cargo run -p nyx-xtask -- nats-setup
-
-# Open NATS CLI shell (requires nats CLI: cargo install nats-cli)
-nats-shell:
-    nats --server nats://nyx:${NYX_NATS_PASSWORD:-changeme_nats}@localhost:4222
-
-# ── Quality gates (used by CI) ────────────────────────────────────────────────
-
-fmt-check:
-    cargo fmt --all -- --check
-fmt:
-    cargo fmt --all
-lint:
-    cargo clippy --workspace --all-targets --all-features -- -D warnings
-lint-fix:
-    cargo clippy --workspace --all-targets --all-features --fix -- -D warnings
-
-# ── Security ──────────────────────────────────────────────────────────────────
-
-security-deny:
-    cargo deny check
-security-audit:
-    @set -eu; \
-    if cargo --list | grep -qE '^\s*audit\s'; then \
-      cargo audit; \
+# Copy .env.example → .env if absent
+_env-init:
+    @if [ ! -f .env ]; then \
+        cp .env.example .env; \
+        echo "Created .env from .env.example — review secrets before production use."; \
     else \
-      echo 'cargo-audit not installed; skipping security-audit check in this environment.'; \
+        echo ".env exists — skipping."; \
     fi
 
-security-secret-scan:
-        @set -eu; \
-        if git grep -nEI '(AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|-----BEGIN (RSA|OPENSSH|EC|DSA|PGP) PRIVATE KEY-----|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z\\-_]{35})' -- . ':(exclude).env.example'; then \
-            echo 'Secret scan failed: potential credential material detected in tracked files.' >&2; \
-            exit 1; \
-        else \
-            echo 'Secret scan passed: no high-confidence secret signatures detected.'; \
+# Block until postgres inside its container reports ready (max 120s)
+_wait-postgres:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Waiting for postgres to be healthy..."
+    timeout=120
+    elapsed=0
+    until docker exec nyx-postgres pg_isready -U postgres -q 2>/dev/null; do
+        if [ "$elapsed" -ge "$timeout" ]; then
+            echo "ERROR: postgres failed to become healthy within ${timeout}s." >&2
+            echo "Run: docker logs nyx-postgres" >&2
+            exit 1
         fi
-
-security:           security-deny security-audit security-secret-scan
-
-# Privacy-isolation gate: verify cross-app boundary constraints exist in migrations
-gate-cross-app-unauthorized:
-    @set -eu; \
-    file='migrations/Monad/0003_nyx_app_links.up.sql'; \
-    grep -q "CHECK (source_app <> target_app)" "$file" || { echo 'Missing cross-app boundary check: source_app <> target_app' >&2; exit 1; }; \
-    grep -q "CHECK (source_nyx_identity_id <> target_nyx_identity_id)" "$file" || { echo 'Missing self-link prevention check' >&2; exit 1; }; \
-    grep -q "DEFAULT '{\"type\":\"revoked\"}'::jsonb" "$file" || { echo 'Missing fail-closed default policy (revoked)' >&2; exit 1; }; \
-    echo 'Cross-app unauthorized-access gate passed: required constraints present.'
-
-gate-step1-compat:
-	@set -eu; \
-	bash tests/contracts/verify_step1_contract_lock.sh contracts/step1-compat.lock
-
-check: security-deny
-
-# ── Testing ───────────────────────────────────────────────────────────────────
-
-# Run all tests (nextest if available, else cargo test)
-test:
-    @if cargo nextest --version >/dev/null 2>&1; then \
-      cargo nextest run --workspace; \
-    else \
-      cargo test --workspace --all-targets; \
-    fi
-
-# Unit tests only (no integration tests — fast, no Docker required)
-test-unit:
-    @if cargo nextest --version >/dev/null 2>&1; then \
-      cargo nextest run --workspace --lib; \
-    else \
-      cargo test --workspace --lib; \
-    fi
-
-# Integration tests only (requires Docker for testcontainers)
-test-integration:
-    @if cargo nextest --version >/dev/null 2>&1; then \
-      cargo nextest run --workspace --test '*'; \
-    else \
-      cargo test --workspace --test '*'; \
-    fi
-
-# Unified crate: security-focused suites
-test-security:
-        @if cargo nextest --version >/dev/null 2>&1; then \
-            cargo nextest run -p tests --test security; \
-        else \
-            cargo test -p tests --test security; \
-        fi
-
-# Unified crate: property-based suites
-test-property:
-        @if cargo nextest --version >/dev/null 2>&1; then \
-            cargo nextest run -p tests --test property; \
-        else \
-            cargo test -p tests --test property; \
-        fi
-
-# Unified crate: E2E sandbox suites (ignored tests require --run-ignored)
-test-e2e:
-        @if [ ! -S /var/run/docker.sock ]; then \
-            echo "Skipping e2e tests: Docker socket not available"; \
-        elif cargo nextest --version >/dev/null 2>&1; then \
-            cargo nextest run -p tests --test e2e --run-ignored all; \
-        else \
-            cargo test -p tests --test e2e -- --ignored; \
-        fi
-
-# Unified crate: run all crate-level suites
-test-all:
-        @if cargo nextest --version >/dev/null 2>&1; then \
-            cargo nextest run -p tests; \
-        else \
-            cargo test -p tests; \
-        fi
-
-# Unified crate: snapshot-focused integration checks
-test-snapshot:
-        @if cargo nextest --version >/dev/null 2>&1; then \
-            cargo nextest run -p tests --test integration snapshot_contracts::api_contract_snapshot_stable; \
-        else \
-            cargo test -p tests --test integration snapshot_contracts::api_contract_snapshot_stable; \
-        fi
-
-# Fuzz harness compile smoke (requires cargo-fuzz for full execution)
-fuzz-check:
-        @cd tests/fuzz && cargo check --bin fuzz_target_token_validation
-
-# Run tests for a specific crate (e.g.: just test-crate uzume-feed)
-test-crate crate:
-    @if cargo nextest --version >/dev/null 2>&1; then \
-      cargo nextest run -p {{crate}}; \
-    else \
-      cargo test -p {{crate}}; \
-    fi
-
-# ── Migrations validation gate ────────────────────────────────────────────────
-
-migration-check:
-    cargo run -p nyx-xtask -- migrate
-validation-check:
-    cargo check --workspace --all-targets --all-features
-
-# ── Full CI-equivalent local gate ─────────────────────────────────────────────
-
-# Mirrors exactly what .github/workflows/ci.yml runs — run this before pushing.
-ci:
-    just fmt-check
-    just lint
-    just security
-    just gate-cross-app-unauthorized
-    just validation-check
-    just test-all
-    just test-security
-    just test-property
-    just test-e2e
-    just test-snapshot
-    @echo "All CI gates passed locally."
-
-# ── Docker builds ─────────────────────────────────────────────────────────────
-
-# Validate all compose files parse correctly (no-op dry run)
-compose-validate:
-    docker compose -f Prithvi/compose/infra.yml config --quiet
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        config --quiet
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        config --quiet
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        -f Prithvi/compose/dev.yml \
-        config --quiet
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        -f Prithvi/compose/prod.yml \
-        config --quiet
-    @echo "All compose files are valid."
-
-# Build a service Docker image (e.g.: just docker-build uzume-profiles)
-docker-build binary:
-    docker build \
-        --build-arg BINARY_NAME={{binary}} \
-        -f Prithvi/docker/Dockerfile.service \
-        -t ghcr.io/divyumsinghal/nyx/{{binary}}:latest \
-        .
-
-# Build Oya (media worker — includes FFmpeg)
-docker-build-oya:
-    docker build \
-        --build-arg BINARY_NAME=oya \
-        --target runtime-ffmpeg \
-        -f Prithvi/docker/Dockerfile.worker \
-        -t ghcr.io/divyumsinghal/nyx/oya:latest \
-        .
-
-# Build Ushas (notify worker — distroless)
-docker-build-ushas:
-    docker build \
-        --build-arg BINARY_NAME=ushas \
-        --target runtime-distroless \
-        -f Prithvi/docker/Dockerfile.worker \
-        -t ghcr.io/divyumsinghal/nyx/ushas:latest \
-        .
-
-# Build a web frontend image (e.g.: just docker-build-web Uzume-web)
-docker-build-web app:
-    docker build \
-        --build-arg APP_DIR={{app}} \
-        --build-arg PUBLIC_API_BASE_URL=http://localhost:3000/api \
-        -f Prithvi/docker/Dockerfile.web \
-        -t ghcr.io/divyumsinghal/nyx/{{app}}:latest \
-        .
-
-# Build all service images
-docker-build-all:
-    just docker-build uzume-profiles
-    just docker-build uzume-feed
-    just docker-build uzume-stories
-    just docker-build uzume-reels
-    just docker-build uzume-discover
-    just docker-build heimdall
-    just docker-build-oya
-    just docker-build-ushas
-
-# ── Build ─────────────────────────────────────────────────────────────────────
-
-build-release:
-    cargo build --release --workspace
-build-check:
-    cargo check --workspace --all-targets --all-features
-
-# ── Frontend ──────────────────────────────────────────────────────────────────
-
-ui-install:
-    cd Maya && pnpm install
-ui-dev-uzume:
-    cd Maya/Uzume-web && pnpm dev
-ui-dev-nyx:
-    cd Maya/nyx-web && pnpm dev
-ui-build:
-    cd Maya && pnpm build
-ui-lint:
-    cd Maya && pnpm lint
-
-# ── Logs ──────────────────────────────────────────────────────────────────────
-
-# Tail logs for a specific service (e.g.: just logs uzume-feed)
-logs service:
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        logs -f --tail=100 {{service}}
-
-# Tail all logs
-logs-all:
-    docker compose \
-        -f Prithvi/compose/infra.yml \
-        -f Prithvi/compose/platform.yml \
-        -f Prithvi/compose/uzume.yml \
-        logs -f --tail=50
-
-# ── Scaffold ──────────────────────────────────────────────────────────────────
-
-# Scaffold a new Nyx app (e.g.: just new-app Anteros)
-new-app app:
-    cargo run -p nyx-xtask -- new-app {{app}}
+        sleep 3
+        elapsed=$((elapsed + 3))
+    done
+    echo "postgres is ready."

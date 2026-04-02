@@ -1,0 +1,97 @@
+# =============================================================================
+# build.yml — Local source-build overlay
+#
+# Adds `build:` directives to every application service so Docker Compose
+# can build images directly from the workspace instead of pulling from GHCR.
+#
+# Layer on top of infra + platform + uzume + dev when working locally:
+#
+#   docker compose \
+#     -f Prithvi/compose/infra.yml \
+#     -f Prithvi/compose/platform.yml \
+#     -f Prithvi/compose/uzume.yml \
+#     -f Prithvi/compose/dev.yml \
+#     -f Prithvi/compose/build.yml \
+#     up -d [--build]
+#
+# Or use the justfile shortcuts:
+#   just start          — bring up (builds images on first run)
+#   just rebuild        — force-rebuild all images and restart
+#   just rebuild heimdall  — force-rebuild a single service
+#
+# NOT used in production (prod.yml pulls versioned images from GHCR).
+#
+# Build contexts are relative to the compose file location (Prithvi/compose/).
+# ../.. = workspace root.
+# =============================================================================
+
+name: nyx
+
+services:
+
+  # ── Platform workers ────────────────────────────────────────────────────────
+
+  heimdall:
+    build:
+      context: ../..
+      dockerfile: Prithvi/docker/Dockerfile.service
+      args:
+        BINARY_NAME: heimdall
+
+  oya:
+    build:
+      context: ../..
+      dockerfile: Prithvi/docker/Dockerfile.worker
+      target: runtime-ffmpeg
+      args:
+        BINARY_NAME: oya
+
+  ushas:
+    build:
+      context: ../..
+      dockerfile: Prithvi/docker/Dockerfile.worker
+      target: runtime-distroless
+      args:
+        BINARY_NAME: ushas
+
+  # ── Uzume microservices ─────────────────────────────────────────────────────
+
+  uzume-profiles:
+    build:
+      context: ../..
+      dockerfile: Prithvi/docker/Dockerfile.service
+      args:
+        BINARY_NAME: uzume-profiles
+
+  uzume-feed:
+    build:
+      context: ../..
+      dockerfile: Prithvi/docker/Dockerfile.service
+      args:
+        BINARY_NAME: uzume-feed
+
+  uzume-stories:
+    build:
+      context: ../..
+      dockerfile: Prithvi/docker/Dockerfile.service
+      args:
+        BINARY_NAME: uzume-stories
+
+  uzume-reels:
+    build:
+      context: ../..
+      dockerfile: Prithvi/docker/Dockerfile.service
+      args:
+        BINARY_NAME: uzume-reels
+
+  uzume-discover:
+    build:
+      context: ../..
+      dockerfile: Prithvi/docker/Dockerfile.service
+      args:
+        BINARY_NAME: uzume-discover
+
+# ── External network (created by infra.yml) ───────────────────────────────────
+networks:
+  nyx:
+    external: true
