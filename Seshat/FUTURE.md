@@ -17,7 +17,7 @@ Prithvi/
 ├── docker/
 │   ├── Dockerfile.service     # Multi-stage Dockerfile for any Rust service binary
 │   ├── Dockerfile.worker      # Multi-stage Dockerfile for worker binaries (media, notify)
-│   └── Dockerfile.web         # Dockerfile for SvelteKit frontend (node build → nginx static)
+│   └── Dockerfile.web         # Dockerfile for Typescript frontend (node build → nginx static)
 │
 ├── config/
 │   ├── kratos/

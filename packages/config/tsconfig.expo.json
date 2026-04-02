@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2020"],
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@nyx/ui": ["../../packages/ui/src/index.ts"],
+      "@nyx/ui/*": ["../../packages/ui/src/*"],
+      "@nyx/api": ["../../packages/api/src/index.ts"],
+      "@nyx/api/*": ["../../packages/api/src/*"]
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "@nyx/api",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./auth": "./src/nyx/auth.ts",
+    "./account": "./src/nyx/account.ts",
+    "./feed": "./src/uzume/feed.ts",
+    "./profiles": "./src/uzume/profiles.ts",
+    "./stories": "./src/uzume/stories.ts",
+    "./reels": "./src/uzume/reels.ts",
+    "./discover": "./src/uzume/discover.ts",
+    "./messaging": "./src/nyx/messaging.ts"
+  },
+  "peerDependencies": {
+    "react": "*"
+  }
+}

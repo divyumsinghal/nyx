@@ -91,7 +91,7 @@ Agent 3's full scope:
 
 □ Prithvi/docker/Dockerfile.service (multi-stage Rust → distroless)
 □ Prithvi/docker/Dockerfile.worker
-□ Prithvi/docker/Dockerfile.web (SvelteKit → nginx)
+□ Prithvi/docker/Dockerfile.web (Typescript → nginx)
 
 □ Prithvi/config/kratos/kratos.yml
 □ Prithvi/config/kratos/identity.schema.json (phone + email + display_name)
@@ -379,7 +379,7 @@ USHAS (nyx-notify worker):
 **Agent 1:**
 ```
 MAYA/SHARED (@nyx/ui):
-  □ SvelteKit lib setup, package.json
+  □ Typescript lib setup, package.json
   □ components/Auth/ (LoginForm, RegisterForm)
   □ components/Common/ (Button, Input, Modal, Avatar, Skeleton, Toast)
   □ components/Media/ (ImageUploader, VideoPlayer, Carousel)

@@ -41,7 +41,7 @@
 - ✅ Can build Tinder clone — swipe cards work fine in WebView
 - ⚠️ Can build simplified Instagram — feed, profiles, stories work
 - ❌ Will STRUGGLE with TikTok/Reels — vertical video feed at 60fps is the hardest pattern for WebView
-- ❌ SvelteKit + Capacitor has known iOS routing bug (#7972) — infinite reload in hash mode
+- ❌ Typescript + Capacitor has known iOS routing bug (#7972) — infinite reload in hash mode
 - ❌ No production social media apps at scale use Capacitor
 - ✅ 100% free — no Appflow needed for basic builds
 - ⚠️ Android performance 15-25% worse than iOS for same Capacitor app
@@ -50,37 +50,37 @@
 
 ## The Core Tension
 
-**Nyx already chose SvelteKit** (documented in ARCHITECTURE.md). But:
-1. SvelteKit ecosystem for social media UI components is very thin
-2. SvelteKit + Capacitor has known iOS bugs
-3. No production social apps use SvelteKit + Capacitor at scale
+**Nyx already chose Typescript** (documented in ARCHITECTURE.md). But:
+1. Typescript ecosystem for social media UI components is very thin
+2. Typescript + Capacitor has known iOS bugs
+3. No production social apps use Typescript + Capacitor at scale
 4. Best libraries (stories, reels, swipe, chat) are React/React Native or Flutter
 
 ## Options Analysis
 
-### Option A: Stay SvelteKit + Capacitor
+### Option A: Stay Typescript + Capacitor
 - **Pro**: Consistent with existing architecture choice, one codebase, zero new skills
 - **Con**: Thin ecosystem, iOS bugs, video performance ceiling, no proven social app examples
 - **Verdict**: Risky for "replace Instagram" ambition
 
-### Option B: SvelteKit Web + React Native Mobile (separate UI layers)
-- **Pro**: Best of both — SvelteKit for web (your choice), RN for native (best libraries)
+### Option B: Typescript Web + React Native Mobile (separate UI layers)
+- **Pro**: Best of both — Typescript for web (your choice), RN for native (best libraries)
 - **Con**: Two UI codebases per app, team needs both Svelte + React skills
 - **Shared**: Types, API client, business logic via monorepo packages
 - **Verdict**: Pragmatic compromise but maintenance overhead
 
 ### Option C: Full React Native + Expo (web via RN Web)
 - **Pro**: One UI codebase, best ecosystem, Expo free tier works
-- **Con**: Abandoning SvelteKit investment, Expo build limits (15/mo)
+- **Con**: Abandoning Typescript investment, Expo build limits (15/mo)
 - **Verdict**: Best ecosystem but conflicts with existing architecture decision
 
 ### Option D: Full Flutter (web + mobile)
 - **Pro**: 100% free, best performance, one codebase, mature monorepo (Melos)
-- **Con**: Must learn Dart, abandoning SvelteKit, Flutter web is still maturing
+- **Con**: Must learn Dart, abandoning Typescript, Flutter web is still maturing
 - **Verdict**: Best technical choice but biggest pivot
 
-### Option E: SvelteKit Web + Flutter Mobile (separate UI layers)
-- **Pro**: SvelteKit for web (your choice), Flutter for native (best performance)
+### Option E: Typescript Web + Flutter Mobile (separate UI layers)
+- **Pro**: Typescript for web (your choice), Flutter for native (best performance)
 - **Con**: Two completely different stacks, Dart + TypeScript, highest complexity
 - **Verdict**: Maximum quality but maximum complexity
 
@@ -88,10 +88,10 @@
 
 Given the constraints (free, replace Instagram/Tinder, monorepo, each app standalone):
 
-**Option B: SvelteKit for Web + React Native + Expo for Mobile**
+**Option B: Typescript for Web + React Native + Expo for Mobile**
 
 Rationale:
-1. Respects existing SvelteKit investment for web
+1. Respects existing Typescript investment for web
 2. RN has the BEST ecosystem for social media features (gifted-chat, react-native-video-feed, react-native-reanimated for swipes)
 3. Expo free tier is sufficient for development (15 builds/mo) — can switch to local builds for production
 4. Shared monorepo packages: types, API client, design tokens
@@ -102,9 +102,9 @@ Rationale:
 
 ## Current Maya/ State (CRITICAL CONTEXT)
 - `shared/` — Only README exists. No actual code. The @nyx/ui component library is planned but not built.
-- `Uzume-web/` — Only .gitkeep + README. No actual SvelteKit app exists.
-- **ZERO sunk cost in SvelteKit frontend.** Everything is planned, nothing is built.
-- The architecture doc chose SvelteKit, but that was a paper decision, not an engineering investment.
+- `Uzume-web/` — Only .gitkeep + README. No actual Typescript app exists.
+- **ZERO sunk cost in Typescript frontend.** Everything is planned, nothing is built.
+- The architecture doc chose Typescript, but that was a paper decision, not an engineering investment.
 
 ## Real Open-Source Social Media Clone Analysis
 
@@ -137,7 +137,7 @@ Rationale:
 
 ## The Honest Answer
 
-There is ZERO sunk cost in SvelteKit. The Maya/ directory has READMEs and .gitkeep files — no actual code. The architecture doc's SvelteKit choice was a paper decision, not an engineering investment.
+There is ZERO sunk cost in Typescript. The Maya/ directory has READMEs and .gitkeep files — no actual code. The architecture doc's Typescript choice was a paper decision, not an engineering investment.
 
 Given that, and given the evidence:
 
@@ -154,6 +154,6 @@ Evidence:
 The only reason NOT to choose Flutter is if you have a strong team preference for JavaScript/TypeScript. In that case, React Native is the second-best choice.
 
 ## Open Questions
-1. Does the evidence change your view on SvelteKit? (Nothing is built yet — no sunk cost)
+1. Does the evidence change your view on Typescript? (Nothing is built yet — no sunk cost)
 2. Are you comfortable learning Dart, or is TypeScript a hard requirement?
 3. Do you want me to create a work plan for whichever framework you choose?

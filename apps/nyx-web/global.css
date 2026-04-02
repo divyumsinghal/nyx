@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root { color-scheme: dark; }
+  html, body, #root {
+    height: 100%;
+    background-color: #060412;
+    color: #F0EBF8;
+  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: #0D0A1E; }
+  ::-webkit-scrollbar-thumb { background: #2A2460; border-radius: 2px; }
+  :focus-visible { outline: 2px solid #A78BFA; outline-offset: 2px; }
+}
+
+@layer utilities {
+  .text-dawn-gradient {
+    background: linear-gradient(135deg, #FF6B9D 0%, #FF8C61 50%, #FFD93D 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .glass-card {
+    background: rgba(19, 16, 58, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(42, 36, 96, 0.6);
+  }
+}

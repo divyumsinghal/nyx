@@ -382,7 +382,7 @@ Uzume/
 │   ├── k8s/                      # Kubernetes manifests (for larger deployments)
 │   └── terraform/                # Oracle Cloud infrastructure as code
 ├── clients/
-│   ├── web/                      # React/SvelteKit web app
+│   ├── web/                      # React/Typescript web app
 │   ├── mobile/                   # Flutter or React Native app
 │   └── sdk/                      # TypeScript SDK auto-generated from OpenAPI spec
 ├── docs/

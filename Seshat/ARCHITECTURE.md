@@ -123,7 +123,7 @@ No cycles. Clean layers. Monad does the heavy lifting. Apps compose and speciali
 - Alternative — bun: Fastest, but runtime compatibility gaps and less mature lockfile format.
 
 **Tool choice — Frontend framework:**
-- **SvelteKit (chosen)**: Smallest bundle sizes (compiler, not runtime), built-in SSR, simpler state management (Svelte stores vs React hooks/context), faster dev iteration. Free hosting on Cloudflare Pages. Kit provides file-based routing, form actions, and server-side data loading.
+- **Typescript (chosen)**: Smallest bundle sizes (compiler, not runtime), built-in SSR, simpler state management (Svelte stores vs React hooks/context), faster dev iteration. Free hosting on Cloudflare Pages. Kit provides file-based routing, form actions, and server-side data loading.
 - Alternative — Next.js (React): Largest ecosystem, most third-party components. Heavier bundle, more complex state management, requires more configuration for optimal performance.
 - Alternative — Nuxt (Vue): Good middle ground. Vue's reactivity model is intuitive. Smaller ecosystem than React.
 
