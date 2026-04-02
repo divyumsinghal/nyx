@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--dir", "Maya/uzume-web", "run", "dev"],
       "port": 8081
+    },
+    {
+      "name": "nyx-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "Maya/nyx-web", "run", "dev"],
+      "port": 8082
     }
   ]
 }

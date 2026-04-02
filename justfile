@@ -54,9 +54,18 @@ setup:
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 
-# Start Uzume web frontend dev server (http://localhost:8081)
+# Start Uzume social app dev server (http://localhost:8081)
 web:
-    cd Maya/Uzume-web && pnpm dev
+    cd Maya/uzume-web && pnpm dev
+
+# Start Nyx account portal dev server (http://localhost:8082)
+web-nyx:
+    cd Maya/nyx-web && pnpm dev
+
+# Start both frontends in parallel via Turbo
+web-all:
+    pnpm run dev:uzume &
+    pnpm run dev:nyx
 
 # ── Runtime ───────────────────────────────────────────────────────────────────
 
