@@ -4,6 +4,8 @@
 # Usage:   just <recipe>  |  just --list
 # =============================================================================
 
+set shell := ["powershell.exe", "-Command"]
+
 # ── Compose stacks ─────────────────────────────────────────────────────────────
 # To add a new app: add its overlay file here. Everything below picks it up.
 

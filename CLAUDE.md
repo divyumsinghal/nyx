@@ -92,7 +92,7 @@ nyx/
 │
 ├── Maya/                      # Frontend (pnpm workspace)
 │   ├── shared/                # @nyx/ui Svelte component library
-│   ├── Uzume-web/             # Uzume SvelteKit app
+│   ├── Uzume-web/             # Uzume Typescript app
 │   └── nyx-web/               # Nyx account portal
 │
 ├── Prithvi/                   # Deployment
@@ -158,7 +158,7 @@ nyx/
 
 | Concern         | Choice                      |
 | --------------- | --------------------------- |
-| Framework       | **SvelteKit**               |
+| Framework       | **Typescript**               |
 | Package manager | **pnpm**                    |
 | Matrix SDK      | **matrix-js-sdk**           |
 | E2E tests       | **Playwright**              |
@@ -283,7 +283,7 @@ Nun → Mnemosyne, Lethe, nyx-events, Akash, Brizo, Heka, Ogma
 5. Add NATS subjects in `nyx-events`
 6. Add gateway routes in `Heimdall`
 7. Add compose file in `Prithvi/compose/{app}.yml`
-8. Create `Maya/{app}-web/` SvelteKit app
+8. Create `Maya/{app}-web/` Typescript app
 
 Zero changes to platform crate code. Zero changes to other apps.
 

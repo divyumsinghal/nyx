@@ -34,8 +34,8 @@ Build the final web UI for Uzume and Nyx in Phase 4, runnable locally end-to-end
 Ship a complete locally runnable web product where users can do full Uzume social workflows and admins can perform moderation, while Nyx remains account-only.
 
 ### Deliverables
-- `apps/nyx-web`
-- `apps/uzume-web`
+- `Maya/nyx-web`
+- `Maya/uzume-web`
 - `packages/ui`, `packages/api`, `packages/config`
 - backend contract completion for required flows
 - CI + e2e verification and runbook proof
@@ -222,7 +222,7 @@ Ship a complete locally runnable web product where users can do full Uzume socia
   Scenario: Authenticated contract call
     Tool: Bash
     Steps: run contract test suite with valid token
-    Expected: typed success parsing for key 
+    Expected: typed success parsing for key
 endpoints
     Evidence: .sisyphus/evidence/task-4-api.txt
 
@@ -453,7 +453,7 @@ endpoints
     Evidence: .sisyphus/evidence/task-10-nyx-error.png
   ```
 
-  **Commit**: YES | Message: `feat(nyx-web): account-only web experience` | Files: `apps/nyx-web/**`
+  **Commit**: YES | Message: `feat(nyx-web): account-only web experience` | Files: `Maya/nyx-web/**`
 
 - [ ] 11. Build uzume feed and post interactions
 
@@ -489,7 +489,7 @@ endpoints
     Evidence: .sisyphus/evidence/task-11-feed-error.png
   ```
 
-  **Commit**: YES | Message: `feat(uzume-web): feed and post interactions` | Files: `apps/uzume-web/**`
+  **Commit**: YES | Message: `feat(uzume-web): feed and post interactions` | Files: `Maya/uzume-web/**`
 
 - [ ] 12. Build uzume stories and reels web experiences
 
@@ -526,7 +526,7 @@ endpoints
     Evidence: .sisyphus/evidence/task-12-stories-reels-error.png
   ```
 
-  **Commit**: YES | Message: `feat(uzume-web): stories and reels parity surfaces` | Files: `apps/uzume-web/**`
+  **Commit**: YES | Message: `feat(uzume-web): stories and reels parity surfaces` | Files: `Maya/uzume-web/**`
 
 - [ ] 13. Build profiles/discover/search/messaging/notifications
 
@@ -564,7 +564,7 @@ endpoints
     Evidence: .sisyphus/evidence/task-13-surfaces-error.png
   ```
 
-  **Commit**: YES | Message: `feat(uzume-web): profiles discover messaging notifications` | Files: `apps/uzume-web/**`
+  **Commit**: YES | Message: `feat(uzume-web): profiles discover messaging notifications` | Files: `Maya/uzume-web/**`
 
 - [ ] 14. Build uzume admin/moderation web interfaces
 
@@ -600,7 +600,7 @@ endpoints
     Evidence: .sisyphus/evidence/task-14-admin-ui-error.png
   ```
 
-  **Commit**: YES | Message: `feat(uzume-web): admin and moderation interfaces` | Files: `apps/uzume-web/**`
+  **Commit**: YES | Message: `feat(uzume-web): admin and moderation interfaces` | Files: `Maya/uzume-web/**`
 
 - [ ] 15. Hardening, regression, and release gate completion
 

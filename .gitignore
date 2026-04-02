@@ -25,3 +25,6 @@ target
 .opencode/oh-my-opencode.json
 .vscode/
 .sisyphus/ralph-loop.local.md
+node_modules/
+.turbo/
+.expo/
