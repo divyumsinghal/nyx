@@ -6,7 +6,7 @@ interface ButtonProps {
   label?: string;
   children?: React.ReactNode;
   onPress?: () => void;
-  variant?: "primary" | "secondary" | "ghost" | "danger" | "dawn";
+  variant?: "primary" | "secondary" | "ghost" | "danger" | "dawn" | "outline";
   size?: "sm" | "md" | "lg";
   loading?: boolean;
   disabled?: boolean;
@@ -22,6 +22,7 @@ const variantStyles = {
   ghost: "bg-transparent border border-space-500 active:bg-space-700",
   danger: "bg-red-900 border border-red-700 active:opacity-80",
   dawn: "border-0 active:opacity-80",
+  outline: "bg-transparent border border-space-500 active:bg-space-800",
 };
 
 const textStyles = {
@@ -30,6 +31,7 @@ const textStyles = {
   ghost: "text-star-300 font-medium",
   danger: "text-red-300 font-semibold",
   dawn: "text-space-900 font-bold",
+  outline: "text-star-200 font-medium",
 };
 
 const sizeStyles = {

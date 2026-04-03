@@ -13,6 +13,7 @@ path = "src/lib.rs"
 
 [dependencies]
 nun = { package = "Nun", path = "../Nun", default-features = false }
+heka = { package = "Heka", path = "../Heka" }
 axum = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }

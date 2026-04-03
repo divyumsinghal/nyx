@@ -60,7 +60,7 @@ just test-integration
 just test-security
 just test-property
 just test-e2e
-just test-all
+just test
 just test-snapshot
 just fuzz-check
 ```

@@ -1,5 +1,6 @@
 pub mod extract;
 pub mod middleware;
+pub mod nyx_id;
 pub mod openapi;
 pub mod response;
 pub mod server;

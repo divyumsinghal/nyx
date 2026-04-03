@@ -5,3 +5,5 @@
 
 pub mod commands;
 pub mod env;
+
+pub mod auth;

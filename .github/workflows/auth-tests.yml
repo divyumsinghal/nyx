@@ -1,0 +1,109 @@
+name: Auth Integration Tests
+
+# Runs the full Kratos auth flow against real infrastructure (Postgres + Mailpit + Kratos).
+# These tests are separate from the main CI because they require Docker Compose services.
+
+on:
+  pull_request:
+    paths:
+      # Re-run whenever auth-related code changes
+      - "Monad/Heka/**"
+      - "Prithvi/config/kratos/**"
+      - "Prithvi/compose/auth-test.yml"
+      - "Prithvi/postgres/**"
+      - "tests/tests/auth/**"
+      - "tests/tests/auth_integration.rs"
+      - ".github/workflows/auth-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "Monad/Heka/**"
+      - "Prithvi/config/kratos/**"
+      - "Prithvi/compose/auth-test.yml"
+      - "Prithvi/postgres/**"
+      - "tests/tests/auth/**"
+      - "tests/tests/auth_integration.rs"
+  # Allow manual trigger from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Auth stack endpoints (exposed by docker compose)
+  KRATOS_PUBLIC_URL: "http://localhost:4433"
+  KRATOS_ADMIN_URL:  "http://localhost:4434"
+  MAILPIT_API_URL:   "http://localhost:8025"
+
+jobs:
+  auth-integration:
+    name: Auth flow integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Build the Rust workspace first ────────────────────────────────────
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry + build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build test binary
+        run: cargo test --test auth_integration --no-run
+
+      # ── Start auth infrastructure ─────────────────────────────────────────
+      - name: Start auth stack (Postgres + Mailpit + Kratos)
+        run: |
+          docker compose \
+            -f Prithvi/compose/auth-test.yml \
+            up -d --wait
+        # --wait waits for ALL services to pass their healthchecks before returning.
+        # Requires Docker Compose v2.1.1+ (ubuntu-latest ships v2.x).
+
+      - name: Show service status (debug)
+        if: always()
+        run: |
+          docker compose -f Prithvi/compose/auth-test.yml ps
+          echo "--- Kratos health ---"
+          curl -sf http://localhost:4433/health/ready || echo "Kratos not ready"
+          echo "--- Mailpit health ---"
+          curl -sf http://localhost:8025/api/v1/info || echo "Mailpit not ready"
+
+      # ── Run the auth integration tests ────────────────────────────────────
+      - name: Run auth integration tests
+        run: |
+          cargo test \
+            --test auth_integration \
+            -- \
+            --test-threads=4 \
+            --nocapture
+        env:
+          KRATOS_PUBLIC_URL: ${{ env.KRATOS_PUBLIC_URL }}
+          KRATOS_ADMIN_URL:  ${{ env.KRATOS_ADMIN_URL }}
+          MAILPIT_API_URL:   ${{ env.MAILPIT_API_URL }}
+          # Rust log output
+          RUST_LOG: "info"
+          RUST_BACKTRACE: "1"
+
+      # ── Collect logs on failure ────────────────────────────────────────────
+      - name: Collect Kratos logs on failure
+        if: failure()
+        run: |
+          echo "=== Kratos logs ==="
+          docker logs auth-test-kratos 2>&1 | tail -100
+          echo "=== Kratos migrate logs ==="
+          docker logs auth-test-kratos-migrate 2>&1 || true
+          echo "=== Postgres logs ==="
+          docker logs auth-test-postgres 2>&1 | tail -50
+
+      # ── Tear down ─────────────────────────────────────────────────────────
+      - name: Tear down auth stack
+        if: always()
+        run: |
+          docker compose -f Prithvi/compose/auth-test.yml down -v --remove-orphans

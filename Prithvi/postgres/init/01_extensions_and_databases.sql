@@ -18,8 +18,11 @@ CREATE DATABASE kratos
 -- ── Extensions for the nyx app database ──────────────────────────────────────
 \connect nyx
 
--- Create the nyx schema for the nyx app
+-- Create all application schemas up-front so that 02_roles.sh can GRANT on them
+-- immediately, before Rust migrations run.
+-- NOTE: migrations/Monad/0001_create_schemas.up.sql also creates these — idempotent.
 CREATE SCHEMA IF NOT EXISTS nyx;
+CREATE SCHEMA IF NOT EXISTS "Uzume";
 
 -- pgcrypto: gen_random_uuid(), crypt(), encode/decode helpers
 CREATE EXTENSION IF NOT EXISTS pgcrypto;

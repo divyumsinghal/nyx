@@ -1,0 +1,107 @@
+# =============================================================================
+# auth-test.yml — Minimal auth stack for integration testing
+#
+# Brings up only what the auth flow needs:
+#   postgres  →  stores Kratos identity data
+#   mailpit   →  captures outgoing emails (OTP codes, recovery links)
+#   kratos    →  Ory Kratos identity & auth (after DB migration)
+#
+# Usage:
+#   docker compose -f Prithvi/compose/auth-test.yml up -d --wait
+#   KRATOS_PUBLIC_URL=http://localhost:4433 \
+#   KRATOS_ADMIN_URL=http://localhost:4434 \
+#   MAILPIT_API_URL=http://localhost:8025 \
+#   cargo test -p tests --test auth_integration
+#   docker compose -f Prithvi/compose/auth-test.yml down -v
+# =============================================================================
+
+name: nyx-auth-test
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17.4-alpine
+    container_name: auth-test-postgres
+    environment:
+      POSTGRES_DB:       nyx
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: test_postgres_root
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.utf8"
+      # Passwords for application roles (created by 02_roles.sh)
+      NYX_APP_DB_PASSWORD:       nyx_app_test_pw
+      NYX_MIGRATION_DB_PASSWORD: nyx_migration_test_pw
+      KRATOS_DB_PASSWORD:        kratos_test_pw
+    volumes:
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nyx && pg_isready -U postgres -d kratos"]
+      interval: 3s
+      timeout:  5s
+      retries:  15
+      start_period: 10s
+
+  # ── Mailpit — local SMTP capture ────────────────────────────────────────────
+  # All emails from Kratos land here instead of being delivered.
+  # Web UI:  http://localhost:8025
+  # API:     http://localhost:8025/api/v1/messages
+  # SMTP:    localhost:1025
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: auth-test-mailpit
+    environment:
+      # Disable auth (test env only)
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+      # Kratos/gomail requires MandatoryStartTLS — Mailpit must advertise STARTTLS.
+      # These are test-only self-signed certs (Prithvi/config/certs/).
+      MP_SMTP_TLS_CERT: /etc/mailpit-tls/mailpit-test.crt
+      MP_SMTP_TLS_KEY:  /etc/mailpit-tls/mailpit-test.key
+    volumes:
+      - ../config/certs:/etc/mailpit-tls:ro
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI + REST API
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8025/api/v1/messages > /dev/null"]
+      interval: 3s
+      timeout:  3s
+      retries:  10
+      start_period: 5s
+
+  # ── Kratos migrate (runs once then exits) ───────────────────────────────────
+  kratos-migrate:
+    image: oryd/kratos:v1.3.1
+    container_name: auth-test-kratos-migrate
+    command: migrate sql -e --yes
+    environment:
+      DSN: "postgres://kratos_app:kratos_test_pw@postgres:5432/kratos?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ── Kratos ─────────────────────────────────────────────────────────────────
+  kratos:
+    image: oryd/kratos:v1.3.1
+    container_name: auth-test-kratos
+    # --dev disables HTTPS enforcement and relaxes CORS — test only
+    # kratos.test.yml has all values hardcoded (no env var substitution needed)
+    command: serve --config=/etc/config/kratos/kratos.test.yml --dev --watch-courier
+    volumes:
+      - ../config/kratos:/etc/config/kratos:ro
+    ports:
+      - "4433:4433"   # public API only - admin API 4434 NOT exposed externally
+    depends_on:
+      kratos-migrate:
+        condition: service_completed_successfully
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4433/health/ready | grep -q status"]
+      interval: 5s
+      timeout:  5s
+      retries:  20
+      start_period: 15s

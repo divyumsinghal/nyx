@@ -137,7 +137,7 @@ Completed in this run:
   - `tests/tests/e2e/sandbox_smoke.rs`
 - Added unified test documentation at `tests/README.md`.
 - Added dedicated just recipes for unified test gating:
-  - `test-security`, `test-property`, `test-e2e`, `test-all`
+  - `test-security`, `test-property`, `test-e2e`, `test`
 
 Current migration status:
 
@@ -147,7 +147,7 @@ Current migration status:
 Next deltas:
 
 - Continue big-bang migration of remaining crate-local test files into `tests/tests/`.
-- Validate suite with `cargo test -p tests` and `just test-all`.
+- Validate suite with `cargo test -p tests` and `just test`.
 - After green stabilization window, remove duplicated legacy test copies.
 
 ## SESSION UPDATE 2026-04-01 (Unified migration completion)
@@ -167,7 +167,7 @@ Completed in this run:
 Verification snapshot:
 
 - `cargo test -p tests` passes.
-- `just test-all` passes.
+- `just test` passes.
 - `just test-security` and `just test-property` pass.
 - `just test-e2e` now skips gracefully when Docker socket is unavailable.
 
@@ -205,5 +205,5 @@ Verification snapshot:
 - Legacy test scan outside root `tests/` now returns only root tests tree.
 - `cargo test -p tests` passes.
 - `just test-security` passes (30 tests).
-- `just test-all` passes (64 tests).
+- `just test` passes (64 tests).
 - TESTING dependency coverage in `tests/Cargo.toml` confirmed.

@@ -77,11 +77,11 @@ jobs:
           set -euo pipefail
           just gate-step1-compat
 
-      - name: Run unified test-all gate
+      - name: Run unified test gate
         shell: bash
         run: |
           set -euo pipefail
-          just test-all
+          just test
 
       - name: Run unified security gate
         shell: bash

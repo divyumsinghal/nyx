@@ -18,36 +18,68 @@
 //! | ANY | `/api/uzume/discover/*` | JWT required | Uzume-discover |
 //! | GET | `/api/uzume/ws` | JWT required | WebSocket relay |
 
-use axum::extract::{Extension, Request, State};
-use axum::http::StatusCode;
+use axum::extract::{Extension, Query, Request, State};
+use axum::http::{header, Method, StatusCode};
 use axum::middleware;
-use axum::response::{IntoResponse, Response};
+use axum::response::{IntoResponse, Json, Response};
 use axum::routing::{any, get};
 use axum::Router;
+use heka::NyxIdStatus;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer};
 use tower_http::trace::TraceLayer;
 
 use crate::auth_layer::{auth_middleware, ValidatedIdentity};
 use crate::proxy::proxy_request;
+use crate::rate_limit::{auth_rate_limiter, default_rate_limiter, rate_limit_middleware};
 use crate::state::AppState;
 use crate::{health, websocket};
 
 /// Construct the complete Axum [`Router`] with all routes and middleware layers.
 ///
 /// Middleware is applied in this order (outermost → innermost):
-/// 1. CORS
-/// 2. Request ID injection (`X-Request-Id`)
-/// 3. Tracing (`TraceLayer`)
-/// 4. Auth middleware (JWT validation, populates `ValidatedIdentity` extension)
+/// 1. CORS (strict origin allowlist)
+/// 2. Rate limiting (DDoS protection)
+/// 3. Request ID injection (`X-Request-Id`)
+/// 4. Tracing (`TraceLayer`)
+/// 5. Auth middleware (JWT validation, populates `ValidatedIdentity` extension)
 pub fn build_router(state: AppState) -> Router {
+    // Security: Strict CORS - only allow known origins
+    let allowed_origins = if state.config.is_development() {
+        AllowOrigin::any()
+    } else {
+        AllowOrigin::list([
+            "https://nyx.social".parse().expect("valid origin"),
+            "https://www.nyx.social".parse().expect("valid origin"),
+            "https://app.nyx.social".parse().expect("valid origin"),
+        ])
+    };
+
+    let cors = CorsLayer::new()
+        .allow_origin(allowed_origins)
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::PATCH, Method::DELETE])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE, header::HeaderName::from_static("x-session-token")])
+        .allow_credentials(true)
+        .max_age(std::time::Duration::from_secs(86400));
+
+    // Security: Rate limiting - stricter for auth endpoints
+    let default_limiter = default_rate_limiter();
+    let auth_limiter = auth_rate_limiter();
+
     Router::new()
         // ── Health (public) ───────────────────────────────────────────────
         .route("/healthz", get(health::health_handler))
-        // ── Nyx auth (public — no JWT enforcement) ────────────────────────
+        // ── Nyx ID check (public - no auth required) ──────────────────────
+        .route("/api/nyx/id/check-availability", get(check_nyx_id_availability))
+        // ── Nyx auth (public — no JWT enforcement, strict rate limit) ───────
         .route("/api/nyx/auth/{*path}", any(nyx_auth_proxy))
-        // ── Protected routes ──────────────────────────────────────────────
+        .layer(middleware::from_fn_with_state(
+            auth_limiter,
+            rate_limit_middleware,
+        ))
+        // ── Protected routes (standard rate limit) ──────────────────────────
         .route("/api/nyx/account/{*path}", any(nyx_account_proxy))
         .route("/api/nyx/messaging/{*path}", any(nyx_messaging_proxy))
         .route("/api/uzume/profiles/{*path}", any(uzume_profiles_proxy))
@@ -58,13 +90,17 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/uzume/ws", get(websocket::ws_handler))
         // ── Middleware stack (applied outermost last) ─────────────────────
         .layer(middleware::from_fn_with_state(
+            default_limiter,
+            rate_limit_middleware,
+        ))
+        .layer(middleware::from_fn_with_state(
             state.clone(),
             auth_middleware,
         ))
         .layer(PropagateRequestIdLayer::x_request_id())
         .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
         .layer(TraceLayer::new_for_http())
-        .layer(CorsLayer::permissive())
+        .layer(cors)
         .with_state(state)
 }
 
@@ -215,6 +251,49 @@ async fn uzume_discover_proxy(
         Some(&identity.identity_id),
     )
     .await
+}
+
+// ── Nyx ID handlers ──────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+struct CheckNyxIdQuery {
+    id: String,
+}
+
+#[derive(Debug, Serialize)]
+struct CheckNyxIdResponse {
+    available: bool,
+    id: String,
+    reason: Option<String>,
+}
+
+/// GET /api/nyx/id/check-availability?id={nyx_id}
+///
+/// Check if a Nyx ID is available for registration.
+/// Rate-limited to prevent enumeration attacks.
+async fn check_nyx_id_availability(
+    State(state): State<AppState>,
+    Query(query): Query<CheckNyxIdQuery>,
+) -> Result<Json<CheckNyxIdResponse>, StatusCode> {
+    match state.nyx_id_registry.check_availability(&query.id).await {
+        Ok(status) => {
+            let (available, reason) = match status {
+                NyxIdStatus::Available => (true, None),
+                NyxIdStatus::Taken => (false, Some("This Nyx ID is already taken".to_string())),
+                NyxIdStatus::Invalid { reason } => (false, Some(reason)),
+            };
+
+            Ok(Json(CheckNyxIdResponse {
+                available,
+                id: query.id,
+                reason,
+            }))
+        }
+        Err(e) => {
+            tracing::error!("Failed to check Nyx ID availability: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

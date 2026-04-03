@@ -18,12 +18,12 @@
 //! When a token *is* present but invalid the middleware returns `401` with
 //! a JSON body `{ "error": "…", "code": "…" }` and does NOT call `next`.
 
-use axum::extract::{Request, State};
+use axum::extract::{ConnectInfo, Request, State};
 use axum::http::{header, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use serde_json::json;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 
 use crate::jwt::{self, JwtError};
 use crate::state::AppState;
@@ -68,6 +68,8 @@ pub async fn auth_middleware(
     // Must be a Bearer token.
     let Some(token) = auth_value.strip_prefix("Bearer ") else {
         warn!("Authorization header present but not Bearer scheme");
+        // Security audit: Log failed auth attempts
+        audit_log_auth_failure("invalid_auth_scheme", &req);
         return unauthorized("Bearer token required", "invalid_auth_scheme");
     };
 
@@ -76,19 +78,67 @@ pub async fn auth_middleware(
         Ok(claims) => {
             debug!(sub = %claims.sub, "JWT validated successfully");
             req.extensions_mut().insert(ValidatedIdentity {
-                identity_id: claims.sub,
+                identity_id: claims.sub.clone(),
             });
+            // Security audit: Log successful auth
+            audit_log_auth_success(&claims.sub, &req);
             next.run(req).await
         }
         Err(JwtError::Expired) => {
             warn!("JWT is expired");
+            audit_log_auth_failure("token_expired", &req);
             unauthorized("Token has expired", "token_expired")
         }
         Err(JwtError::Invalid) => {
             warn!("JWT is invalid");
+            audit_log_auth_failure("token_invalid", &req);
             unauthorized("Token is invalid", "token_invalid")
         }
     }
+}
+
+/// Security audit: Log successful authentication
+fn audit_log_auth_success(identity_id: &str, req: &Request) {
+    let client_ip = req
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            req.extensions().get::<ConnectInfo<std::net::SocketAddr>>()
+                .map(|c| c.0.ip().to_string())
+                .unwrap_or_else(|| "unknown".to_string())
+        });
+
+    info!(
+        event = "auth_success",
+        identity_id = %identity_id,
+        client_ip = %client_ip,
+        path = %req.uri().path(),
+        "Authentication successful"
+    );
+}
+
+/// Security audit: Log failed authentication attempts
+fn audit_log_auth_failure(reason: &str, req: &Request) {
+    let client_ip = req
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| {
+            req.extensions().get::<ConnectInfo<std::net::SocketAddr>>()
+                .map(|c| c.0.ip().to_string())
+                .unwrap_or_else(|| "unknown".to_string())
+        });
+
+    warn!(
+        event = "auth_failure",
+        reason = %reason,
+        client_ip = %client_ip,
+        path = %req.uri().path(),
+        "Authentication failed"
+    );
 }
 
 /// Build a `401 Unauthorized` response with JSON body.

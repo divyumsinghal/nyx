@@ -106,7 +106,7 @@ ls @tests/README.md  # Comprehensive testing guide
 - Create test harness structure (lib.rs, modules: common, fixtures, mocks, generators, builders, asserts)
 - Extract Nun::testing utilities and extend with property-based helpers, mock factories
 - Fix dev-dependency cycle (move integration_privacy_matrix.rs, remove Heka dev-dep)
-- Set up justfile recipes (test, test-security, test-e2e, test-property, test-mock, test-all)
+- Set up justfile recipes (test, test-security, test-e2e, test-property, test-mock, test)
 
 **Wave 2: Big Bang Migration** (8 tasks, parallelizable by crate)
 - Migrate Uzume-profiles tests (7 files)
@@ -140,8 +140,8 @@ ls @tests/README.md  # Comprehensive testing guide
 - Create security regression flows (attempted SQLi during signup → blocked, XSS in bio → sanitized, authz bypass → 403)
 
 **Wave 6: CI TDD Integration** (4 tasks)
-- Update justfile with comprehensive test recipes (test-unit, test-integration, test-e2e, test-security, test-property, test-all)
-- Create CI workflow steps (fmt, clippy, audit, deny, test-all, security, e2e, property)
+- Update justfile with comprehensive test recipes (test-unit, test-integration, test-e2e, test-security, test-property, test)
+- Create CI workflow steps (fmt, clippy, audit, deny, test, security, e2e, property)
 - Add CI gate enforcement (fail fast on any step, artifact collection)
 - Add test reporting (JUnit XML, coverage reports, security scan results)
 
@@ -354,7 +354,7 @@ ls @tests/README.md  # Comprehensive testing guide
 
 - [ ] 5. Set up justfile recipes
 
-  **What to do**: Add comprehensive test recipes to justfile: test, test-unit, test-integration, test-e2e, test-security, test-property, test-mock, test-all.
+  **What to do**: Add comprehensive test recipes to justfile: test, test-unit, test-integration, test-e2e, test-security, test-property, test-mock, test.
 
   **Must NOT do**: Do not break existing justfile recipes, only add new ones.
 
@@ -374,14 +374,14 @@ ls @tests/README.md  # Comprehensive testing guide
   - [ ] `just test-security` → `cargo nextest run --workspace security` (new)
   - [ ] `just test-e2e` → `cargo nextest run --workspace e2e` (new)
   - [ ] `just test-property` → `cargo nextest run --workspace property` (new)
-  - [ ] `just test-all` → runs all test categories sequentially (new)
+  - [ ] `just test` → runs all test categories sequentially (new)
   - [ ] All recipes work when invoked
 
   **QA Scenarios** (MANDATORY):
   ```
   Scenario: All recipes defined
     Tool: Bash
-    Steps: grep -E "test-security|test-e2e|test-property|test-all" justfile
+    Steps: grep -E "test-security|test-e2e|test-property|test" justfile
     Expected: All new recipes present
     Evidence: .sisyphus/evidence/task-5-recipes.txt
 
@@ -391,14 +391,14 @@ ls @tests/README.md  # Comprehensive testing guide
     Expected: Each recipe runs cargo nextest with appropriate filters
     Evidence: .sisyphus/evidence/task-5-execution.txt
 
-  Scenario: test-all runs all categories
+  Scenario: test runs all categories
     Tool: Bash
-    Steps: just test-all
+    Steps: just test
     Expected: security, e2e, property tests all execute (verify in output)
     Evidence: .sisyphus/evidence/task-5-all-tests.txt
   ```
 
-  **Commit**: YES | Message: `feat(tests): Add comprehensive justfile recipes (test-security, test-e2e, test-property, test-all)` | Files: [justfile]
+  **Commit**: YES | Message: `feat(tests): Add comprehensive justfile recipes (test-security, test-e2e, test-property, test)` | Files: [justfile]
 
 ### Wave 2: Big Bang Migration (Tasks 6-13)
 
@@ -1460,7 +1460,7 @@ ls @tests/README.md  # Comprehensive testing guide
 
 - [ ] 29. Update justfile with comprehensive test recipes
 
-  **What to do**: Update justfile with comprehensive test recipes: test-unit, test-integration, test-e2e, test-security, test-property, test-all. Ensure all recipes work correctly and can be invoked independently.
+  **What to do**: Update justfile with comprehensive test recipes: test-unit, test-integration, test-e2e, test-security, test-property, test. Ensure all recipes work correctly and can be invoked independently.
 
   **Must NOT do**: Do not break existing justfile recipes. Do not modify production code.
 
@@ -1481,13 +1481,13 @@ ls @tests/README.md  # Comprehensive testing guide
   - [ ] `just test-e2e` → runs E2E tests
   - [ ] `just test-security` → runs security tests
   - [ ] `just test-property` → runs property tests
-  - [ ] `just test-all` → runs all test categories
+  - [ ] `just test` → runs all test categories
 
   **QA Scenarios** (MANDATORY):
   ```
   Scenario: All recipes defined
     Tool: Bash
-    Steps: grep -E "test-unit|test-integration|test-e2e|test-security|test-property|test-all" justfile
+    Steps: grep -E "test-unit|test-integration|test-e2e|test-security|test-property|test" justfile
     Expected: All recipes present
     Evidence: .sisyphus/evidence/task-29-recipes.txt
 
@@ -1502,7 +1502,7 @@ ls @tests/README.md  # Comprehensive testing guide
 
 - [ ] 30. Create CI workflow steps
 
-  **What to do**: Create CI workflow steps in `.github/workflows/ci.yml` for: fmt, clippy, audit, deny, test-all, security, e2e, property. Ensure all steps run in correct order with proper failure handling.
+  **What to do**: Create CI workflow steps in `.github/workflows/ci.yml` for: fmt, clippy, audit, deny, test, security, e2e, property. Ensure all steps run in correct order with proper failure handling.
 
   **Must NOT do**: Do not break existing CI workflow. Do not modify production code.
 
@@ -1522,7 +1522,7 @@ ls @tests/README.md  # Comprehensive testing guide
   - [ ] CI workflow includes clippy step
   - [ ] CI workflow includes audit step
   - [ ] CI workflow includes deny step
-  - [ ] CI workflow includes test-all step
+  - [ ] CI workflow includes test step
   - [ ] CI workflow includes security step
   - [ ] CI workflow includes e2e step
   - [ ] CI workflow includes property step
@@ -1531,7 +1531,7 @@ ls @tests/README.md  # Comprehensive testing guide
   ```
   Scenario: CI workflow includes all steps
     Tool: Bash
-    Steps: grep -E "fmt|clippy|audit|deny|test-all|security|e2e|property" .github/workflows/ci.yml
+    Steps: grep -E "fmt|clippy|audit|deny|test|security|e2e|property" .github/workflows/ci.yml
     Expected: All steps present
     Evidence: .sisyphus/evidence/task-30-steps.txt
 
@@ -1774,7 +1774,7 @@ ls @tests/README.md  # Comprehensive testing guide
 - [ ] No dependency cycles: `cargo tree --workspace --duplicate` shows no duplicates/cycles
 - [ ] Security tests pass: `cargo nextest run --workspace security`
 - [ ] E2E tests pass: `cargo nextest run --workspace e2e`
-- [ ] CI passes all gates: `just ci` (fmt, clippy, audit, deny, test-all, security, e2e)
+- [ ] CI passes all gates: `just ci` (fmt, clippy, audit, deny, test, security, e2e)
 - [ ] Documentation complete: `@tests/README.md` exists and comprehensive
 - [ ] Property tests operational: `cargo nextest run --workspace property`
 - [ ] Snapshot tests operational: `cargo nextest run --workspace snapshot`

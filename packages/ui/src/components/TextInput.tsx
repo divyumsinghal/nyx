@@ -14,7 +14,7 @@ interface TextInputProps extends Omit<RNTextInputProps, "style"> {
   hint?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  variant?: "default" | "search";
+  variant?: "default" | "search" | "minimal";
   className?: string;
 }
 
@@ -41,11 +41,18 @@ export function TextInput({
       )}
       <View
         className={[
-          "flex-row items-center rounded-xl border",
-          variant === "search"
+          "flex-row items-center transition-colors duration-200",
+          variant === "minimal" 
+            ? "border-0 border-b border-space-700 rounded-none h-14 bg-transparent" 
+            : "rounded-xl border",
+          variant === "search" && variant !== "minimal"
             ? "bg-space-700 border-space-500 h-10"
-            : "bg-space-700 border-space-500 h-12",
-          error ? "border-red-500" : "border-space-500 focus-within:border-dawn-400",
+            : variant !== "minimal" ? "bg-space-700 border-space-500 h-12" : "",
+          error 
+            ? "border-red-500" 
+            : variant === "minimal" 
+              ? "focus-within:border-star-300" 
+              : "border-space-500 focus-within:border-dawn-400",
           "transition-colors duration-200",
         ]
           .filter(Boolean)

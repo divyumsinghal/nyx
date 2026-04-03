@@ -40,13 +40,17 @@ version = "0.1.0"
 dependencies = [
  "Nun",
  "Uzume-profiles",
+ "anyhow",
  "async-trait",
  "chrono",
  "jsonwebtoken",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
+ "sqlx",
  "tokio",
+ "tracing",
  "uuid",
 ]
 
@@ -2056,6 +2060,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "sqlx",
  "tokio",
  "tower",
  "tower-http",
@@ -2989,6 +2994,7 @@ dependencies = [
 name = "nyx-api"
 version = "0.1.0"
 dependencies = [
+ "Heka",
  "Nun",
  "axum",
  "jsonwebtoken",
@@ -3030,6 +3036,8 @@ dependencies = [
  "async-nats",
  "chrono",
  "clap",
+ "regex-lite",
+ "reqwest",
  "serde",
  "serde_json",
  "sqlx",
@@ -3745,6 +3753,12 @@ dependencies = [
  "memchr",
  "regex-syntax",
 ]
+
+[[package]]
+name = "regex-lite"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab834c73d247e67f4fae452806d17d3c7501756d98c8808d7c9c7aa7d18f973"
 
 [[package]]
 name = "regex-syntax"
@@ -4979,6 +4993,7 @@ dependencies = [
  "proptest",
  "quickcheck",
  "rand 0.10.0",
+ "regex-lite",
  "reqwest",
  "rstest",
  "serde",

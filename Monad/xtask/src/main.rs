@@ -8,6 +8,7 @@ use clap::{Parser, Subcommand};
 
 mod commands;
 mod env;
+mod auth;
 
 /// Nyx developer CLI.
 #[derive(Parser)]
@@ -25,6 +26,10 @@ enum Commands {
     DbReset,
     /// Seed the database with development fixture data.
     Seed,
+    /// Create a new Nyx account (interactive OTP + password flow).
+    CreateAccount,
+    /// Login to an existing Nyx account (password or OTP).
+    Login,
     /// Create NATS `JetStream` streams (NYX, UZUME).
     NatsSetup,
     /// Scaffold a new Nyx app directory structure.
@@ -58,6 +63,12 @@ async fn main() -> anyhow::Result<()> {
             let root = commands::migrate::find_workspace_root()?;
             commands::seed::run(&db_url, &root.join("tools/seed-data")).await?;
             println!("Seed data inserted");
+        }
+        Commands::CreateAccount => {
+            commands::create_account::run().await?;
+        }
+        Commands::Login => {
+            commands::login::run().await?;
         }
         Commands::NatsSetup => {
             let nats_url = env::require("NATS_URL")?;

@@ -4,24 +4,29 @@
 # Usage:   just <recipe>  |  just --list
 # =============================================================================
 
-set shell := ["powershell.exe", "-Command"]
+set shell := ["C:\\Program Files\\Git\\bin\\bash.exe", "-cu"]
 
 # ── Compose stacks ─────────────────────────────────────────────────────────────
 # To add a new app: add its overlay file here. Everything below picks it up.
 
-_f_infra    := "Prithvi/compose/infra.yml"
-_f_platform := "Prithvi/compose/platform.yml"
-_f_uzume    := "Prithvi/compose/uzume.yml"
-_f_dev      := "Prithvi/compose/dev.yml"
-_f_build    := "Prithvi/compose/build.yml"   # local source-build overlay (dev only)
-_f_prod     := "Prithvi/compose/prod.yml"
+_f_infra      := "Prithvi/compose/infra.yml"
+_f_platform   := "Prithvi/compose/platform.yml"
+_f_uzume      := "Prithvi/compose/uzume.yml"
+_f_dev        := "Prithvi/compose/dev.yml"
+_f_build      := "Prithvi/compose/build.yml"   # local source-build overlay (dev only)
+_f_prod       := "Prithvi/compose/prod.yml"
+_f_auth_test  := "Prithvi/compose/auth-test.yml"
 
-_dc_infra := "docker compose -f " + _f_infra
-_dc_plat  := _dc_infra  + " -f " + _f_platform
-_dc_uzume := _dc_plat   + " -f " + _f_uzume
-_dc_dev   := _dc_uzume  + " -f " + _f_dev
-_dc_local := _dc_dev    + " -f " + _f_build  # _dc_dev + build directives
-_dc_prod  := _dc_uzume  + " -f " + _f_prod
+_dc_infra     := "docker compose -f " + _f_infra
+_dc_plat      := _dc_infra  + " -f " + _f_platform
+_dc_uzume     := _dc_plat   + " -f " + _f_uzume
+_dc_dev       := _dc_uzume  + " -f " + _f_dev
+_dc_local     := _dc_dev    + " -f " + _f_build  # _dc_dev + build directives
+_dc_prod      := _dc_uzume  + " -f " + _f_prod
+_dc_auth_test := "docker compose -f " + _f_auth_test
+
+# ── Auth-test env (exported to cargo test) ───────────────────────────────────
+_auth_env := "KRATOS_PUBLIC_URL=http://localhost:4433 KRATOS_ADMIN_URL=http://localhost:4434 MAILPIT_API_URL=http://localhost:8025"
 
 # ── Default ───────────────────────────────────────────────────────────────────
 
@@ -218,10 +223,43 @@ gate-cross-app:
 gate-step1-compat:
     @bash tests/contracts/verify_step1_contract_lock.sh contracts/step1-compat.lock
 
+# ── Auth integration tests ────────────────────────────────────────────────────
+
+# Start the minimal auth stack (postgres + mailpit + kratos) and wait for health
+auth-up:
+    {{_dc_auth_test}} up -d --wait
+
+# Stop the auth stack and remove volumes
+auth-down:
+    {{_dc_auth_test}} down -v --remove-orphans
+
+# Run auth integration tests (auth stack must already be up)
+auth-test-run:
+    {{_auth_env}} cargo test --test auth_integration -- --test-threads=4 --nocapture
+
+# Full auth test cycle: start → test → stop
+auth-test:
+    @just auth-up
+    {{_auth_env}} cargo test --test auth_integration -- --test-threads=4 --nocapture || \
+        (just auth-logs && just auth-down && exit 1)
+    @just auth-down
+
+# Rebuild the auth integration test binary without running (compile check)
+auth-build:
+    cargo test --test auth_integration --no-run
+
+# Show logs for the auth stack
+auth-logs:
+    {{_dc_auth_test}} logs --tail=80
+
+# Show auth stack container status
+auth-ps:
+    {{_dc_auth_test}} ps
+
 # ── Tests ─────────────────────────────────────────────────────────────────────
 # All test recipes require: just install-tools
 
-# Run the full test suite
+# Run the full test suite (unit + integration, no live stack required)
 test:
     cargo nextest run --workspace
 
@@ -233,11 +271,26 @@ test-unit:
 test-integration:
     cargo nextest run --workspace --test '*'
 
+# Run all security-focused tests
+test-security:
+    cargo nextest run --workspace --test security
+
+# Run property-based tests
+test-property:
+    cargo nextest run --workspace --test property
+
+# Run e2e tests
+test-e2e:
+    cargo nextest run --workspace --test e2e
+
 # Run tests for a single crate (e.g.: just test-crate uzume-feed)
 test-crate crate:
     cargo nextest run -p {{crate}}
 
 # ── Full CI gate ──────────────────────────────────────────────────────────────
+
+# Alias for gate-cross-app used by CI workflow
+gate-cross-app-unauthorized: gate-cross-app
 
 # Mirrors CI exactly. Run before pushing.
 ci:
@@ -332,6 +385,14 @@ prod-restart service:
 new-app app:
     cargo run -p nyx-xtask -- new-app {{app}}
 
+# Create a new Nyx account interactively (requires: just auth-up)
+account-create:
+    cargo run -p nyx-xtask -- create-account
+
+# Login to an existing Nyx account interactively (requires: just auth-up)
+account-login:
+    cargo run -p nyx-xtask -- login
+
 # ── Private helpers ───────────────────────────────────────────────────────────
 
 # Print service URLs
@@ -347,7 +408,7 @@ _print-urls:
     @echo "  Matrix:           http://localhost:8008"
     @echo "  Meilisearch:      http://localhost:7700"
     @echo "  Grafana:          http://localhost:3030"
-    @echo "  Mailhog:          http://localhost:8025"
+    @echo "  Mailpit:          http://localhost:8025"
     @echo "  MinIO console:    http://localhost:9001"
 
 # Block until postgres inside its container reports ready (max 120s)

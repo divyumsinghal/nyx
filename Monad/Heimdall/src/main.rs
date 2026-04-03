@@ -15,6 +15,7 @@ pub mod config;
 pub mod health;
 pub mod jwt;
 pub mod proxy;
+pub mod rate_limit;
 pub mod routes;
 pub mod state;
 pub mod websocket;
@@ -29,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
 
     let config = config::HeimdallConfig::from_env()?;
     let addr = format!("{}:{}", config.host, config.port);
-    let state = state::AppState::new(config);
+    let state = state::AppState::new(config).await?;
     let router = routes::build_router(state);
 
     tracing::info!(addr = %addr, "Heimdall starting");

@@ -6,25 +6,31 @@ use serde::Deserialize;
 
 use crate::types::NyxIdentity;
 
+// ── Internal wire types (Kratos JSON) ─────────────────────────────────────────
+// NOTE: Do NOT add `deny_unknown_fields` here.
+//       Kratos returns many more fields (state, schema_id, verifiable_addresses,
+//       etc.) that we intentionally ignore. Adding `deny_unknown_fields` would
+//       cause silent parse failures on real Kratos responses.
+
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
 struct KratosSession {
     identity: KratosIdentity,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
 struct KratosIdentity {
     id: String,
     traits: KratosIdentityTraits,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Debug, Clone, Deserialize, Default)]
 struct KratosIdentityTraits {
-    email: Option<String>,
-    phone: Option<String>,
+    email:        Option<String>,
+    nyx_id:       Option<String>,
+    display_name: Option<String>,
 }
+
+// ── Provider abstraction ─────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KratosProviderError {
@@ -46,6 +52,8 @@ pub trait KratosProvider: Send + Sync {
     ) -> std::result::Result<serde_json::Value, KratosProviderError>;
 }
 
+// ── KratosClient ─────────────────────────────────────────────────────────────
+
 #[derive(Clone)]
 pub struct KratosClient {
     provider: Arc<dyn KratosProvider>,
@@ -65,6 +73,11 @@ impl KratosClient {
         }
     }
 
+    /// Validate a session token and return the associated [`NyxIdentity`].
+    ///
+    /// Called on every authenticated request (via the auth middleware). The
+    /// session token comes from the `X-Session-Token` header (API clients) or
+    /// the `nyx_session` cookie (browser clients).
     pub async fn validate_session(&self, session_token: &str) -> Result<NyxIdentity> {
         if session_token.trim().is_empty() {
             return Err(NyxError::bad_request(
@@ -82,6 +95,9 @@ impl KratosClient {
         map_kratos_identity(session.identity)
     }
 
+    /// Fetch a full identity by its Kratos UUID via the admin API.
+    ///
+    /// Used by background jobs and admin tooling. Not on the hot path.
     pub async fn get_identity(&self, identity_id: IdentityId) -> Result<NyxIdentity> {
         let identity = self
             .provider
@@ -92,6 +108,8 @@ impl KratosClient {
         map_kratos_identity(identity)
     }
 }
+
+// ── Parsing helpers ───────────────────────────────────────────────────────────
 
 fn parse_session(
     payload: serde_json::Value,
@@ -106,7 +124,6 @@ fn parse_identity(
 }
 
 fn map_kratos_identity(identity: KratosIdentity) -> Result<NyxIdentity> {
-    let _ = (&identity.traits.email, &identity.traits.phone);
     let id = identity.id.parse::<IdentityId>().map_err(|_| {
         NyxError::service_unavailable(
             "auth_provider_invalid_response",
@@ -114,7 +131,12 @@ fn map_kratos_identity(identity: KratosIdentity) -> Result<NyxIdentity> {
         )
     })?;
 
-    Ok(NyxIdentity { id })
+    Ok(NyxIdentity {
+        id,
+        email:        identity.traits.email,
+        nyx_id:       identity.traits.nyx_id,
+        display_name: identity.traits.display_name,
+    })
 }
 
 fn map_provider_error(error: KratosProviderError) -> NyxError {
@@ -148,19 +170,21 @@ fn map_provider_error(error: KratosProviderError) -> NyxError {
     }
 }
 
+// ── Reqwest-backed provider (production) ─────────────────────────────────────
+
 #[derive(Clone)]
 pub struct ReqwestKratosProvider {
-    http: Client,
+    http:       Client,
     public_url: String,
-    admin_url: String,
+    admin_url:  String,
 }
 
 impl ReqwestKratosProvider {
     pub fn new(public_url: impl Into<String>, admin_url: impl Into<String>) -> Self {
         Self {
-            http: Client::new(),
+            http:       Client::new(),
             public_url: public_url.into().trim_end_matches('/').to_owned(),
-            admin_url: admin_url.into().trim_end_matches('/').to_owned(),
+            admin_url:  admin_url.into().trim_end_matches('/').to_owned(),
         }
     }
 }

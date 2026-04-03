@@ -4,46 +4,52 @@
 # =============================================================================
 #
 # ── IDENTITY MODEL ────────────────────────────────────────────────────────────
-# Registration:  email + phone + username + password  (all required)
-# Login:         email OR phone OR username + password
-# Verification:  email (magic link) + phone (SMS OTP)
-# Recovery:      email only (phone recovery is future work)
+# Registration:  email + nyx_id (handle) + password   OR   email OTP (code method)
+# Login:         email OR nyx_id + password            OR   email magic code
+# Verification:  email OTP
+# Recovery:      email OTP
+# Social login:  Google OAuth2 (requires GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET)
 # 2FA:           TOTP (optional, user-controlled)
 #
-# This mirrors the UX of Instagram / Reddit:
-#   "Sign up with email + phone + pick a username. Log in with any of them."
+# Phone auth has been dropped completely. Email-only platform.
+#
+# ── REQUIRED ENVIRONMENT VARIABLES ───────────────────────────────────────────
+# DSN is assembled from: KRATOS_DB_PASSWORD, POSTGRES_HOST
+# KRATOS_COOKIE_SECRET   32+ byte secret
+# KRATOS_CIPHER_SECRET   32+ byte secret
+# KRATOS_PUBLIC_URL      e.g. http://localhost:4433 or https://auth.nyx.com
+# KRATOS_ADMIN_URL       e.g. http://kratos:4434 (internal only in prod)
+# NX_WEB_URL             e.g. http://localhost:5173 or https://nyx.com
+# COOKIE_DOMAIN          e.g. localhost or nyx.com
+# SMTP_CONNECTION_URI    e.g. smtp://mailpit:1025/?skip_ssl_verify=true
+# SMTP_FROM_ADDRESS      e.g. noreply@nyx.com
+# GOOGLE_CLIENT_ID       (leave blank to disable Google login)
+# GOOGLE_CLIENT_SECRET   (leave blank to disable Google login)
 #
 # ── CHANGE FOR PRODUCTION ─────────────────────────────────────────────────────
-# - Set DSN to the real kratos_app database credential (never commit it)
-# - Set secrets.cookie, secrets.cipher to 32-byte random secrets
-# - Change serve.public.base_url to https://auth.nyx.com
-# - Change serve.admin.base_url to an internal-only URL (no public exposure)
-# - Configure courier.smtp with a real provider (Mailgun, Postmark, SES)
-# - Configure courier.sms with a real Twilio/Vonage webhook
-# - Set selfservice.default_browser_return_url to your frontend URL
-# - Review session lifetime and cookie settings for your security policy
+# - Set secrets to 32-byte random values
+# - Change KRATOS_PUBLIC_URL to https://auth.nyx.com
+# - Change KRATOS_ADMIN_URL to an internal-only URL
+# - Configure SMTP_CONNECTION_URI with a real provider
+# - Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET for Google login
+# - Remove --dev flag from Kratos serve command
 # =============================================================================
 
 version: v1.3.1
 
 # ── Database ──────────────────────────────────────────────────────────────────
-dsn: "postgres://kratos_app:${KRATOS_DB_PASSWORD}@${POSTGRES_HOST:-postgres}:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4"
+dsn: "postgres://kratos_app:${KRATOS_DB_PASSWORD}@${POSTGRES_HOST}:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4"
 
 # ── Network ───────────────────────────────────────────────────────────────────
 serve:
   public:
-    # The public API: browsers and native apps hit this directly.
-    # DEV:  http://localhost:4433
-    # PROD: https://auth.nyx.com
-    base_url: "${KRATOS_PUBLIC_URL:-http://localhost:4433}"
+    base_url: "${KRATOS_PUBLIC_URL}"
     port: 4433
     cors:
       enabled: true
       allowed_origins:
-        # DEV local frontends
-        - "http://localhost:5173"   # nyx-web (Typescript dev server)
-        - "http://localhost:5174"   # uzume-web dev server
-        # PROD — CHANGE THESE
+        - "http://localhost:5173"
+        - "http://localhost:5174"
         - "https://nyx.com"
         - "https://uzume.nyx.com"
         - "https://anteros.nyx.com"
@@ -54,17 +60,12 @@ serve:
       allow_credentials: true
 
   admin:
-    # NEVER expose the admin API publicly. Bind to localhost or an internal network.
-    # In Docker Compose the admin port is only reachable inside nyx network.
-    base_url: "${KRATOS_ADMIN_URL:-http://kratos:4434}"
+    base_url: "${KRATOS_ADMIN_URL}"
     port: 4434
 
 # ── Self-service flows ────────────────────────────────────────────────────────
 selfservice:
-  # Where to redirect after successful login/registration if no return_to is set.
-  # DEV:  http://localhost:5173
-  # PROD: https://nyx.com
-  default_browser_return_url: "${NX_WEB_URL:-http://localhost:5173}"
+  default_browser_return_url: "${NX_WEB_URL}"
 
   allowed_return_urls:
     - "http://localhost:5173"
@@ -76,22 +77,22 @@ selfservice:
 
   methods:
     # ── Password strategy ───────────────────────────────────────────────────
-    # Used for login (email|phone|username + password) and registration.
     password:
       enabled: true
       config:
         min_password_length: 10
-        # Check passwords against HaveIBeenPwned breach database.
         haveibeenpwned_enabled: true
-        max_breaches: 0       # reject any breached password
+        max_breaches: 0
         identifier_similarity_check_enabled: true
 
-    # ── Code strategy (OTP via email or SMS) ────────────────────────────────
-    # Used for: phone/email verification, passwordless login (future).
+    # ── Code strategy (OTP via email) ────────────────────────────────────────
+    # Used for: email verification, passwordless login (magic code), registration OTP.
+    # Phone SMS has been removed — email-only.
     code:
       enabled:               true
-      mfa_enabled:           false  # set true when TOTP is configured
-      passwordless_enabled:  false  # enable for magic-link-only login
+      mfa_enabled:           false
+      # true = users can log in by receiving a code to their email (no password needed)
+      passwordless_enabled:  true
 
     # ── TOTP (optional 2FA) ──────────────────────────────────────────────────
     totp:
@@ -100,29 +101,45 @@ selfservice:
         issuer: "Nyx"
 
     # ── WebAuthn / Passkeys ──────────────────────────────────────────────────
-    # Future: enable after initial launch. Passkeys replace password entirely.
     webauthn:
       enabled: false
       config:
         rp:
           display_name: "Nyx"
-          # id must match the domain (no port)
-          id:      "${WEBAUTHN_RP_ID:-nyx.com}"
+          id:      "nyx.com"
           origins: ["https://nyx.com"]
 
     # ── Link strategy (legacy magic-link) ────────────────────────────────────
-    # Keep enabled for backwards compat; code strategy is preferred.
     link:
       enabled: true
       config:
         lifespan: "1h"
 
     # ── OIDC / Social login ───────────────────────────────────────────────────
-    # Future: add Google, Apple, etc.
+    # Google OAuth2. Requires GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.
+    # If those env vars are empty, Google login will fail gracefully at the
+    # consent screen — all other auth methods continue to work normally.
+    # The jsonnet mapper only maps email (verified). nyx_id is NOT auto-filled
+    # from Google — Kratos will prompt the user to choose one via the
+    # registration continuation flow (returns 422 with nyx_id field).
     oidc:
-      enabled: false
+      enabled: true
       config:
-        providers: []
+        providers:
+          - id: google
+            provider: google
+            client_id:     "${GOOGLE_CLIENT_ID}"
+            client_secret: "${GOOGLE_CLIENT_SECRET}"
+            mapper_url:    "file:///etc/config/kratos/oidc.google.jsonnet"
+            scope:
+              - email
+              - profile
+            requested_claims:
+              id_token:
+                email:
+                  essential: true
+                email_verified:
+                  essential: true
 
     # ── Lookup secrets (backup codes) ────────────────────────────────────────
     lookup_secret:
@@ -131,29 +148,36 @@ selfservice:
   # ── Flow: Registration ──────────────────────────────────────────────────────
   flows:
     registration:
-      # How long the browser/app has to complete the registration flow.
       lifespan: "1h"
       enabled: true
-      ui_url: "${NX_WEB_URL:-http://localhost:5173}/auth/register"
-      # After registration, require email + phone verification before first login.
+      ui_url: "${NX_WEB_URL}/auth/register"
       after:
+        # For password signup: create session immediately.
+        # Email verification is available separately — not blocking.
         password:
           hooks:
-            - hook: session           # create a session immediately after signup
-            - hook: show_verification_ui  # then prompt for verification
+            - hook: session
+        # For code (OTP) signup: the OTP itself verifies email, so just create session.
         code:
+          hooks:
+            - hook: session
+        # For Google OIDC signup: create session immediately.
+        oidc:
           hooks:
             - hook: session
 
     # ── Flow: Login ─────────────────────────────────────────────────────────
     login:
       lifespan: "1h"
-      ui_url: "${NX_WEB_URL:-http://localhost:5173}/auth/login"
+      ui_url: "${NX_WEB_URL}/auth/login"
       after:
         password:
           hooks:
-            - hook: revoke_active_sessions  # single-device policy (remove for multi-device)
+            - hook: revoke_active_sessions
         code:
+          hooks:
+            - hook: revoke_active_sessions
+        oidc:
           hooks:
             - hook: revoke_active_sessions
 
@@ -161,48 +185,40 @@ selfservice:
     verification:
       enabled: true
       lifespan: "15m"
-      use: code   # 'code' = OTP (email OTP or SMS OTP), 'link' = magic link
-      ui_url: "${NX_WEB_URL:-http://localhost:5173}/auth/verify"
-      notify_unknown_recipients: false  # prevent email enumeration
-      after:
-        hooks:
-          - hook: session
+      use: code
+      ui_url: "${NX_WEB_URL}/auth/verify"
+      notify_unknown_recipients: false
 
     # ── Flow: Recovery ──────────────────────────────────────────────────────
     recovery:
       enabled: true
       lifespan: "15m"
-      use: code   # OTP sent to verified email
-      ui_url: "${NX_WEB_URL:-http://localhost:5173}/auth/recover"
-      notify_unknown_recipients: false  # prevent email enumeration
+      use: code
+      ui_url: "${NX_WEB_URL}/auth/recover"
+      notify_unknown_recipients: false
 
     # ── Flow: Settings ──────────────────────────────────────────────────────
     settings:
       lifespan: "1h"
-      privileged_session_max_age: "15m"  # re-auth required for sensitive changes
-      ui_url: "${NX_WEB_URL:-http://localhost:5173}/settings"
+      privileged_session_max_age: "15m"
+      ui_url: "${NX_WEB_URL}/settings"
       after:
         password:
           hooks:
-            - hook: revoke_active_sessions   # invalidate all sessions on password change
+            - hook: revoke_active_sessions
 
     # ── Flow: Logout ────────────────────────────────────────────────────────
     logout:
       after:
-        default_browser_return_url: "${NX_WEB_URL:-http://localhost:5173}/auth/login"
+        default_browser_return_url: "${NX_WEB_URL}/auth/login"
 
 # ── Session ───────────────────────────────────────────────────────────────────
 session:
-  lifespan: "720h"          # 30 days (standard for mobile-first apps)
+  lifespan: "720h"
   earliest_possible_extend: "24h"
   cookie:
-    # ⚠ PRODUCTION: use "__Host-" prefix for strongest cookie binding
-    # DEV: shorter name for ease of use
     name: "nyx_session"
-    # Restrict cookie to nyx.com and subdomains
-    domain: "${COOKIE_DOMAIN:-localhost}"
-    # true in prod (HTTPS only), false in dev (HTTP allowed)
-    secure: "${SESSION_COOKIE_SECURE:-false}"
+    domain: "${COOKIE_DOMAIN}"
     same_site: Lax
     persistent: true
 
@@ -214,8 +230,6 @@ identity:
       url: "file:///etc/config/kratos/identity.schema.json"
 
 # ── Secrets ───────────────────────────────────────────────────────────────────
-# PRODUCTION: rotate these secrets; they protect session cookies and CSRF tokens.
-# Generate with: openssl rand -base64 32
 secrets:
   cookie:
     - "${KRATOS_COOKIE_SECRET}"
@@ -224,70 +238,29 @@ secrets:
 
 # ── Hash (password storage) ───────────────────────────────────────────────────
 hashers:
-  algorithm: argon2id
-  argon2id:
-    memory:      131072  # 128 MiB
+  algorithm: argon2
+  argon2:
+    memory:      "128MB"
     iterations:  3
     parallelism: 4
     salt_length: 16
     key_length:  32
-    # Dedicated CPU budget for hashing. Keep low enough not to starve other requests.
     expected_duration: "500ms"
 
-# ── Courier (email + SMS) ─────────────────────────────────────────────────────
+# ── Courier (email only — phone/SMS removed) ──────────────────────────────────
 courier:
-  # How many delivery workers to run concurrently
-  deliver_every: "1s"
-
-  # ── Email ─────────────────────────────────────────────────────────────────
   smtp:
-    # PRODUCTION: replace with Mailgun / Postmark / SES credentials.
-    # DEV: point to Mailhog or MailDev for local testing.
-    #   docker run -p 1025:1025 -p 8025:8025 mailhog/mailhog
-    connection_uri: "${SMTP_CONNECTION_URI:-smtps://user:password@mailhog:1025/?skip_ssl_verify=true}"
-    from_address:   "${SMTP_FROM_ADDRESS:-noreply@nyx.com}"
+    # DEV default: Mailpit on localhost (docker service name: mailpit, port 1025)
+    # Run: docker compose -f Prithvi/compose/auth-test.yml up -d
+    # PROD: replace with Mailgun / Postmark / SES / self-hosted Postfix
+    connection_uri: "${SMTP_CONNECTION_URI}"
+    from_address:   "${SMTP_FROM_ADDRESS}"
     from_name:      "Nyx"
     headers:
-      # Helps pass spam filters and enables reply tracking
       "X-Mailer": "Ory Kratos"
-
-  # ── SMS (phone verification + OTP) ────────────────────────────────────────
-  # Kratos dispatches SMS via a configurable HTTP webhook.
-  # The webhook below is a Twilio example.
-  # PRODUCTION: set TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN via secrets.
-  #
-  # To swap providers (Vonage, AWS SNS, etc.), only the URL, headers, and
-  # body template change. The "from" pattern stays the same.
-  channels:
-    - id: sms
-      type: http
-      request_config:
-        url: "https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json"
-        method: POST
-        headers:
-          Content-Type: "application/x-www-form-urlencoded"
-        # Basic auth using Twilio Account SID + Auth Token
-        auth:
-          type: basic_auth
-          config:
-            user:     "${TWILIO_ACCOUNT_SID}"
-            password: "${TWILIO_AUTH_TOKEN}"
-        # Jsonnet body template. {{.Recipient}} = E.164 phone, {{.Body}} = OTP message.
-        body: base64://ewogICJUbyI6ICJ7ey5SZWNpcGllbnR9fSIsCiAgIkZyb20iOiAiJHtUV0lMSU9fUEhPTkVfTlVNQkVSfSIsCiAgIkJvZHkiOiAie3suQm9keX19Igp9
-        # ^ decodes to: {"To": "{{.Recipient}}", "From": "${TWILIO_PHONE_NUMBER}", "Body": "{{.Body}}"}
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 log:
-  level:             warn
+  level:             warning
   format:            json
-  leak_sensitive_values: false  # NEVER set true in prod — leaks PII
-
-# ── Tracing ───────────────────────────────────────────────────────────────────
-tracing:
-  provider: otel
-  providers:
-    otlp:
-      insecure: true
-      server_url: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
-      sampling:
-        sampling_ratio: 0.1  # 10% in prod; 1.0 in dev
+  leak_sensitive_values: false

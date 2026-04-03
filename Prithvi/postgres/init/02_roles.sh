@@ -78,6 +78,10 @@ END
 \$\$;
 
 GRANT ALL PRIVILEGES ON DATABASE kratos TO kratos_app;
+-- PostgreSQL 15+ revoked default CREATE on public schema from PUBLIC.
+-- Kratos migrations create tables in the public schema of the kratos DB,
+-- so kratos_app needs explicit schema-level CREATE/USAGE.
+GRANT ALL ON SCHEMA public TO kratos_app;
 
 SQL
 

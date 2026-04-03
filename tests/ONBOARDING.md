@@ -7,7 +7,7 @@ This guide helps contributors add, run, and debug tests in the root tests crate.
 From repository root:
 
 ```bash
-just test-all
+just test
 ```
 
 For focused categories:
@@ -115,7 +115,7 @@ Before opening a PR:
 ```bash
 just test-security
 just test-property
-just test-all
+just test
 ```
 
 If you touched sandbox or e2e paths, also run:
@@ -129,5 +129,5 @@ just test-e2e
 1. Add a new security test file under `tests/tests/security/`.
 2. Register it in `tests/tests/security.rs`.
 3. Run `just test-security`.
-4. Run `just test-all`.
+4. Run `just test`.
 5. Update docs if test behavior introduces a new test pattern.

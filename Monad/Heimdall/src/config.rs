@@ -9,6 +9,7 @@
 //! | Variable | Description |
 //! |---|---|
 //! | `JWT_SECRET` | Shared HMAC-SHA256 secret used to sign/verify JWTs |
+//! | `DATABASE_URL` | PostgreSQL connection string |
 //! | `KRATOS_PUBLIC_URL` | Ory Kratos public API base URL |
 //! | `MATRIX_URL` | Continuwuity (Matrix) base URL |
 //! | `UZUME_PROFILES_URL` | Uzume-profiles service base URL |
@@ -24,34 +25,35 @@
 //! | `HEIMDALL_PORT` | `3000` | TCP port to listen on |
 //! | `HEIMDALL_HOST` | `0.0.0.0` | Bind address |
 //! | `JWT_EXPIRY_SECS` | `3600` | JWT lifetime in seconds |
+//! | `NYX_ENVIRONMENT` | `development` | Environment (development/production) |
+//! | `TLS_CERT_PATH` | - | Path to TLS certificate (production) |
+//! | `TLS_KEY_PATH` | - | Path to TLS private key (production) |
+//! | `TLS_CA_CERT_PATH` | - | Path to CA cert for client auth (optional) |
 
 use anyhow::{Context, Result};
 
 /// Runtime configuration for Heimdall.
 #[derive(Debug, Clone)]
 pub struct HeimdallConfig {
-    /// TCP port to bind (`HEIMDALL_PORT`, default `3000`).
     pub port: u16,
-    /// Bind address (`HEIMDALL_HOST`, default `"0.0.0.0"`).
     pub host: String,
-    /// HMAC secret for JWT signing/verification (`JWT_SECRET`, **required**).
     pub jwt_secret: String,
-    /// JWT validity window in seconds (`JWT_EXPIRY_SECS`, default `3600`).
     pub jwt_expiry_secs: u64,
-    /// Ory Kratos public API base URL, no trailing slash.
+    pub database_url: String,
     pub kratos_public_url: String,
-    /// Continuwuity (Matrix) base URL, no trailing slash.
     pub matrix_url: String,
-    /// Uzume-profiles base URL, no trailing slash.
     pub uzume_profiles_url: String,
-    /// Uzume-feed base URL, no trailing slash.
     pub uzume_feed_url: String,
-    /// Uzume-stories base URL, no trailing slash.
     pub uzume_stories_url: String,
-    /// Uzume-reels base URL, no trailing slash.
     pub uzume_reels_url: String,
-    /// Uzume-discover base URL, no trailing slash.
     pub uzume_discover_url: String,
+    pub environment: String,
+    /// TLS certificate path (optional, for production)
+    pub tls_cert_path: Option<String>,
+    /// TLS private key path (optional, for production)
+    pub tls_key_path: Option<String>,
+    /// TLS CA certificate path for client verification (optional)
+    pub tls_ca_cert_path: Option<String>,
 }
 
 impl HeimdallConfig {
@@ -77,6 +79,10 @@ impl HeimdallConfig {
             .parse::<u64>()
             .context("JWT_EXPIRY_SECS must be a non-negative integer")?;
 
+        let environment = std::env::var("NYX_ENVIRONMENT").unwrap_or_else(|_| "development".to_owned());
+
+        let database_url = std::env::var("DATABASE_URL")
+            .context("DATABASE_URL environment variable is required")?;
         let kratos_public_url = require_url("KRATOS_PUBLIC_URL")?;
         let matrix_url = require_url("MATRIX_URL")?;
         let uzume_profiles_url = require_url("UZUME_PROFILES_URL")?;
@@ -85,11 +91,16 @@ impl HeimdallConfig {
         let uzume_reels_url = require_url("UZUME_REELS_URL")?;
         let uzume_discover_url = require_url("UZUME_DISCOVER_URL")?;
 
+        let tls_cert_path = std::env::var("TLS_CERT_PATH").ok();
+        let tls_key_path = std::env::var("TLS_KEY_PATH").ok();
+        let tls_ca_cert_path = std::env::var("TLS_CA_CERT_PATH").ok();
+
         Ok(Self {
             port,
             host,
             jwt_secret,
             jwt_expiry_secs,
+            database_url,
             kratos_public_url,
             matrix_url,
             uzume_profiles_url,
@@ -97,7 +108,21 @@ impl HeimdallConfig {
             uzume_stories_url,
             uzume_reels_url,
             uzume_discover_url,
+            environment,
+            tls_cert_path,
+            tls_key_path,
+            tls_ca_cert_path,
         })
+    }
+
+    /// Returns `true` if running in development mode.
+    pub fn is_development(&self) -> bool {
+        self.environment == "development"
+    }
+
+    /// Returns `true` if running in production mode.
+    pub fn is_production(&self) -> bool {
+        self.environment == "production"
     }
 }
 

@@ -100,6 +100,9 @@ fake = { version = "3", features = ["derive", "chrono", "uuid"] }
 rand = { version = "0.10.0", features = ["thread_rng"] }
 async-trait = "0.1"
 
+# Regex (lightweight — used in auth tests for OTP extraction)
+regex-lite = "0.1"
+
 [lib]
 name = "nyx_tests"
 path = "src/lib.rs"

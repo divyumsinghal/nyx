@@ -276,8 +276,7 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "${KRATOS_PUBLIC_PORT:-4433}:4433"   # public: browsers/apps
-      - "${KRATOS_ADMIN_PORT:-4434}:4434"    # admin: never expose externally
+      - "4433:4433"   # public API only - admin API 4434 NOT exposed (test only)
     networks:
       - nyx
     healthcheck:
