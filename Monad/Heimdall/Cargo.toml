@@ -12,34 +12,41 @@ name = "heimdall"
 path = "src/main.rs"
 
 [dependencies]
-nun  = { package = "Nun",  path = "../Nun" }
+nun = { package = "Nun", path = "../Nun" }
 heka = { package = "Heka", path = "../Heka" }
-axum             = { workspace = true }
-axum-extra       = { workspace = true }
-tower            = { workspace = true }
-tower-http       = { version = "0.6", features = [
+axum = { workspace = true }
+axum-extra = { workspace = true }
+tower = { workspace = true }
+tower-http = { version = "0.6", features = [
     "cors",
     "trace",
     "compression-gzip",
     "limit",
     "timeout",
     "request-id",
+    "set-header",
 ] }
-tokio            = { workspace = true }
-reqwest          = { workspace = true }
-jsonwebtoken     = { workspace = true }
-serde            = { workspace = true }
-serde_json       = { workspace = true }
-uuid             = { workspace = true }
-chrono           = { workspace = true }
-tracing          = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+jsonwebtoken = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-anyhow           = { workspace = true }
-async-trait      = "0.1"
-futures          = "0.3"
-sqlx             = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono"] }
+anyhow = { workspace = true }
+async-trait = "0.1"
+futures = "0.3"
+sha2 = "0.10"
+sqlx = { version = "0.8", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "uuid",
+    "chrono",
+] }
 
 [dev-dependencies]
-tokio  = { workspace = true }
-tower  = { workspace = true }
+tokio = { workspace = true }
+tower = { workspace = true }
 serial_test = "3"

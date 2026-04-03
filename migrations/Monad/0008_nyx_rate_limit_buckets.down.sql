@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS nyx.rate_limit_buckets;

@@ -9,6 +9,8 @@
 //! | Variable | Description |
 //! |---|---|
 //! | `JWT_SECRET` | Shared HMAC-SHA256 secret used to sign/verify JWTs |
+//! | `JWT_PRIVATE_KEY_PEM` | RSA private key PEM used to sign JWTs |
+//! | `JWT_PUBLIC_KEY_PEM` | RSA public key PEM used to verify JWTs |
 //! | `DATABASE_URL` | PostgreSQL connection string |
 //! | `KRATOS_PUBLIC_URL` | Ory Kratos public API base URL |
 //! | `MATRIX_URL` | Continuwuity (Matrix) base URL |
@@ -17,6 +19,7 @@
 //! | `UZUME_STORIES_URL` | Uzume-stories service base URL |
 //! | `UZUME_REELS_URL` | Uzume-reels service base URL |
 //! | `UZUME_DISCOVER_URL` | Uzume-discover service base URL |
+//! | `CORS_ALLOWED_ORIGINS` | Comma-separated list of allowed CORS origins |
 //!
 //! # Optional environment variables (with defaults)
 //!
@@ -26,11 +29,12 @@
 //! | `HEIMDALL_HOST` | `0.0.0.0` | Bind address |
 //! | `JWT_EXPIRY_SECS` | `3600` | JWT lifetime in seconds |
 //! | `NYX_ENVIRONMENT` | `development` | Environment (development/production) |
-//! | `TLS_CERT_PATH` | - | Path to TLS certificate (production) |
-//! | `TLS_KEY_PATH` | - | Path to TLS private key (production) |
-//! | `TLS_CA_CERT_PATH` | - | Path to CA cert for client auth (optional) |
+//!
+//! Heimdall is designed for edge TLS termination (for example Caddy). It serves
+//! plain HTTP behind the edge proxy.
 
 use anyhow::{Context, Result};
+use reqwest::Url;
 
 /// Runtime configuration for Heimdall.
 #[derive(Debug, Clone)]
@@ -38,6 +42,8 @@ pub struct HeimdallConfig {
     pub port: u16,
     pub host: String,
     pub jwt_secret: String,
+    pub jwt_private_key_pem: Option<String>,
+    pub jwt_public_key_pem: Option<String>,
     pub jwt_expiry_secs: u64,
     pub database_url: String,
     pub kratos_public_url: String,
@@ -47,13 +53,8 @@ pub struct HeimdallConfig {
     pub uzume_stories_url: String,
     pub uzume_reels_url: String,
     pub uzume_discover_url: String,
+    pub cors_allowed_origins: Vec<String>,
     pub environment: String,
-    /// TLS certificate path (optional, for production)
-    pub tls_cert_path: Option<String>,
-    /// TLS private key path (optional, for production)
-    pub tls_key_path: Option<String>,
-    /// TLS CA certificate path for client verification (optional)
-    pub tls_ca_cert_path: Option<String>,
 }
 
 impl HeimdallConfig {
@@ -66,6 +67,8 @@ impl HeimdallConfig {
     pub fn from_env() -> Result<Self> {
         let jwt_secret =
             std::env::var("JWT_SECRET").context("JWT_SECRET environment variable is required")?;
+        // let jwt_private_key_pem = std::env::var("JWT_PRIVATE_KEY_PEM").ok();
+        // let jwt_public_key_pem = std::env::var("JWT_PUBLIC_KEY_PEM").ok();
 
         let port = std::env::var("HEIMDALL_PORT")
             .unwrap_or_else(|_| "3000".to_owned())
@@ -79,10 +82,20 @@ impl HeimdallConfig {
             .parse::<u64>()
             .context("JWT_EXPIRY_SECS must be a non-negative integer")?;
 
-        let environment = std::env::var("NYX_ENVIRONMENT").unwrap_or_else(|_| "development".to_owned());
+        let environment =
+            std::env::var("NYX_ENVIRONMENT").unwrap_or_else(|_| "development".to_owned());
 
         let database_url = std::env::var("DATABASE_URL")
             .context("DATABASE_URL environment variable is required")?;
+        let jwt_private_key_pem = std::env::var("JWT_PRIVATE_KEY_PEM").ok();
+        let jwt_public_key_pem = std::env::var("JWT_PUBLIC_KEY_PEM").ok();
+
+        if environment == "production"
+            && (jwt_private_key_pem.is_none() || jwt_public_key_pem.is_none())
+        {
+            anyhow::bail!("JWT_PRIVATE_KEY_PEM and JWT_PUBLIC_KEY_PEM are required in production");
+        }
+
         let kratos_public_url = require_url("KRATOS_PUBLIC_URL")?;
         let matrix_url = require_url("MATRIX_URL")?;
         let uzume_profiles_url = require_url("UZUME_PROFILES_URL")?;
@@ -90,15 +103,16 @@ impl HeimdallConfig {
         let uzume_stories_url = require_url("UZUME_STORIES_URL")?;
         let uzume_reels_url = require_url("UZUME_REELS_URL")?;
         let uzume_discover_url = require_url("UZUME_DISCOVER_URL")?;
-
-        let tls_cert_path = std::env::var("TLS_CERT_PATH").ok();
-        let tls_key_path = std::env::var("TLS_KEY_PATH").ok();
-        let tls_ca_cert_path = std::env::var("TLS_CA_CERT_PATH").ok();
+        let cors_allowed_origins = std::env::var("CORS_ALLOWED_ORIGINS")
+            .context("CORS_ALLOWED_ORIGINS environment variable is required")?;
+        let cors_allowed_origins = parse_allowed_origins(&cors_allowed_origins)?;
 
         Ok(Self {
             port,
             host,
             jwt_secret,
+            jwt_private_key_pem,
+            jwt_public_key_pem,
             jwt_expiry_secs,
             database_url,
             kratos_public_url,
@@ -108,10 +122,8 @@ impl HeimdallConfig {
             uzume_stories_url,
             uzume_reels_url,
             uzume_discover_url,
+            cors_allowed_origins,
             environment,
-            tls_cert_path,
-            tls_key_path,
-            tls_ca_cert_path,
         })
     }
 
@@ -126,9 +138,35 @@ impl HeimdallConfig {
     }
 }
 
+fn parse_allowed_origins(raw: &str) -> Result<Vec<String>> {
+    let mut out = Vec::new();
+    for origin in raw.split(',').map(str::trim).filter(|v| !v.is_empty()) {
+        let parsed = Url::parse(origin)
+            .with_context(|| format!("Invalid origin in CORS_ALLOWED_ORIGINS: {origin}"))?;
+        match parsed.scheme() {
+            "http" | "https" => out.push(parsed.as_str().trim_end_matches('/').to_owned()),
+            scheme => anyhow::bail!(
+                "CORS_ALLOWED_ORIGINS contains unsupported scheme '{scheme}' for origin {origin}"
+            ),
+        }
+    }
+
+    if out.is_empty() {
+        anyhow::bail!("CORS_ALLOWED_ORIGINS must contain at least one origin");
+    }
+
+    Ok(out)
+}
+
 /// Read a required URL env var and strip trailing slashes.
 fn require_url(var: &str) -> Result<String> {
     let raw =
         std::env::var(var).with_context(|| format!("{var} environment variable is required"))?;
-    Ok(raw.trim_end_matches('/').to_owned())
+    let parsed =
+        Url::parse(raw.trim()).with_context(|| format!("{var} must be a valid absolute URL"))?;
+
+    match parsed.scheme() {
+        "http" | "https" => Ok(parsed.as_str().trim_end_matches('/').to_owned()),
+        scheme => anyhow::bail!("{var} must use http or https scheme, got: {scheme}"),
+    }
 }

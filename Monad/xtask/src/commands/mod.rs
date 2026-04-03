@@ -3,6 +3,7 @@
 
 pub mod create_account;
 pub mod db_reset;
+pub mod input;
 pub mod login;
 pub mod migrate;
 pub mod nats_setup;

@@ -36,8 +36,9 @@
 
 use axum::body::Body;
 use axum::extract::Request;
-use axum::http::StatusCode;
+use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
+use reqwest::Url;
 use serde_json::json;
 use tracing::{error, info};
 
@@ -51,6 +52,17 @@ const HOP_BY_HOP: &[&str] = &[
     "trailers",
     "transfer-encoding",
     "upgrade",
+];
+
+const STRIP_HEADERS: &[&str] = &[
+    "authorization",
+    "x-nyx-identity-id",
+    "x-request-id",
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-forwarded-port",
+    "forwarded",
 ];
 
 /// Forward an incoming Axum request to `upstream_base`, stripping `prefix_to_strip`
@@ -93,20 +105,25 @@ pub async fn proxy_request(
 
     info!(
         method = %method,
-        upstream_url = %upstream_url,
+        upstream_url = %sanitize_url_for_logs(&upstream_url),
         "proxying request"
     );
 
     // ── 3. Build upstream request ─────────────────────────────────────────
-    let mut upstream_req = http_client.request(
-        reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
-        &upstream_url,
-    );
+    let upstream_method = match reqwest::Method::from_bytes(method.as_str().as_bytes()) {
+        Ok(parsed) => parsed,
+        Err(err) => {
+            error!(%err, method = %method, "unsupported HTTP method for upstream request");
+            return bad_gateway("Unsupported HTTP method");
+        }
+    };
+    let mut upstream_req = http_client.request(upstream_method, &upstream_url);
 
     // Copy headers, skipping hop-by-hop ones.
     for (name, value) in &headers {
         let name_lower = name.as_str().to_lowercase();
-        if HOP_BY_HOP.contains(&name_lower.as_str()) {
+        if HOP_BY_HOP.contains(&name_lower.as_str()) || STRIP_HEADERS.contains(&name_lower.as_str())
+        {
             continue;
         }
         if let Ok(val_str) = value.to_str() {
@@ -117,6 +134,12 @@ pub async fn proxy_request(
     // Inject identity header if provided.
     if let Some(id) = identity_id {
         upstream_req = upstream_req.header("X-Nyx-Identity-Id", id);
+    }
+
+    if let Some(request_id) = headers.get(header::HeaderName::from_static("x-request-id")) {
+        if let Ok(value) = request_id.to_str() {
+            upstream_req = upstream_req.header("X-Request-Id", value);
+        }
     }
 
     // Forward body.
@@ -133,7 +156,11 @@ pub async fn proxy_request(
     let upstream_response = match upstream_req.send().await {
         Ok(resp) => resp,
         Err(err) => {
-            error!(%err, upstream_url = %upstream_url, "upstream connection failed");
+            error!(
+                %err,
+                upstream_url = %sanitize_url_for_logs(&upstream_url),
+                "upstream connection failed"
+            );
             return bad_gateway("Upstream service is unreachable");
         }
     };
@@ -164,6 +191,22 @@ pub async fn proxy_request(
     response_builder
         .body(Body::from(response_bytes))
         .unwrap_or_else(|_| bad_gateway("Failed to construct response"))
+}
+
+fn sanitize_url_for_logs(url: &str) -> String {
+    if let Ok(mut parsed) = Url::parse(url) {
+        parsed.set_query(None);
+        parsed.set_fragment(None);
+        return parsed.to_string();
+    }
+
+    // Fallback for malformed URLs: at least strip query and fragment delimiters.
+    let no_fragment = url.split('#').next().unwrap_or(url);
+    no_fragment
+        .split('?')
+        .next()
+        .unwrap_or(no_fragment)
+        .to_owned()
 }
 
 /// Build a `502 Bad Gateway` response with an [`ErrorResponse`](crate) JSON body.

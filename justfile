@@ -26,7 +26,7 @@ _dc_prod      := _dc_uzume  + " -f " + _f_prod
 _dc_auth_test := "docker compose -f " + _f_auth_test
 
 # ── Auth-test env (exported to cargo test) ───────────────────────────────────
-_auth_env := "KRATOS_PUBLIC_URL=http://localhost:4433 KRATOS_ADMIN_URL=http://localhost:4434 MAILPIT_API_URL=http://localhost:8025"
+_auth_env := "KRATOS_PUBLIC_URL=${KRATOS_PUBLIC_URL:-http://localhost:4433} KRATOS_ADMIN_URL=${KRATOS_ADMIN_URL:-http://localhost:4434} MAILPIT_API_URL=${MAILPIT_API_URL:-http://localhost:8025} HEIMDALL_URL=${HEIMDALL_URL:-https://localhost:3443}"
 
 # ── Default ───────────────────────────────────────────────────────────────────
 
@@ -225,9 +225,9 @@ gate-step1-compat:
 
 # ── Auth integration tests ────────────────────────────────────────────────────
 
-# Start the minimal auth stack (postgres + mailpit + kratos) and wait for health
+# Start the auth stack (postgres + mailpit + kratos + heimdall + caddy) and wait for health
 auth-up:
-    {{_dc_auth_test}} up -d --wait
+    {{_dc_auth_test}} --profile edge up -d --wait --wait-timeout 600
 
 # Stop the auth stack and remove volumes
 auth-down:
@@ -387,11 +387,17 @@ new-app app:
 
 # Create a new Nyx account interactively (requires: just auth-up)
 account-create:
-    cargo run -p nyx-xtask -- create-account
+    HEIMDALL_URL=${HEIMDALL_URL:-https://localhost:3443} NYX_INSECURE_TLS=${NYX_INSECURE_TLS:-false} cargo run -p nyx-xtask -- create-account
 
 # Login to an existing Nyx account interactively (requires: just auth-up)
 account-login:
-    cargo run -p nyx-xtask -- login
+    HEIMDALL_URL=${HEIMDALL_URL:-https://localhost:3443} NYX_INSECURE_TLS=${NYX_INSECURE_TLS:-false} cargo run -p nyx-xtask -- login
+
+# Convenience one-shot secure auth flow via Caddy HTTPS edge.
+account-e2e:
+    @just auth-up
+    @just account-create
+    @just account-login
 
 # ── Private helpers ───────────────────────────────────────────────────────────
 

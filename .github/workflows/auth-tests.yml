@@ -62,7 +62,7 @@ jobs:
         run: |
           docker compose \
             -f Prithvi/compose/auth-test.yml \
-            up -d --wait
+            up -d --wait --wait-timeout 600
         # --wait waits for ALL services to pass their healthchecks before returning.
         # Requires Docker Compose v2.1.1+ (ubuntu-latest ships v2.x).
 

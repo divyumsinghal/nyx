@@ -259,9 +259,9 @@ services:
       POSTGRES_HOST:           postgres
       KRATOS_COOKIE_SECRET:    "${KRATOS_COOKIE_SECRET}"
       KRATOS_CIPHER_SECRET:    "${KRATOS_CIPHER_SECRET}"
-      KRATOS_PUBLIC_URL:       "${KRATOS_PUBLIC_URL:-http://localhost:4433}"
+      KRATOS_PUBLIC_URL:       "${KRATOS_PUBLIC_URL:-https://api.nyx.social/api/nyx/auth}"
       KRATOS_ADMIN_URL:        "http://kratos:4434"
-      NX_WEB_URL:              "${NX_WEB_URL:-http://localhost:5173}"
+      NX_WEB_URL:              "${NX_WEB_URL:-https://app.nyx.social}"
       COOKIE_DOMAIN:           "${COOKIE_DOMAIN:-localhost}"
       SESSION_COOKIE_SECURE:   "${SESSION_COOKIE_SECURE:-false}"
       SMTP_CONNECTION_URI:     "${SMTP_CONNECTION_URI}"

@@ -280,6 +280,11 @@ impl NyxIdRegistry {
     }
 }
 
+/// Validate a Nyx ID string using the platform's canonical rules.
+pub fn validate_nyx_id(nyx_id: &str) -> Result<(), String> {
+    NyxIdRegistry::validate_format(nyx_id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -79,6 +79,7 @@ services:
     environment:
       SERVICE_NAME:           heimdall
       RUST_LOG:               "${RUST_LOG:-warn}"
+      HEIMDALL_HOST:          "${HEIMDALL_HOST:-0.0.0.0}"
       DATABASE_URL:           "postgres://nyx_app:${NYX_APP_DB_PASSWORD}@postgres:5432/nyx"
       REDIS_URL:              "redis://:${DRAGONFLY_PASSWORD}@dragonfly:6379"
       NATS_URL:               "nats://${NYX_NATS_USER}:${NYX_NATS_PASSWORD}@nats:4222"
@@ -95,7 +96,7 @@ services:
       OTEL_SERVICE_NAME:      heimdall
       OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
     ports:
-      - "${HEIMDALL_PORT:-3000}:3000"
+      - "${HEIMDALL_BIND:-127.0.0.1}:${HEIMDALL_PORT:-3000}:3000"
     networks:
       - nyx
     depends_on:

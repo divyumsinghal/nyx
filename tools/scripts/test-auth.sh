@@ -61,7 +61,7 @@ trap cleanup EXIT
 if ! $NO_START; then
   info "Starting auth stack (Postgres + Mailpit + Kratos)..."
   docker compose -f "$COMPOSE_FILE" pull --quiet 2>/dev/null || true
-  docker compose -f "$COMPOSE_FILE" up -d --wait
+  docker compose -f "$COMPOSE_FILE" up -d --wait --wait-timeout 600
   STACK_STARTED=true
   success "Auth stack is healthy."
 else

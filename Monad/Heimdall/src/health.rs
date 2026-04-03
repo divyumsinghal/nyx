@@ -40,6 +40,8 @@ pub struct HealthResponse {
     pub status: &'static str,
     /// Per-upstream probe results keyed by service name.
     pub upstreams: HashMap<String, UpstreamStatus>,
+    /// Database connectivity status for PostgreSQL.
+    pub database: UpstreamStatus,
 }
 
 /// Result of probing a single upstream.
@@ -111,13 +113,42 @@ pub async fn health_handler(State(state): State<AppState>) -> impl IntoResponse 
     });
 
     let results: Vec<(String, UpstreamStatus)> = join_all(probe_futures).await;
-    let all_ok = results.iter().all(|(_, s)| s.reachable);
+    let db_start = Instant::now();
+    let db_result = timeout(
+        Duration::from_secs(5),
+        sqlx::query_scalar::<_, i32>("SELECT 1").fetch_one(&state.db),
+    )
+    .await;
+
+    let database = match db_result {
+        Ok(Ok(_)) => UpstreamStatus {
+            reachable: true,
+            latency_ms: Some(u64::try_from(db_start.elapsed().as_millis()).unwrap_or(u64::MAX)),
+        },
+        Ok(Err(err)) => {
+            warn!(%err, "database health probe failed");
+            UpstreamStatus {
+                reachable: false,
+                latency_ms: None,
+            }
+        }
+        Err(_timeout) => {
+            warn!("database health probe timed out");
+            UpstreamStatus {
+                reachable: false,
+                latency_ms: None,
+            }
+        }
+    };
+
+    let all_ok = results.iter().all(|(_, s)| s.reachable) && database.reachable;
 
     let upstreams_map: HashMap<String, UpstreamStatus> = results.into_iter().collect();
 
     let response = HealthResponse {
         status: if all_ok { "ok" } else { "degraded" },
         upstreams: upstreams_map,
+        database,
     };
 
     (StatusCode::OK, Json(response))

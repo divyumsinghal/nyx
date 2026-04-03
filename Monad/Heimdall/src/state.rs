@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use heka::NyxIdRegistry;
 use reqwest::Client;
+use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
 use crate::config::HeimdallConfig;
@@ -24,6 +25,8 @@ pub struct AppState {
     pub http: Client,
     /// Heka NyxIdRegistry with DB pool
     pub nyx_id_registry: Arc<NyxIdRegistry>,
+    /// Shared PostgreSQL pool used by gateway checks and Heka helpers.
+    pub db: PgPool,
 }
 
 impl AppState {
@@ -44,13 +47,25 @@ impl AppState {
             .timeout(Duration::from_secs(30))
             .connect_timeout(Duration::from_secs(10))
             .pool_idle_timeout(Duration::from_secs(60))
-            .pool_max_idle_per_host(10)
+            .pool_max_idle_per_host(4)
             .build()
             .expect("failed to build reqwest::Client — this is a programmer error");
 
-        let db = PgPool::connect(&config.database_url).await?;
-        let nyx_id_registry = Arc::new(NyxIdRegistry::new(db));
+        let db = PgPoolOptions::new()
+            .max_connections(20)
+            .min_connections(2)
+            .acquire_timeout(Duration::from_secs(10))
+            .idle_timeout(Duration::from_secs(300))
+            .max_lifetime(Duration::from_secs(1800))
+            .connect(&config.database_url)
+            .await?;
+        let nyx_id_registry = Arc::new(NyxIdRegistry::new(db.clone()));
 
-        Ok(Self { config, http, nyx_id_registry })
+        Ok(Self {
+            config,
+            http,
+            nyx_id_registry,
+            db,
+        })
     }
 }

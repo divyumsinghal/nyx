@@ -4,10 +4,10 @@
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use reqwest::{Client, StatusCode};
+use reqwest::{Client, StatusCode, Url};
 use serde_json::{Value, json};
+use sha1::{Digest, Sha1};
 
-const DEFAULT_HEIMDALL_URL: &str = "http://localhost:3000";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 
@@ -17,33 +17,54 @@ pub struct KratosClient {
 }
 
 impl KratosClient {
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self> {
         let url = std::env::var("HEIMDALL_URL")
-            .unwrap_or_else(|_| DEFAULT_HEIMDALL_URL.to_string())
+            .context("HEIMDALL_URL environment variable is required")?
             .trim_end_matches('/')
             .to_owned();
 
+        let parsed_url = Url::parse(&url).context("HEIMDALL_URL must be a valid URL")?;
+
+        let allow_insecure_local_tls = std::env::var("NYX_INSECURE_TLS")
+            .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
+            .unwrap_or(false);
+
+        let host = parsed_url.host_str().unwrap_or_default();
+        let is_local_host = matches!(host, "localhost" | "127.0.0.1" | "::1");
+        let env = std::env::var("NYX_ENVIRONMENT").unwrap_or_else(|_| "development".to_string());
+        let may_accept_invalid_certs = allow_insecure_local_tls && is_local_host && env == "development";
+
         // Security: HTTP client with timeouts to prevent hanging
-        let http = Client::builder()
+        let mut client_builder = Client::builder()
             .timeout(REQUEST_TIMEOUT)
             .connect_timeout(CONNECT_TIMEOUT)
-            .pool_idle_timeout(Duration::from_secs(60))
-            .build()
-            .expect("failed to build reqwest::Client");
+            .pool_idle_timeout(Duration::from_secs(60));
 
-        Self { http, url }
+        if may_accept_invalid_certs {
+            client_builder = client_builder.danger_accept_invalid_certs(true);
+        }
+
+        let http = client_builder
+            .build()
+            .context("failed to build reqwest::Client")?;
+
+        Ok(Self { http, url })
     }
 
     pub async fn check_nyx_id_available(&self, nyx_id: &str) -> Result<bool> {
-        let resp = self.http
-            .get(format!("{}/api/nyx/id/check-availability?id={}", self.url, nyx_id))
+        let resp = self
+            .http
+            .post(format!("{}/api/nyx/id/check-availability", self.url))
+            .json(&json!({ "id": nyx_id }))
             .send()
             .await;
 
         match resp {
             Ok(r) if r.status() == StatusCode::OK => {
                 let body: serde_json::Value = r.json().await?;
-                Ok(body["available"].as_bool().unwrap_or(false))
+                body["available"]
+                    .as_bool()
+                    .context("check-availability response missing boolean `available`")
             }
             Ok(r) => anyhow::bail!("check nyx_id failed: {}", r.status()),
             Err(e) => Err(e.into()),
@@ -60,28 +81,69 @@ impl KratosClient {
         resp.json().await.context("parse registration flow")
     }
 
-    pub async fn submit_registration(&self, flow_id: &str, method: &str, traits: Value, extra: Value) -> Result<Value> {
-        let mut body = json!({
-            "method": method,
-            "traits": traits,
-        }).as_object().unwrap().clone();
+    pub async fn submit_registration_code_init(
+        &self,
+        flow_id: &str,
+        email: &str,
+        nyx_id: &str,
+    ) -> Result<Value> {
+        let body = json!({
+            "method": "code",
+            "traits": {
+                "email": email,
+                "nyx_id": nyx_id,
+            }
+        });
 
-        if let Some(obj) = extra.as_object() {
-            for (k, v) in obj { body.insert(k.clone(), v.clone()); }
-        }
-
-        let resp = self.http.post(format!("{}/api/nyx/auth/self-service/registration?flow={flow_id}", self.url))
+        let resp = self
+            .http
+            .post(format!("{}/api/nyx/auth/self-service/registration?flow={flow_id}", self.url))
             .json(&body)
-            .send().await.context("submit registration")?;
+            .send()
+            .await
+            .context("submit registration code init")?;
 
         let status = resp.status();
         let body: Value = resp.json().await.unwrap_or(Value::Null);
 
-        if status == StatusCode::OK {
+        if status.is_success() || status == StatusCode::UNPROCESSABLE_ENTITY {
             Ok(body)
         } else {
-            let error_msg = parse_kratos_errors(&body);
-            anyhow::bail!("{}", error_msg)
+            anyhow::bail!(parse_kratos_errors(&body))
+        }
+    }
+
+    pub async fn submit_registration_code_verify(
+        &self,
+        flow_id: &str,
+        code: &str,
+        email: &str,
+        nyx_id: &str,
+    ) -> Result<Value> {
+        let body = json!({
+            "method": "code",
+            "code": code,
+            "traits": {
+                "email": email,
+                "nyx_id": nyx_id,
+            }
+        });
+
+        let resp = self
+            .http
+            .post(format!("{}/api/nyx/auth/self-service/registration?flow={flow_id}", self.url))
+            .json(&body)
+            .send()
+            .await
+            .context("submit registration code verify")?;
+
+        let status = resp.status();
+        let body: Value = resp.json().await.unwrap_or(Value::Null);
+
+        if status.is_success() {
+            Ok(body)
+        } else {
+            anyhow::bail!(parse_kratos_errors(&body))
         }
     }
 
@@ -96,10 +158,9 @@ impl KratosClient {
     }
 
     pub async fn submit_login(&self, flow_id: &str, method: &str, identifier: &str, extra: Value) -> Result<Value> {
-        let mut body = json!({
-            "method": method,
-            "identifier": identifier,
-        }).as_object().unwrap().clone();
+        let mut body = serde_json::Map::new();
+        body.insert("method".to_string(), Value::String(method.to_string()));
+        body.insert("identifier".to_string(), Value::String(identifier.to_string()));
 
         if let Some(obj) = extra.as_object() {
             for (k, v) in obj { body.insert(k.clone(), v.clone()); }
@@ -119,11 +180,32 @@ impl KratosClient {
             anyhow::bail!("{}", error_msg)
         }
     }
+
+    pub async fn password_is_breached(&self, password: &str) -> Result<bool> {
+        let hash = Sha1::digest(password.as_bytes());
+        let hash_hex = format!("{:x}", hash).to_uppercase();
+        let (prefix, suffix) = hash_hex.split_at(5);
+
+        let response = self
+            .http
+            .get(format!("https://api.pwnedpasswords.com/range/{prefix}"))
+            .header("Add-Padding", "true")
+            .send()
+            .await
+            .context("query breached password database")?;
+
+        if !response.status().is_success() {
+            anyhow::bail!("breached-password check failed: {}", response.status());
+        }
+
+        let body = response.text().await.context("read breached-password response")?;
+        Ok(body.lines().any(|line| line.split_once(':').is_some_and(|(candidate, _)| candidate.trim() == suffix)))
+    }
 }
 
 impl Default for KratosClient {
     fn default() -> Self {
-        Self::new()
+        Self::new().expect("Failed to create KratosClient from environment")
     }
 }
 
@@ -161,8 +243,7 @@ pub fn parse_kratos_errors(body: &Value) -> String {
     }
 
     if messages.is_empty() {
-        // Fallback to raw JSON
-        serde_json::to_string_pretty(body).unwrap_or_default()
+        "Unexpected Kratos error response".to_string()
     } else {
         messages.join("\n")
     }

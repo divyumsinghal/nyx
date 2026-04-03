@@ -175,6 +175,8 @@ services:
     <<: [*service-resources, *prod-restart]
     environment:
       RUST_LOG: "warn"
+      JWT_PRIVATE_KEY_PEM: "${JWT_PRIVATE_KEY_PEM:?Set JWT_PRIVATE_KEY_PEM in .env}"
+      JWT_PUBLIC_KEY_PEM: "${JWT_PUBLIC_KEY_PEM:?Set JWT_PUBLIC_KEY_PEM in .env}"
 
   oya:
     <<: [*worker-resources, *prod-restart]

@@ -30,8 +30,16 @@ tracing-subscriber = { workspace = true }
 clap = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+heka = { package = "Heka", path = "../Heka" }
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "rustls-tls",
+] }
 regex-lite = { workspace = true }
+rpassword = "7"
+validator = { version = "0.19", features = ["derive"] }
+zxcvbn = "3"
+sha1 = "0.10"
 
 [dev-dependencies]
 tokio = { workspace = true }
