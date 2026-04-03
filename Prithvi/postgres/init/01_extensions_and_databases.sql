@@ -18,6 +18,9 @@ CREATE DATABASE kratos
 -- ── Extensions for the nyx app database ──────────────────────────────────────
 \connect nyx
 
+-- Create the nyx schema for the nyx app
+CREATE SCHEMA IF NOT EXISTS nyx;
+
 -- pgcrypto: gen_random_uuid(), crypt(), encode/decode helpers
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- pg_trgm: fast ILIKE / similarity search on text columns (alias, display_name)

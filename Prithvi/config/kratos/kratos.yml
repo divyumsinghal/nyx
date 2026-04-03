@@ -41,7 +41,7 @@ serve:
       enabled: true
       allowed_origins:
         # DEV local frontends
-        - "http://localhost:5173"   # nyx-web (SvelteKit dev server)
+        - "http://localhost:5173"   # nyx-web (Typescript dev server)
         - "http://localhost:5174"   # uzume-web dev server
         # PROD — CHANGE THESE
         - "https://nyx.com"

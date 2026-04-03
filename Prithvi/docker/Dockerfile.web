@@ -1,6 +1,6 @@
 # =============================================================================
-# Dockerfile.web — SvelteKit frontend → nginx
-# Builds a SvelteKit app and serves the output via nginx.
+# Dockerfile.web — Typescript frontend → nginx
+# Builds a Typescript app and serves the output via nginx.
 #
 # Build args:
 #   APP_DIR        — relative path within Maya/ (e.g. "Uzume-web", "nyx-web")

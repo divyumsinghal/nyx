@@ -27,6 +27,9 @@ ingester:
   chunk_idle_period:        5m
   max_chunk_age:            1h
   chunk_retain_period:      30s
+  wal:
+    enabled: false      # Disable WAL for dev; logs are ephemeral anyway
+    dir: /loki/wal
 
 # ── Schema ────────────────────────────────────────────────────────────────────
 schema_config:

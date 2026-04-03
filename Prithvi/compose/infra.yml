@@ -98,11 +98,10 @@ services:
       memlock: -1     # DragonflyDB uses mmap; needs unlimited locked memory
     command:
       - "--requirepass=${DRAGONFLY_PASSWORD}"
-      - "--maxmemory=2gb"
-      - "--maxmemory-policy=allkeys-lru"
+      - "--maxmemory=4gb"
+      - "--cache_mode=true"
       - "--hz=30"
-      - "--save="            # disable RDB snapshots (volatile cache; no persistence needed)
-      - "--tcp-backlog=511"
+      - "--tcp_backlog=511"
     volumes:
       - nyx-dragonfly-data:/data
     ports:
@@ -230,11 +229,13 @@ services:
   # Runs two processes: migrate (exits) then serve (long-running).
   # ────────────────────────────────────────────────────────────────────────────
   kratos-migrate:
+    <<: [*env, *restart]
     image: oryd/kratos:v1.3.1
     container_name: nyx-kratos-migrate
     command: migrate sql -e --yes
     environment:
-      DSN: "postgres://kratos_app:${KRATOS_DB_PASSWORD}@postgres:5432/kratos?sslmode=disable"
+      KRATOS_DB_PASSWORD: "${KRATOS_DB_PASSWORD}"
+      DSN: "postgres://kratos_app:changeme_kratos_db@postgres:5432/kratos?sslmode=disable"
     depends_on:
       postgres:
         condition: service_healthy
@@ -294,7 +295,7 @@ services:
   # ────────────────────────────────────────────────────────────────────────────
   continuwuity:
     <<: [*env, *restart]
-    image: ghcr.io/girlbossceo/conduwuit:main
+    image: ghcr.io/continuwuity/continuwuity:latest
     container_name: nyx-matrix
     volumes:
       - nyx-matrix-data:/data
@@ -391,8 +392,11 @@ services:
     <<: [*env, *restart]
     image: grafana/loki:3.4.2
     container_name: nyx-loki
-    command: -config.file=/etc/loki/loki.yml
+    command:
+      - -config.file=/etc/loki/loki.yml
+      - -ingester.wal-dir=/wal
     volumes:
+      - nyx-loki-wal:/wal
       - nyx-loki-data:/loki
       - ../config/loki/loki.yml:/etc/loki/loki.yml:ro
     ports:
@@ -475,6 +479,7 @@ volumes:
   nyx-matrix-data:
   nyx-prometheus-data:
   nyx-loki-data:
+  nyx-loki-wal:
   nyx-grafana-data:
 
 # ── Network ───────────────────────────────────────────────────────────────────
