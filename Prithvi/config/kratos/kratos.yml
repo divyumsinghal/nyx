@@ -21,7 +21,10 @@
 # KRATOS_ADMIN_URL       e.g. http://kratos:4434 (internal only in prod)
 # NX_WEB_URL             e.g. http://localhost:5173 or https://nyx.com
 # COOKIE_DOMAIN          e.g. localhost or nyx.com
-# SMTP_CONNECTION_URI    e.g. smtp://mailpit:1025/?skip_ssl_verify=true
+# SMTP_CONNECTION_URI    Real SMTP — required, no default.
+#                        Gmail:    smtps://you%40gmail.com:APP_PASSWORD@smtp.gmail.com:465/
+#                        Resend:   smtps://resend:API_KEY@smtp.resend.com:465/
+#                        SendGrid: smtps://apikey:API_KEY@smtp.sendgrid.net:465/
 # SMTP_FROM_ADDRESS      e.g. noreply@nyx.com
 # GOOGLE_CLIENT_ID       (leave blank to disable Google login)
 # GOOGLE_CLIENT_SECRET   (leave blank to disable Google login)
@@ -48,8 +51,10 @@ serve:
     cors:
       enabled: true
       allowed_origins:
-        - "http://localhost:5173"
-        - "http://localhost:5174"
+        - "${NX_WEB_URL}"          # injected: http://localhost:8082 locally, real URL in prod
+        - "${EDGE_URL}"            # injected: https://localhost:3443 locally, https://nyx.com in prod
+        - "http://localhost:5173"  # Expo/Vite secondary dev port — not a secret, safe to be static
+        - "http://localhost:5174"  # Expo/Vite secondary dev port — not a secret, safe to be static
         - "https://nyx.com"
         - "https://uzume.nyx.com"
         - "https://anteros.nyx.com"
@@ -60,7 +65,7 @@ serve:
       allow_credentials: true
 
   admin:
-    base_url: "${KRATOS_ADMIN_URL}"
+    base_url: "http://kratos:4434"
     port: 4434
 
 # ── Self-service flows ────────────────────────────────────────────────────────
@@ -68,6 +73,8 @@ selfservice:
   default_browser_return_url: "${NX_WEB_URL}"
 
   allowed_return_urls:
+    - "${NX_WEB_URL}"
+    - "${EDGE_URL}"
     - "http://localhost:5173"
     - "http://localhost:5174"
     - "https://nyx.com"
@@ -248,11 +255,11 @@ hashers:
     expected_duration: "500ms"
 
 # ── Courier (email only — phone/SMS removed) ──────────────────────────────────
+# SMTP_CONNECTION_URI is required — there is no fallback to a local fake inbox.
+# Every environment (dev, CI, prod) must provide a real SMTP connection string.
+# See REQUIRED ENVIRONMENT VARIABLES at the top of this file for format examples.
 courier:
   smtp:
-    # DEV default: Mailpit on localhost (docker service name: mailpit, port 1025)
-    # Run: docker compose -f Prithvi/compose/auth-test.yml up -d
-    # PROD: replace with Mailgun / Postmark / SES / self-hosted Postfix
     connection_uri: "${SMTP_CONNECTION_URI}"
     from_address:   "${SMTP_FROM_ADDRESS}"
     from_name:      "Nyx"
