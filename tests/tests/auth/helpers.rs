@@ -5,7 +5,8 @@
 //!
 //! OTP retrieval uses the Kratos admin courier API
 //! (`GET /admin/courier/messages`) which stores every dispatched message
-//! regardless of which SMTP provider is configured.  This means CI reads
+//! regardless of which SMTP provider is configured.  This means CI reads OTPs
+//! without needing IMAP access or a fake inbox.
 
 use reqwest::{Client, StatusCode};
 use serde_json::{json, Value};
