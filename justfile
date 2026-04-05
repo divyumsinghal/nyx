@@ -115,14 +115,14 @@ nuke:
 # Start only postgres + dragonfly — needed BEFORE Infisical on first-time setup.
 # Sources .secrets/bootstrap.env into the shell so ${VAR} compose interpolation works.
 infra-core:
-    set -a; . .secrets/bootstrap.env; set +a; \
+    set -a; . .secrets/bootstrap.env; set +a && \
         docker compose -f {{_f_infra}} up -d postgres dragonfly
     @just _wait-postgres
 
 # Start Infisical after postgres + dragonfly are healthy.
 # Sources .secrets/bootstrap.env into the shell.
 infra-infisical:
-    set -a; . .secrets/bootstrap.env; set +a; \
+    set -a; . .secrets/bootstrap.env; set +a && \
         docker compose -f {{_f_infra}} up -d infisical
 
 # Start full infrastructure (all services). Requires Infisical already running.
@@ -467,38 +467,56 @@ prod-restart service:
 
 # ── Secrets management (Infisical) ───────────────────────────────────────────
 
-# First-time setup guide. Run this on a new machine before anything else.
+# Internal: source bootstrap secrets into shell env (not for direct use)
+_source-bootstrap:
+    @set -a; . .secrets/bootstrap.env; set +a
+
+# Push all application secrets from .secrets/secrets.env into Infisical.
+# Run after: just infra-core && just infra-infisical && just infisical-account-setup
+# Run again any time .secrets/secrets.env changes.
+secrets-push:
+    @echo "Sourcing .secrets/bootstrap.env and .secrets/secrets.env..."
+    @set -a; \
+     . .secrets/bootstrap.env; \
+     . .secrets/secrets.env; \
+     set +a; \
+     MSYS_NO_PATHCONV=1 docker cp \
+       "tools/scripts/infisical-setup.js" \
+       "nyx-infisical:/tmp/setup.js" && \
+     docker exec \
+       -e INFISICAL_ADMIN_EMAIL="$$INFISICAL_ADMIN_EMAIL" \
+       -e INFISICAL_ADMIN_PASSWORD="$$INFISICAL_ADMIN_PASSWORD" \
+       -e POSTGRES_ROOT_PASSWORD="$$POSTGRES_ROOT_PASSWORD" \
+       -e NYX_APP_DB_PASSWORD="$$NYX_APP_DB_PASSWORD" \
+       -e NYX_MIGRATION_DB_PASSWORD="$$NYX_MIGRATION_DB_PASSWORD" \
+       -e KRATOS_DB_PASSWORD="$$KRATOS_DB_PASSWORD" \
+       -e INFISICAL_DB_PASSWORD="$$INFISICAL_DB_PASSWORD" \
+       -e KRATOS_COOKIE_SECRET="$$KRATOS_COOKIE_SECRET" \
+       -e KRATOS_CIPHER_SECRET="$$KRATOS_CIPHER_SECRET" \
+       -e JWT_SECRET="$$JWT_SECRET" \
+       -e SMTP_CONNECTION_URI="$$SMTP_CONNECTION_URI" \
+       -e SMTP_FROM_ADDRESS="$$SMTP_FROM_ADDRESS" \
+       -e CORS_ALLOWED_ORIGINS="$$CORS_ALLOWED_ORIGINS" \
+       -e NX_WEB_URL="$$NX_WEB_URL" \
+       -e EDGE_URL="$$EDGE_URL" \
+       -e COOKIE_DOMAIN="$$COOKIE_DOMAIN" \
+       -e KRATOS_PUBLIC_URL="$$KRATOS_PUBLIC_URL" \
+       -e GOOGLE_CLIENT_ID="$$GOOGLE_CLIENT_ID" \
+       -e GOOGLE_CLIENT_SECRET="$$GOOGLE_CLIENT_SECRET" \
+       -e DRAGONFLY_PASSWORD="$$DRAGONFLY_PASSWORD" \
+       nyx-infisical \
+       node /tmp/setup.js
+
+# First-time Infisical setup: start infra → push secrets → login CLI
 secrets-setup:
-    @echo "=== Infisical First-Time Setup ==="
+    @just infra-core
+    @just infra-infisical
+    @echo "Waiting 20s for Infisical to initialize..."
+    @sleep 20
+    @just secrets-push
     @echo ""
-    @echo "Step 1: Create .secrets/bootstrap.env from the template:"
-    @echo "  cp .secrets.example/bootstrap.env .secrets/bootstrap.env"
-    @echo "  <edit .secrets/bootstrap.env with your values>"
-    @echo ""
-    @echo "Step 2: Start postgres + dragonfly (no Infisical needed yet):"
-    @echo "  just infra-core"
-    @echo ""
-    @echo "Step 3: Start Infisical:"
-    @echo "  just infra-infisical"
-    @echo ""
-    @echo "Step 4: Open http://localhost:8090 → create admin account → create project named 'nyx'"
-    @echo ""
-    @echo "Step 5: Initialize the Infisical CLI project config:"
-    @echo "  infisical init"
-    @echo "  (select the 'nyx' project and 'production' environment)"
-    @echo ""
-    @echo "Step 6: Log in with the CLI:"
-    @echo "  infisical login --domain=http://localhost:8090"
-    @echo ""
-    @echo "Step 7: Push all secrets to Infisical from .secrets/secrets.env:"
-    @echo "  infisical secrets set --env=production \$(cat .secrets/secrets.env | grep -v '^#' | grep '=' | xargs)"
-    @echo "  Or use the Infisical web UI at http://localhost:8090"
-    @echo ""
-    @echo "Step 8: Verify:"
-    @echo "  infisical secrets --env=production"
-    @echo ""
-    @echo "From now on, prefix all commands with 'infisical run --env=production --'"
-    @echo "or use the just recipes which do this automatically."
+    @echo "Next: infisical login --domain=http://localhost:8090"
+    @echo "      Then verify: infisical run --env=production -- env | grep SMTP"
 
 # Open the Infisical web UI
 secrets-ui:
@@ -512,17 +530,6 @@ secrets-list:
 # Export all secrets to stdout as KEY=VALUE (useful for debugging)
 secrets-export:
     infisical export --env=production --format=dotenv
-
-# Push all secrets from .secrets/secrets.env to Infisical (production environment).
-# Run once after secrets-setup: just secrets-push
-secrets-push:
-    @echo "Pushing secrets to Infisical (production)..."
-    @grep -v '^#' .secrets/secrets.env | grep '=' | while IFS='=' read -r key value; do \
-        [ -z "$$key" ] && continue; \
-        echo "  Setting $$key"; \
-        infisical secrets set "$$key"="$$value" --env=production; \
-    done
-    @echo "Done. Verify with: just secrets-list"
 
 # ── Scaffold ──────────────────────────────────────────────────────────────────
 
