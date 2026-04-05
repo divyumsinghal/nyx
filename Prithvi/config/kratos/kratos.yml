@@ -18,7 +18,6 @@
 # KRATOS_COOKIE_SECRET   32+ byte secret
 # KRATOS_CIPHER_SECRET   32+ byte secret
 # KRATOS_PUBLIC_URL      e.g. http://localhost:4433 or https://auth.nyx.com
-# KRATOS_ADMIN_URL       e.g. http://kratos:4434 (internal only in prod)
 # NX_WEB_URL             e.g. http://localhost:5173 or https://nyx.com
 # COOKIE_DOMAIN          e.g. localhost or nyx.com
 # SMTP_CONNECTION_URI    Real SMTP — required, no default.
@@ -32,7 +31,6 @@
 # ── CHANGE FOR PRODUCTION ─────────────────────────────────────────────────────
 # - Set secrets to 32-byte random values
 # - Change KRATOS_PUBLIC_URL to https://auth.nyx.com
-# - Change KRATOS_ADMIN_URL to an internal-only URL
 # - Configure SMTP_CONNECTION_URI with a real provider
 # - Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET for Google login
 # - Remove --dev flag from Kratos serve command
