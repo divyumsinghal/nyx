@@ -1,19 +1,28 @@
 # =============================================================================
-# auth-test.yml — Minimal auth stack for integration testing
+# auth-test.yml — Auth stack for local dev and CI integration tests
 #
-# Brings up only what the auth flow needs:
-#   postgres  →  stores Kratos identity data
-#   mailpit   →  captures outgoing emails (OTP codes, recovery links)
-#   kratos    →  Ory Kratos identity & auth (after DB migration)
-#   heimdall  →  API gateway used by xtask/client flow
-#   caddy     →  HTTPS edge in front of Heimdall
+# One stack, one config — no separate "test" vs "prod" environments.
+# SMTP is always real: set SMTP_CONNECTION_URI in Infisical (just secrets-setup).
+# OTPs are sent to the real recipient; CI tests read them back via the
+# Kratos admin courier API (GET /admin/courier/messages), which stores
+# every dispatched message regardless of SMTP provider.
 #
-# Usage:
-#   docker compose -f Prithvi/compose/auth-test.yml --profile edge up -d --wait
-#   KRATOS_PUBLIC_URL=http://localhost:4433 \
-#   MAILPIT_API_URL=http://localhost:8025 \
-#   cargo test -p tests --test auth_integration
-#   docker compose -f Prithvi/compose/auth-test.yml down -v
+# Services:
+#   postgres       →  stores Kratos + Nyx identity data
+#   kratos-migrate →  one-shot: runs Kratos DB migrations
+#   nyx-migrate    →  one-shot: applies nyx schema migrations via psql
+#   kratos         →  Ory Kratos identity & auth server
+#   heimdall       →  API gateway
+#   caddy          →  HTTPS edge — optional, skip for plain HTTP dev
+#
+# Quick dev workflow (Heimdall runs on host — fastest iteration):
+#   just auth-dev-up
+#   # in another terminal: just auth-dev-heimdall
+#   HEIMDALL_URL=http://localhost:3000 just account-create
+#
+# Full Docker workflow:
+#   just auth-up
+#   just account-create   # uses https://localhost:3443
 # =============================================================================
 
 name: nyx-auth-test
@@ -27,13 +36,14 @@ services:
     environment:
       POSTGRES_DB:       nyx
       POSTGRES_USER:     postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in Infisical (just secrets-setup)}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.utf8"
-      # Passwords for application roles (created by 02_roles.sh)
-      NYX_APP_DB_PASSWORD:       ${NYX_APP_DB_PASSWORD:?Set NYX_APP_DB_PASSWORD in .env}
-      NYX_MIGRATION_DB_PASSWORD: ${NYX_MIGRATION_DB_PASSWORD:?Set NYX_MIGRATION_DB_PASSWORD in .env}
-      KRATOS_DB_PASSWORD:        ${KRATOS_DB_PASSWORD:?Set KRATOS_DB_PASSWORD in .env}
+      NYX_APP_DB_PASSWORD:       ${NYX_APP_DB_PASSWORD:?Set NYX_APP_DB_PASSWORD in Infisical (just secrets-setup)}
+      NYX_MIGRATION_DB_PASSWORD: ${NYX_MIGRATION_DB_PASSWORD:?Set NYX_MIGRATION_DB_PASSWORD in Infisical (just secrets-setup)}
+      KRATOS_DB_PASSWORD:        ${KRATOS_DB_PASSWORD:?Set KRATOS_DB_PASSWORD in Infisical (just secrets-setup)}
+      INFISICAL_DB_PASSWORD:     ${INFISICAL_DB_PASSWORD:?Set INFISICAL_DB_PASSWORD in Infisical (just secrets-setup)}
     volumes:
+      - auth-test-postgres-data:/var/lib/postgresql/data
       - ../postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "5433:5432"
@@ -44,67 +54,91 @@ services:
       retries:  15
       start_period: 10s
 
-  # ── Mailpit — local SMTP capture ────────────────────────────────────────────
-  # All emails from Kratos land here instead of being delivered.
-  # Web UI:  http://localhost:8025
-  # API:     http://localhost:8025/api/v1/messages
-  # SMTP:    localhost:1025
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: auth-test-mailpit
-    environment:
-      # Disable auth (test env only)
-      MP_SMTP_AUTH_ACCEPT_ANY: "true"
-      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
-      # Kratos/gomail requires MandatoryStartTLS — Mailpit must advertise STARTTLS.
-      # These are test-only self-signed certs (Prithvi/config/certs/).
-      MP_SMTP_TLS_CERT: /etc/mailpit-tls/mailpit-test.crt
-      MP_SMTP_TLS_KEY:  /etc/mailpit-tls/mailpit-test.key
-    volumes:
-      - ../config/certs:/etc/mailpit-tls:ro
-    ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # Web UI + REST API
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8025/api/v1/messages > /dev/null"]
-      interval: 3s
-      timeout:  3s
-      retries:  10
-      start_period: 5s
-
   # ── Kratos migrate (runs once then exits) ───────────────────────────────────
   kratos-migrate:
     image: oryd/kratos:v1.3.1
     container_name: auth-test-kratos-migrate
     command: migrate sql -e --yes
     environment:
-      DSN: "postgres://kratos_app:${KRATOS_DB_PASSWORD:?Set KRATOS_DB_PASSWORD in .env}@postgres:5432/kratos?sslmode=disable"
+      DSN: "postgres://kratos_app:${KRATOS_DB_PASSWORD:?Set KRATOS_DB_PASSWORD in Infisical (just secrets-setup)}@postgres:5432/kratos?sslmode=disable"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ── Nyx schema migrate (runs once then exits) ───────────────────────────────
+  nyx-migrate:
+    image: postgres:17.4-alpine
+    container_name: auth-test-nyx-migrate
+    environment:
+      PGPASSWORD: ${NYX_MIGRATION_DB_PASSWORD:?Set NYX_MIGRATION_DB_PASSWORD in Infisical (just secrets-setup)}
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGUSER: nyx_migration
+      PGDATABASE: nyx
+    volumes:
+      - ../../migrations:/migrations:ro
+    command: >
+      sh -c "
+      echo '=== Waiting for postgres TCP to be ready ===' &&
+      for i in $$(seq 1 20); do
+        pg_isready -h postgres -p 5432 -U nyx_migration -d nyx && break
+        echo \"  postgres not ready yet (attempt $$i/20), retrying in 2s...\" &&
+        sleep 2
+      done &&
+      pg_isready -h postgres -p 5432 -U nyx_migration -d nyx || { echo 'postgres did not become ready'; exit 1; } &&
+      echo '=== Applying Monad migrations ===' &&
+      for f in /migrations/Monad/*.up.sql; do
+        [ -f \"$$f\" ] || continue
+        echo \"  $$(basename $$f)\"
+        psql -f \"$$f\" || exit 1
+      done &&
+      if ls /migrations/Uzume/*.up.sql > /dev/null 2>&1; then
+        echo '=== Applying Uzume migrations ===' &&
+        for f in /migrations/Uzume/*.up.sql; do
+          [ -f \"$$f\" ] || continue
+          echo \"  $$(basename $$f)\"
+          psql -f \"$$f\" || exit 1
+        done
+      fi &&
+      echo '=== All migrations applied ==='
+      "
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
   # ── Kratos ─────────────────────────────────────────────────────────────────
+  # Uses kratos.yml — the single authoritative config.
+  # SMTP is injected via environment variables; Kratos's Viper layer maps
+  # COURIER_SMTP_* env vars directly onto the courier.smtp.* config keys.
   kratos:
     image: oryd/kratos:v1.3.1
     container_name: auth-test-kratos
-    # --dev disables HTTPS enforcement and relaxes CORS — test only
-    command: serve --config=/etc/config/kratos/kratos.test.yml --dev --watch-courier
+    command: serve --config=/etc/config/kratos/kratos.yml --dev --watch-courier
     volumes:
       - ../config/kratos:/etc/config/kratos:ro
     environment:
+      DSN: "postgres://kratos_app:${KRATOS_DB_PASSWORD:?Set KRATOS_DB_PASSWORD in Infisical (just secrets-setup)}@postgres:5432/kratos?sslmode=disable&max_conns=20&max_idle_conns=4"
       KRATOS_PUBLIC_URL: ${KRATOS_PUBLIC_URL:-https://localhost:3443/api/nyx/auth}
-      NX_WEB_URL: ${NX_WEB_URL:-http://localhost:5173}
-      MAILPIT_UI_URL: ${MAILPIT_UI_URL:-http://localhost:8025}
+      NX_WEB_URL: ${NX_WEB_URL:-http://localhost:8082}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN:-localhost}
-      KRATOS_DB_PASSWORD: ${KRATOS_DB_PASSWORD:?Set KRATOS_DB_PASSWORD in .env}
+      EDGE_URL: ${EDGE_URL:-https://localhost:3443}
+      KRATOS_COOKIE_SECRET: ${KRATOS_COOKIE_SECRET:?Set KRATOS_COOKIE_SECRET in Infisical (just secrets-setup)}
+      KRATOS_CIPHER_SECRET: ${KRATOS_CIPHER_SECRET:?Set KRATOS_CIPHER_SECRET in Infisical (just secrets-setup)}
+      # Real SMTP — required. Set in Infisical (just secrets-setup) or CI secrets.
+      # Format examples:  smtps://you%40gmail.com:APP_PASSWORD@smtp.gmail.com:465/
+      #                   smtps://resend:API_KEY@smtp.resend.com:465/
+      COURIER_SMTP_CONNECTION_URI: "${SMTP_CONNECTION_URI:?Set SMTP_CONNECTION_URI in Infisical (just secrets-setup)}"
+      COURIER_SMTP_FROM_ADDRESS: "${SMTP_FROM_ADDRESS:?Set SMTP_FROM_ADDRESS in Infisical (just secrets-setup)}"
+      COURIER_SMTP_FROM_NAME: "Nyx"
     ports:
-      - "4433:4433"   # public API
-      - "4434:4434"   # admin API for host-side auth tests
+      - "4433:4433"
+      - "4434:4434"
     depends_on:
       kratos-migrate:
         condition: service_completed_successfully
-      mailpit:
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:4433/health/ready | grep -q status"]
@@ -113,46 +147,54 @@ services:
       retries:  20
       start_period: 15s
 
+  # ── Heimdall — API gateway ─────────────────────────────────────────────────
   heimdall:
-    image: rust:1.85
+    image: rust:1.94
     container_name: auth-test-heimdall
     working_dir: /workspace
     command: ["/bin/sh", "-c", "cargo run -p heimdall"]
     volumes:
       - ../..:/workspace
+      - heimdall-cargo-registry:/usr/local/cargo/registry
+      - heimdall-cargo-git:/usr/local/cargo/git
+      - heimdall-build-cache:/build-cache
     environment:
+      CARGO_TARGET_DIR: /build-cache
       HEIMDALL_HOST: "0.0.0.0"
       HEIMDALL_PORT: "3000"
       NYX_ENVIRONMENT: development
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in Infisical (just secrets-setup)}
       JWT_EXPIRY_SECS: "3600"
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in .env}
-      DATABASE_URL: "postgres://nyx_app:${NYX_APP_DB_PASSWORD:?Set NYX_APP_DB_PASSWORD in .env}@postgres:5432/nyx?sslmode=disable"
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?Set CORS_ALLOWED_ORIGINS in Infisical (just secrets-setup)}
+      DATABASE_URL: "postgres://nyx_app:${NYX_APP_DB_PASSWORD:?Set NYX_APP_DB_PASSWORD in Infisical (just secrets-setup)}@postgres:5432/nyx?sslmode=disable"
       KRATOS_PUBLIC_URL: "http://kratos:4433"
       MATRIX_URL: ${MATRIX_URL:-http://kratos:4433}
-      UZUME_PROFILES_URL: ${UZUME_PROFILES_URL:-http://kratos:4433}
-      UZUME_FEED_URL: ${UZUME_FEED_URL:-http://kratos:4433}
-      UZUME_STORIES_URL: ${UZUME_STORIES_URL:-http://kratos:4433}
-      UZUME_REELS_URL: ${UZUME_REELS_URL:-http://kratos:4433}
-      UZUME_DISCOVER_URL: ${UZUME_DISCOVER_URL:-http://kratos:4433}
+      UZUME_PROFILES_URL: ${UZUME_PROFILES_URL:-http://localhost:3001}
+      UZUME_FEED_URL: ${UZUME_FEED_URL:-http://localhost:3002}
+      UZUME_STORIES_URL: ${UZUME_STORIES_URL:-http://localhost:3003}
+      UZUME_REELS_URL: ${UZUME_REELS_URL:-http://localhost:3004}
+      UZUME_DISCOVER_URL: ${UZUME_DISCOVER_URL:-http://localhost:3005}
+      RUST_LOG: "heimdall=info,tower_http=info"
     depends_on:
       postgres:
         condition: service_healthy
       kratos:
         condition: service_healthy
+      nyx-migrate:
+        condition: service_completed_successfully
     ports:
       - "3000:3000"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/healthz | grep -q status"]
       interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 240s
+      timeout:  5s
+      retries:  40
+      start_period: 300s
 
+  # ── Caddy — HTTPS edge ──────────────────────────────────────────────────────
   caddy:
     image: caddy:latest
     container_name: auth-test-caddy
-    profiles: ["edge"]
     depends_on:
       heimdall:
         condition: service_healthy
@@ -161,7 +203,7 @@ services:
       EDGE_HTTPS_PORT: ${EDGE_HTTPS_PORT:-3443}
       HEIMDALL_UPSTREAM: ${HEIMDALL_UPSTREAM:-heimdall:3000}
     volumes:
-      - ../config/caddy/Caddyfile.auth-test:/etc/caddy/Caddyfile:ro
+      - ../config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - auth-test-caddy-data:/data
       - auth-test-caddy-config:/config
     ports:
@@ -169,5 +211,12 @@ services:
       - "${EDGE_HTTPS_BIND_PORT:-3443}:443"
 
 volumes:
+  auth-test-postgres-data:
   auth-test-caddy-data:
   auth-test-caddy-config:
+  heimdall-cargo-registry:
+    external: true
+  heimdall-cargo-git:
+    external: true
+  heimdall-build-cache:
+    external: true
