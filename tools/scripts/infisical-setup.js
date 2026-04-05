@@ -2,6 +2,29 @@
  * Infisical programmatic setup script.
  * Runs inside the nyx-infisical container.
  * Usage: docker exec nyx-infisical node /workspace/tools/scripts/infisical-setup.js
+ *
+ * Required environment variables (source .secrets/bootstrap.env and .secrets/secrets.env):
+ *
+ *   Admin account (bootstrap.env):
+ *     INFISICAL_ADMIN_EMAIL        — admin login email
+ *     INFISICAL_ADMIN_PASSWORD     — admin login password
+ *     INFISICAL_ADMIN_FIRST_NAME   — (optional) defaults to "Nyx"
+ *     INFISICAL_ADMIN_LAST_NAME    — (optional) defaults to "Admin"
+ *
+ *   Secrets pushed into Infisical (secrets.env):
+ *     POSTGRES_ROOT_PASSWORD, NYX_APP_DB_PASSWORD, NYX_MIGRATION_DB_PASSWORD
+ *     KRATOS_DB_PASSWORD, INFISICAL_DB_PASSWORD
+ *     DRAGONFLY_PASSWORD
+ *     KRATOS_COOKIE_SECRET, KRATOS_CIPHER_SECRET
+ *     JWT_SECRET
+ *     SMTP_CONNECTION_URI, SMTP_FROM_ADDRESS
+ *     CORS_ALLOWED_ORIGINS
+ *     NX_WEB_URL        — e.g. http://localhost:8082
+ *     EDGE_URL          — e.g. https://localhost:3443
+ *     COOKIE_DOMAIN     — e.g. localhost
+ *     KRATOS_PUBLIC_URL — e.g. https://localhost:3443/api/nyx/auth
+ *     GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET  — (optional)
+ *     POSTGRES_HOST     — (optional) defaults to "postgres"
  */
 const http = require('http');
 const jsrp = require('/backend/node_modules/jsrp');
@@ -20,12 +43,6 @@ function requireEnv(name) {
   );
   return val;
 }
-
-const EMAIL      = requireEnv('INFISICAL_ADMIN_EMAIL');
-const PASSWORD   = requireEnv('INFISICAL_ADMIN_PASSWORD');
-const FIRST_NAME = process.env.INFISICAL_ADMIN_FIRST_NAME || 'Nyx';
-const LAST_NAME  = process.env.INFISICAL_ADMIN_LAST_NAME  || 'Admin';
-const ORG_NAME   = process.env.INFISICAL_ORG_NAME         || 'Nyx';
 
 // ── Secrets to push to Infisical ──────────────────────────────────────────────
 // All values sourced from environment at runtime. No defaults for sensitive vars.
@@ -56,6 +73,7 @@ function getSecrets() {
     GOOGLE_CLIENT_ID:          process.env.GOOGLE_CLIENT_ID    || '',
     GOOGLE_CLIENT_SECRET:      process.env.GOOGLE_CLIENT_SECRET || '',
     // Infrastructure
+    DRAGONFLY_PASSWORD:        requireEnv('DRAGONFLY_PASSWORD'),
     POSTGRES_HOST:             process.env.POSTGRES_HOST || 'postgres',
   };
 }
@@ -153,6 +171,12 @@ async function srpLogin(email, password) {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
+  // Admin credentials — read inside main() so FATAL handler catches missing vars
+  const EMAIL      = requireEnv('INFISICAL_ADMIN_EMAIL');
+  const PASSWORD   = requireEnv('INFISICAL_ADMIN_PASSWORD');
+  const FIRST_NAME = process.env.INFISICAL_ADMIN_FIRST_NAME || 'Nyx';
+  const LAST_NAME  = process.env.INFISICAL_ADMIN_LAST_NAME  || 'Admin';
+
   const SECRETS = getSecrets();   // resolves from process.env — throws on missing vars
 
   // ── 1. Admin signup (only works on a fresh instance) ──
