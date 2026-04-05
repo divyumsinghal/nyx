@@ -1,10 +1,14 @@
 //! Shared test helpers for auth integration tests.
 //!
-//! Provides thin clients for Kratos and Mailpit APIs, plus test data generators.
+//! Provides thin clients for Kratos APIs plus test data generators.
 //! All HTTP calls use the real APIs — no mocks anywhere.
+//!
+//! OTP retrieval uses the Kratos admin courier API
+//! (`GET /admin/courier/messages`) which stores every dispatched message
+//! regardless of which SMTP provider is configured.  This means CI reads
 
 use reqwest::{Client, StatusCode};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use uuid::Uuid;
 
 // ── Service URLs ─────────────────────────────────────────────────────────────
@@ -27,13 +31,16 @@ pub fn kratos_admin() -> String {
         .to_owned()
 }
 
-/// Returns the Mailpit REST API base URL.
-/// Defaults to http://localhost:8025 if MAILPIT_API_URL is not set.
-pub fn mailpit_api() -> String {
-    std::env::var("MAILPIT_API_URL")
-        .unwrap_or_else(|_| "http://localhost:8025".to_string())
-        .trim_end_matches('/')
-        .to_owned()
+/// Returns the dedicated test email address used by OTP integration tests.
+///
+/// This must be a real address that receives email — set `E2E_TEST_EMAIL` in
+/// `.env` or CI secrets.  OTP tests are marked `#[serial]` so at most one
+/// test is waiting for a message at any given time.
+pub fn e2e_test_email() -> String {
+    std::env::var("E2E_TEST_EMAIL")
+        .expect("E2E_TEST_EMAIL must be set to run OTP integration tests")
+        .trim()
+        .to_lowercase()
 }
 
 // ── Stack availability check ─────────────────────────────────────────────────
@@ -72,7 +79,7 @@ macro_rules! require_stack {
 
 // ── Test data generators ─────────────────────────────────────────────────────
 
-/// Generate a unique test email address (will be routed to Mailpit).
+/// Generate a unique test email address for test runs.
 pub fn random_email() -> String {
     format!("test.{}@nyx.test", Uuid::new_v4().simple())
 }
@@ -91,17 +98,17 @@ pub const TEST_PASSWORD: &str = "Nyx!TestP@ssw0rd_2024";
 
 /// Thin wrapper around the Kratos self-service and admin APIs.
 pub struct KratosTestClient {
-    pub http:   Client,
+    pub http: Client,
     public_url: String,
-    admin_url:  String,
+    admin_url: String,
 }
 
 impl KratosTestClient {
     pub fn new() -> Self {
         Self {
-            http:       Client::new(),
+            http: Client::new(),
             public_url: kratos_public(),
-            admin_url:  kratos_admin(),
+            admin_url: kratos_admin(),
         }
     }
 
@@ -122,7 +129,9 @@ impl KratosTestClient {
             "init_registration_flow: unexpected status"
         );
 
-        resp.json::<Value>().await.expect("init_registration_flow: parse error")
+        resp.json::<Value>()
+            .await
+            .expect("init_registration_flow: parse error")
     }
 
     /// Submit a password registration (single step).
@@ -131,8 +140,8 @@ impl KratosTestClient {
     pub async fn submit_registration_password(
         &self,
         flow_id: &str,
-        email:   &str,
-        nyx_id:  &str,
+        email: &str,
+        nyx_id: &str,
         password: &str,
     ) -> (StatusCode, Value) {
         let resp = self
@@ -154,7 +163,7 @@ impl KratosTestClient {
             .expect("submit_registration_password: network error");
 
         let status = resp.status();
-        let body   = resp.json::<Value>().await.unwrap_or(Value::Null);
+        let body = resp.json::<Value>().await.unwrap_or(Value::Null);
         (status, body)
     }
 
@@ -164,8 +173,8 @@ impl KratosTestClient {
     pub async fn submit_registration_code_init(
         &self,
         flow_id: &str,
-        email:   &str,
-        nyx_id:  &str,
+        email: &str,
+        nyx_id: &str,
     ) -> (StatusCode, Value) {
         let resp = self
             .http
@@ -185,7 +194,7 @@ impl KratosTestClient {
             .expect("submit_registration_code_init: network error");
 
         let status = resp.status();
-        let body   = resp.json::<Value>().await.unwrap_or(Value::Null);
+        let body = resp.json::<Value>().await.unwrap_or(Value::Null);
         (status, body)
     }
 
@@ -198,9 +207,9 @@ impl KratosTestClient {
     pub async fn submit_registration_code_verify(
         &self,
         flow_id: &str,
-        code:    &str,
-        email:   &str,
-        nyx_id:  &str,
+        code: &str,
+        email: &str,
+        nyx_id: &str,
     ) -> (StatusCode, Value) {
         let resp = self
             .http
@@ -221,7 +230,7 @@ impl KratosTestClient {
             .expect("submit_registration_code_verify: network error");
 
         let status = resp.status();
-        let body   = resp.json::<Value>().await.unwrap_or(Value::Null);
+        let body = resp.json::<Value>().await.unwrap_or(Value::Null);
         (status, body)
     }
 
@@ -242,15 +251,17 @@ impl KratosTestClient {
             "init_login_flow: unexpected status"
         );
 
-        resp.json::<Value>().await.expect("init_login_flow: parse error")
+        resp.json::<Value>()
+            .await
+            .expect("init_login_flow: parse error")
     }
 
     /// Submit password login. `identifier` may be email or nyx_id.
     pub async fn submit_login_password(
         &self,
-        flow_id:    &str,
+        flow_id: &str,
         identifier: &str,
-        password:   &str,
+        password: &str,
     ) -> (StatusCode, Value) {
         let resp = self
             .http
@@ -268,7 +279,7 @@ impl KratosTestClient {
             .expect("submit_login_password: network error");
 
         let status = resp.status();
-        let body   = resp.json::<Value>().await.unwrap_or(Value::Null);
+        let body = resp.json::<Value>().await.unwrap_or(Value::Null);
         (status, body)
     }
 
@@ -285,7 +296,7 @@ impl KratosTestClient {
             .expect("whoami: network error");
 
         let status = resp.status();
-        let body   = resp.json::<Value>().await.unwrap_or(Value::Null);
+        let body = resp.json::<Value>().await.unwrap_or(Value::Null);
         (status, body)
     }
 
@@ -302,15 +313,13 @@ impl KratosTestClient {
 
         assert_eq!(resp.status(), StatusCode::OK);
 
-        resp.json::<Value>().await.expect("init_recovery_flow: parse error")
+        resp.json::<Value>()
+            .await
+            .expect("init_recovery_flow: parse error")
     }
 
     /// Step 1: submit email to receive recovery code.
-    pub async fn submit_recovery_email(
-        &self,
-        flow_id: &str,
-        email:   &str,
-    ) -> (StatusCode, Value) {
+    pub async fn submit_recovery_email(&self, flow_id: &str, email: &str) -> (StatusCode, Value) {
         let resp = self
             .http
             .post(format!(
@@ -326,16 +335,12 @@ impl KratosTestClient {
             .expect("submit_recovery_email: network error");
 
         let status = resp.status();
-        let body   = resp.json::<Value>().await.unwrap_or(Value::Null);
+        let body = resp.json::<Value>().await.unwrap_or(Value::Null);
         (status, body)
     }
 
     /// Step 2: submit recovery code.
-    pub async fn submit_recovery_code(
-        &self,
-        flow_id: &str,
-        code:    &str,
-    ) -> (StatusCode, Value) {
+    pub async fn submit_recovery_code(&self, flow_id: &str, code: &str) -> (StatusCode, Value) {
         let resp = self
             .http
             .post(format!(
@@ -351,7 +356,7 @@ impl KratosTestClient {
             .expect("submit_recovery_code: network error");
 
         let status = resp.status();
-        let body   = resp.json::<Value>().await.unwrap_or(Value::Null);
+        let body = resp.json::<Value>().await.unwrap_or(Value::Null);
         (status, body)
     }
 
@@ -367,7 +372,7 @@ impl KratosTestClient {
             .expect("admin_get_identity: network error");
 
         let status = resp.status();
-        let body   = resp.json::<Value>().await.unwrap_or(Value::Null);
+        let body = resp.json::<Value>().await.unwrap_or(Value::Null);
         (status, body)
     }
 
@@ -391,50 +396,42 @@ impl Default for KratosTestClient {
     }
 }
 
-// ── Mailpit API client ────────────────────────────────────────────────────────
+// ── Kratos courier inbox client ───────────────────────────────────────────────
 
-/// Thin wrapper around Mailpit's REST API for fetching test emails.
-pub struct MailpitClient {
-    http:    Client,
-    api_url: String,
+/// Reads OTP codes from the Kratos admin courier API.
+///
+/// Kratos stores every dispatched email message in its own DB
+/// (`courier_messages` table), accessible via `GET /admin/courier/messages`.
+/// This works regardless of which SMTP provider is configured — we don't need
+/// a fake SMTP inbox or real IMAP access to retrieve OTPs in tests.
+pub struct KratosInboxClient {
+    http: Client,
+    admin_url: String,
 }
 
-impl MailpitClient {
+impl KratosInboxClient {
     pub fn new() -> Self {
         Self {
-            http:    Client::new(),
-            api_url: mailpit_api(),
+            http: Client::new(),
+            admin_url: kratos_admin(),
         }
     }
 
-    /// Delete all messages (clean slate before a test).
-    pub async fn clear_all(&self) {
-        let _ = self
-            .http
-            .delete(format!("{}/api/v1/messages", self.api_url))
-            .send()
-            .await;
-    }
-
-    /// Wait up to `timeout_secs` for an email addressed to `to_address` that
-    /// arrived at or after `after` (UTC).
+    /// Wait up to `timeout_secs` for an OTP email to `to_address` that was
+    /// dispatched at or after `after`.
     ///
-    /// Pass `after = None` to match any message regardless of arrival time.
-    /// Using a timestamp eliminates races between parallel tests that each call
-    /// `clear_all()` and accidentally delete each other's in-flight messages.
-    ///
-    /// Polls the Mailpit API every 500ms.
+    /// The timestamp filter prevents a test from picking up an OTP that was
+    /// sent during a previous test or run.  Polls every 500 ms.
     pub async fn wait_for_email_after(
         &self,
-        to_address:   &str,
+        to_address: &str,
         timeout_secs: u64,
-        after:        Option<chrono::DateTime<chrono::Utc>>,
+        after: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Option<String> {
-        let deadline = std::time::Instant::now()
-            + std::time::Duration::from_secs(timeout_secs);
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
 
         while std::time::Instant::now() < deadline {
-            if let Some(body) = self.find_email_body_after(to_address, after).await {
+            if let Some(body) = self.find_message_body(to_address, after).await {
                 return Some(body);
             }
             tokio::time::sleep(std::time::Duration::from_millis(500)).await;
@@ -444,43 +441,37 @@ impl MailpitClient {
     }
 
     /// Convenience wrapper: no time filter.
-    pub async fn wait_for_email(
-        &self,
-        to_address:   &str,
-        timeout_secs: u64,
-    ) -> Option<String> {
-        self.wait_for_email_after(to_address, timeout_secs, None).await
+    pub async fn wait_for_email(&self, to_address: &str, timeout_secs: u64) -> Option<String> {
+        self.wait_for_email_after(to_address, timeout_secs, None)
+            .await
     }
 
-    /// Extract a 6-digit OTP code from an email body using a regex.
+    /// Extract a 6-digit OTP code from a Kratos email body.
     ///
-    /// Kratos sends OTPs as plain 6-digit numbers. This extracts the first
-    /// occurrence.
+    /// Kratos sends OTPs as plain 6-digit numbers.  The regex matches the
+    /// first occurrence surrounded by non-digit context.
     pub fn extract_code(body: &str) -> Option<String> {
-        // Match exactly 6 consecutive digits surrounded by word boundaries or whitespace
         let re = regex_lite::Regex::new(r"(?:^|[\s\-:])(\d{6})(?:$|[\s\.\,])").unwrap();
         re.captures(body)
             .and_then(|c| c.get(1))
             .map(|m| m.as_str().to_owned())
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────
+    // ── Private ──────────────────────────────────────────────────────────────
 
-    #[allow(dead_code)]
-    async fn find_email_body(&self, to_address: &str) -> Option<String> {
-        self.find_email_body_after(to_address, None).await
-    }
-
-    /// Find the most-recent email to `to_address` that was created after `after`.
-    /// If `after` is None, returns the first matching message regardless of time.
-    async fn find_email_body_after(
+    /// Query `GET /admin/courier/messages`, filter by recipient + time.
+    async fn find_message_body(
         &self,
         to_address: &str,
         after: Option<chrono::DateTime<chrono::Utc>>,
     ) -> Option<String> {
+        // Fetch the most recent 50 messages — more than enough for any test run.
         let messages: Value = self
             .http
-            .get(format!("{}/api/v1/messages", self.api_url))
+            .get(format!(
+                "{}/admin/courier/messages?page_size=50",
+                self.admin_url
+            ))
             .send()
             .await
             .ok()?
@@ -488,23 +479,19 @@ impl MailpitClient {
             .await
             .ok()?;
 
-        let messages = messages["messages"].as_array()?;
+        // Kratos returns an array at the root, newest-first.
+        let messages = messages.as_array()?;
 
         for msg in messages {
-            let to_list = msg["To"].as_array()?;
-            let to_matches = to_list.iter().any(|t| {
-                t["Address"]
-                    .as_str()
-                    .map(|a| a.eq_ignore_ascii_case(to_address))
-                    .unwrap_or(false)
-            });
-            if !to_matches {
+            // Filter by recipient.
+            let recipient = msg["recipient"].as_str().unwrap_or("");
+            if !recipient.eq_ignore_ascii_case(to_address) {
                 continue;
             }
 
-            // Time-filter: skip messages that arrived before `after`
+            // Time filter: skip messages dispatched before `after`.
             if let Some(after_ts) = after {
-                let created_str = msg["Created"].as_str().unwrap_or("");
+                let created_str = msg["created_at"].as_str().unwrap_or("");
                 if let Ok(created) = created_str.parse::<chrono::DateTime<chrono::Utc>>() {
                     if created < after_ts {
                         continue;
@@ -512,33 +499,17 @@ impl MailpitClient {
                 }
             }
 
-            let id = msg["ID"].as_str()?;
-            return self.fetch_message_body(id).await;
+            // Return the message body (contains the OTP code).
+            if let Some(body) = msg["body"].as_str() {
+                return Some(body.to_owned());
+            }
         }
 
         None
     }
-
-    async fn fetch_message_body(&self, message_id: &str) -> Option<String> {
-        let msg: Value = self
-            .http
-            .get(format!("{}/api/v1/message/{message_id}", self.api_url))
-            .send()
-            .await
-            .ok()?
-            .json()
-            .await
-            .ok()?;
-
-        // Prefer plain text; fall back to HTML
-        msg["Text"]
-            .as_str()
-            .or_else(|| msg["HTML"].as_str())
-            .map(|s| s.to_owned())
-    }
 }
 
-impl Default for MailpitClient {
+impl Default for KratosInboxClient {
     fn default() -> Self {
         Self::new()
     }
@@ -554,11 +525,12 @@ impl Default for MailpitClient {
 pub async fn register_user_password(email: &str, nyx_id: &str, password: &str) -> (String, String) {
     let k = KratosTestClient::new();
 
-    let flow   = k.init_registration_flow().await;
+    let flow = k.init_registration_flow().await;
     let flow_id = flow["id"].as_str().expect("no flow id").to_owned();
 
-    let (status, body) =
-        k.submit_registration_password(&flow_id, email, nyx_id, password).await;
+    let (status, body) = k
+        .submit_registration_password(&flow_id, email, nyx_id, password)
+        .await;
 
     assert_eq!(
         status,

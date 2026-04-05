@@ -3,7 +3,7 @@
 use reqwest::StatusCode;
 
 use super::helpers::{
-    KratosTestClient, MailpitClient, TEST_PASSWORD, random_email, random_nyx_id,
+    KratosInboxClient, KratosTestClient, TEST_PASSWORD, random_email, random_nyx_id,
     register_user_password,
 };
 use crate::require_stack;
@@ -13,14 +13,16 @@ async fn password_recovery_full_flow() {
     require_stack!();
 
     let k       = KratosTestClient::new();
-    let mailpit = MailpitClient::new();
+    let inbox   = KratosInboxClient::new();
     let email   = random_email();
     let nyx_id  = random_nyx_id();
 
     // Register user
     register_user_password(&email, &nyx_id, TEST_PASSWORD).await;
 
-    mailpit.clear_all().await;
+    // Record time before triggering the recovery flow so we only pick up
+    // messages dispatched during this test (not leftovers from prior runs).
+    let before = chrono::Utc::now();
 
     // Step 1: init recovery flow
     let flow    = k.init_recovery_flow().await;
@@ -39,13 +41,13 @@ async fn password_recovery_full_flow() {
         return; // Handled immediately
     }
 
-    // Step 3: wait for recovery email in Mailpit
-    let email_body = mailpit
-        .wait_for_email(&email, 15)
+    // Step 3: wait for recovery email via Kratos courier admin API
+    let email_body = inbox
+        .wait_for_email_after(&email, 15, Some(before))
         .await
-        .expect("Recovery email should arrive in Mailpit within 15s");
+        .expect("Recovery email should arrive via Kratos courier within 15s");
 
-    let code = MailpitClient::extract_code(&email_body)
+    let code = KratosInboxClient::extract_code(&email_body)
         .expect("Could not extract 6-digit code from recovery email");
 
     // Step 4: submit code
