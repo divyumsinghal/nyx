@@ -115,14 +115,14 @@ nuke:
 # Start only postgres + dragonfly — needed BEFORE Infisical on first-time setup.
 # Sources .secrets/bootstrap.env into the shell so ${VAR} compose interpolation works.
 infra-core:
-    set -a; . .secrets/bootstrap.env; set +a && \
+    set -a && . .secrets/bootstrap.env && set +a && \
         docker compose -f {{_f_infra}} up -d postgres dragonfly
     @just _wait-postgres
 
 # Start Infisical after postgres + dragonfly are healthy.
 # Sources .secrets/bootstrap.env into the shell.
 infra-infisical:
-    set -a; . .secrets/bootstrap.env; set +a && \
+    set -a && . .secrets/bootstrap.env && set +a && \
         docker compose -f {{_f_infra}} up -d infisical
 
 # Start full infrastructure (all services). Requires Infisical already running.
@@ -476,10 +476,10 @@ _source-bootstrap:
 # Run again any time .secrets/secrets.env changes.
 secrets-push:
     @echo "Sourcing .secrets/bootstrap.env and .secrets/secrets.env..."
-    @set -a; \
-     . .secrets/bootstrap.env; \
-     . .secrets/secrets.env; \
-     set +a; \
+    @set -a && \
+     . .secrets/bootstrap.env && \
+     . .secrets/secrets.env && \
+     set +a && \
      MSYS_NO_PATHCONV=1 docker cp \
        "tools/scripts/infisical-setup.js" \
        "nyx-infisical:/tmp/setup.js" && \
