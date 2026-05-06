@@ -142,10 +142,26 @@ pub async fn proxy_request(
         }
     }
 
-    // Forward body.
-    let body_bytes = match axum::body::to_bytes(req.into_body(), usize::MAX).await {
+    // Forward body — capped at 10 MiB to prevent memory-exhaustion DoS.
+    // A single unauthenticated HTTP request with an unbounded body would
+    // otherwise exhaust all available memory (usize::MAX limit = no limit).
+    const MAX_BODY_BYTES: usize = 10 * 1024 * 1024;
+    let body_bytes = match axum::body::to_bytes(req.into_body(), MAX_BODY_BYTES).await {
         Ok(b) => b,
         Err(err) => {
+            // LengthLimitError fires when the body exceeds MAX_BODY_BYTES.
+            // Any other read error also gets a 413 here (conservative).
+            let err_str = err.to_string();
+            if err_str.contains("length limit") {
+                return (
+                    axum::http::StatusCode::PAYLOAD_TOO_LARGE,
+                    axum::Json(serde_json::json!({
+                        "error": "Request body too large (max 10 MiB)",
+                        "code": "payload_too_large"
+                    })),
+                )
+                    .into_response();
+            }
             error!(%err, "failed to read request body");
             return bad_gateway("Failed to read request body");
         }

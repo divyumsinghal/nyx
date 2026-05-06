@@ -1,0 +1,46 @@
+# Build artifacts
+target/
+*.rs.bk
+Cargo.lock.bak
+
+# Node.js
+node_modules/
+.pnpm-store/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (should never be in images)
+.secrets/
+.secrets.example/
+*.pem
+*.key
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Docker
+.dockerignore
+Dockerfile*
+docker-compose*
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Documentation (not needed for builds)
+*.md
+docs/

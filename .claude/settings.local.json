@@ -21,7 +21,10 @@
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''version''''\\)\\); exports=d.get\\(''''exports'''',{}\\); print\\(''''exports keys:'''', list\\(exports.keys\\(\\)\\)[:10]\\)\")",
       "Bash(pnpm install:*)",
       "Bash(pnpm add:*)",
-      "Bash(pnpm run:*)"
+      "Bash(pnpm run:*)",
+      "Bash(just account-create:*)",
+      "Bash(cargo build:*)",
+      "Bash(cargo check:*)"
     ]
   }
 }

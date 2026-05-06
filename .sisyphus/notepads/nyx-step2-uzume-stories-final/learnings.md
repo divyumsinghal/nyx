@@ -142,7 +142,7 @@ Uzume/avatars/{user_id}/150.jpg
 - Poster frame generation
 
 **Worker Pattern** (line 9):
-- NATS subscriber on `*.media.uploaded` 
+- NATS subscriber on `*.media.uploaded`
 - Process → store in MinIO → emit `*.media.processed`
 
 ### Lethe Cache Patterns (SPEC-ONLY per README)
@@ -337,7 +337,7 @@ cargo build -p oya
 ### 1. Concrete Deduplication Strategy: Inbox Pattern via Persistence
 A highly reliable pattern to handle duplicate message delivery natively in Rust without relying on the event provider's specific constraints (avoiding lock-in).
 **Pattern:** Inbox Table / Idempotency Key Tracking with `ON CONFLICT DO NOTHING`.
-**Mechanism:** 
+**Mechanism:**
 - The event payload includes a globally unique `idempotency_key` (or `job_id`).
 - Before processing the event, a database transaction is initiated to insert the `idempotency_key` into an `inbox` (or `idempotency`) table.
 - If `n_inserted_rows == 0`, the consumer knows this is a duplicate delivery and can safely acknowledge the message to the broker and skip execution, optionally returning the cached response.
@@ -361,7 +361,7 @@ To ensure safe `Accepted -> Processing -> Ready` lifecycles, encode the state tr
 **Mechanism:**
 - Do not use a generic `status: String` or generic `status: Status` mutator.
 - Implement explicit structs for each state (`struct AcceptedMedia`, `struct ProcessingMedia`, `struct ReadyMedia`).
-- Define transition methods that consume `self` (taking ownership), preventing double-processing: 
+- Define transition methods that consume `self` (taking ownership), preventing double-processing:
   `impl AcceptedMedia { pub fn start_processing(self) -> ProcessingMedia { ... } }`
 - **Under Retries:** If a worker crashes during `Processing`, the retry will fetch the DB record. If the record is already marked `Processing`, the worker must know how to safely resume or reset to `Accepted`. The state machine ensures no step can be skipped (e.g., cannot jump from `Accepted` straight to `Ready`).
 **Reference:** [Rust Typestate Pattern (oneuptime.com, 2026)](https://oneuptime.com/blog/post/2026-01-30-rust-type-state-pattern/view) & `state-machines` crate patterns.
@@ -377,7 +377,7 @@ To ensure safe `Accepted -> Processing -> Ready` lifecycles, encode the state tr
 *   **MIME Constraints:** Include `content_type("...")` in the presigned PUT builder. The client MUST use that exact MIME type, preventing bypassing type restrictions.
 *   **Key Naming Strategy:** To prevent path traversal and object overwrites, the server MUST generate opaque, randomized object keys (e.g., UUIDs). Clients should only use an `upload_id` reference and never control the raw S3 key.
 *   **Expiration Controls:** Keep `expires_in` tight (e.g., 60-120 seconds).
-*   **Validation Strategy (Quarantine Pipeline):** Direct uploads to a `quarantine/` prefix. The client must call a `POST /finalize` endpoint after upload. The backend then verifies the object size/existence and optionally scans it before moving it to a `published/` prefix. 
+*   **Validation Strategy (Quarantine Pipeline):** Direct uploads to a `quarantine/` prefix. The client must call a `POST /finalize` endpoint after upload. The backend then verifies the object size/existence and optionally scans it before moving it to a `published/` prefix.
 *   **Download Safety:** Generate presigned GET URLs with `response_content_disposition("attachment")` and `response_content_type_options("nosniff")` to prevent Stored XSS via inline HTML/SVG rendering.
 
 **Sources:**
@@ -531,7 +531,7 @@ Err(NyxError::bad_request(
 
 **Reject Cases**:
 - Wrong MIME type → 400 with "invalid_media_type"
-- Oversize → 400 with "file_too_large"  
+- Oversize → 400 with "file_too_large"
 - Path traversal attempt → 400 with "invalid_key"
 - Expired URL → 403 with "presigned_url_expired"
 
@@ -645,7 +645,7 @@ Task2 Akash note.
 - Idempotency: worker tracks processed `job_id`s in a `HashSet<uuid::Uuid>` to skip duplicates.
 - 18 tests pass: config defaults, image decode/resize/encode, pipeline validation, video error handling.
 
-### Dependency versions for rustc 1.85
+### Dependency versions for rustc 1.94
 - `image = "0.24"` (0.25 requires rustc 1.88)
 - `fast_image_resize = "3"` (5.x requires rustc 1.87)
 - `async-nats = "0.39"` (workspace)

@@ -1,12 +1,12 @@
 name: Auth Integration Tests
 
-# Runs the full Kratos auth flow against real infrastructure (Postgres + Mailpit + Kratos).
-# These tests are separate from the main CI because they require Docker Compose services.
+# Runs the full Kratos auth flow against real infrastructure.
+# OTPs are sent via real SMTP and read back from the Kratos admin
+# courier API
 
 on:
   pull_request:
     paths:
-      # Re-run whenever auth-related code changes
       - "Monad/Heka/**"
       - "Prithvi/config/kratos/**"
       - "Prithvi/compose/auth-test.yml"
@@ -24,7 +24,6 @@ on:
       - "Prithvi/postgres/**"
       - "tests/tests/auth/**"
       - "tests/tests/auth_integration.rs"
-  # Allow manual trigger from the Actions tab
   workflow_dispatch:
 
 permissions:
@@ -32,10 +31,8 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  # Auth stack endpoints (exposed by docker compose)
   KRATOS_PUBLIC_URL: "http://localhost:4433"
   KRATOS_ADMIN_URL:  "http://localhost:4434"
-  MAILPIT_API_URL:   "http://localhost:8025"
 
 jobs:
   auth-integration:
@@ -47,7 +44,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── Build the Rust workspace first ────────────────────────────────────
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -57,14 +53,21 @@ jobs:
       - name: Build test binary
         run: cargo test --test auth_integration --no-run
 
-      # ── Start auth infrastructure ─────────────────────────────────────────
-      - name: Start auth stack (Postgres + Mailpit + Kratos)
+      - name: Start auth stack (Postgres + Kratos)
         run: |
           docker compose \
             -f Prithvi/compose/auth-test.yml \
             up -d --wait --wait-timeout 600
-        # --wait waits for ALL services to pass their healthchecks before returning.
-        # Requires Docker Compose v2.1.1+ (ubuntu-latest ships v2.x).
+        env:
+          SMTP_CONNECTION_URI:  ${{ secrets.CI_SMTP_CONNECTION_URI }}
+          SMTP_FROM_ADDRESS:    ${{ secrets.CI_SMTP_FROM_ADDRESS }}
+          # Other required env vars for the stack
+          POSTGRES_PASSWORD:         ${{ secrets.CI_POSTGRES_PASSWORD }}
+          NYX_APP_DB_PASSWORD:       ${{ secrets.CI_NYX_APP_DB_PASSWORD }}
+          NYX_MIGRATION_DB_PASSWORD: ${{ secrets.CI_NYX_MIGRATION_DB_PASSWORD }}
+          KRATOS_DB_PASSWORD:        ${{ secrets.CI_KRATOS_DB_PASSWORD }}
+          JWT_SECRET:                ${{ secrets.CI_JWT_SECRET }}
+          CORS_ALLOWED_ORIGINS:      "http://localhost:5173"
 
       - name: Show service status (debug)
         if: always()
@@ -72,10 +75,7 @@ jobs:
           docker compose -f Prithvi/compose/auth-test.yml ps
           echo "--- Kratos health ---"
           curl -sf http://localhost:4433/health/ready || echo "Kratos not ready"
-          echo "--- Mailpit health ---"
-          curl -sf http://localhost:8025/api/v1/info || echo "Mailpit not ready"
 
-      # ── Run the auth integration tests ────────────────────────────────────
       - name: Run auth integration tests
         run: |
           cargo test \
@@ -86,12 +86,12 @@ jobs:
         env:
           KRATOS_PUBLIC_URL: ${{ env.KRATOS_PUBLIC_URL }}
           KRATOS_ADMIN_URL:  ${{ env.KRATOS_ADMIN_URL }}
-          MAILPIT_API_URL:   ${{ env.MAILPIT_API_URL }}
-          # Rust log output
+          # Fixed test inbox — OTPs for OTP-flow tests are sent here.
+          # Serial tests ensure at most one OTP test runs at a time.
+          E2E_TEST_EMAIL: ${{ secrets.CI_E2E_TEST_EMAIL }}
           RUST_LOG: "info"
           RUST_BACKTRACE: "1"
 
-      # ── Collect logs on failure ────────────────────────────────────────────
       - name: Collect Kratos logs on failure
         if: failure()
         run: |
@@ -102,7 +102,6 @@ jobs:
           echo "=== Postgres logs ==="
           docker logs auth-test-postgres 2>&1 | tail -50
 
-      # ── Tear down ─────────────────────────────────────────────────────────
       - name: Tear down auth stack
         if: always()
         run: |

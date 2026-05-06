@@ -483,7 +483,7 @@ secrets-push:
      MSYS_NO_PATHCONV=1 docker cp \
        "tools/scripts/infisical-setup.js" \
        "nyx-infisical:/tmp/setup.js" && \
-     docker exec \
+     MSYS_NO_PATHCONV=1 docker exec \
        -e INFISICAL_ADMIN_EMAIL="$$INFISICAL_ADMIN_EMAIL" \
        -e INFISICAL_ADMIN_PASSWORD="$$INFISICAL_ADMIN_PASSWORD" \
        -e POSTGRES_ROOT_PASSWORD="$$POSTGRES_ROOT_PASSWORD" \

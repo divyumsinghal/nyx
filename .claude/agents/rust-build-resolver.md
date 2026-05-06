@@ -113,7 +113,7 @@ rustc --version
 grep "rust-version" Cargo.toml
 
 # Common fix: update edition for new syntax (check rust-version first!)
-# In Cargo.toml: edition = "2024"  # Requires rustc 1.85+
+# In Cargo.toml: edition = "2024"  # Requires rustc 1.94+
 ```
 
 ## Key Principles

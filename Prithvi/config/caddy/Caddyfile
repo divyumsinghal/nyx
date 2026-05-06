@@ -6,7 +6,7 @@
 	redir https://{$EDGE_HOST:localhost}:{$EDGE_HTTPS_PORT:3443}{uri} permanent
 }
 
-:443 {
+{$EDGE_HOST:localhost} {
 	tls internal
 
 	header {

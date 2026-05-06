@@ -21,6 +21,7 @@ target
 #.idea/
 
 .env*
+.secrets/
 claude environment file
 .sisyphus/boulder.json
 .opencode/oh-my-opencode.json

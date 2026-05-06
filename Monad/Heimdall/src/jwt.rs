@@ -109,17 +109,24 @@ pub fn decode_jwt(token: &str, secret: &str, public_key_pem: Option<&str>) -> Re
     let header = decode_header(token).map_err(|err| map_jwt_error(&err.into()))?;
     let alg = header.alg;
 
+    // SECURITY: When an RSA public key is configured, ONLY accept RS256.
+    // Accepting HS256 alongside RS256 enables the "algorithm confusion" attack:
+    // an attacker signs an HS256 token using the RSA public key as the HMAC
+    // secret, which the server would accept if it falls through to HS256.
     let token_data = match (alg, public_key_pem) {
         (Algorithm::RS256, Some(public_key_pem)) => decode_with_validation(
             token,
             &DecodingKey::from_rsa_pem(public_key_pem.as_bytes()).map_err(|_| JwtError::Invalid)?,
             Algorithm::RS256,
         )?,
-        (Algorithm::HS256, _) => decode_with_validation(
+        // Only allow HS256 when no RSA key is configured (dev / HS256-only mode).
+        (Algorithm::HS256, None) => decode_with_validation(
             token,
             &DecodingKey::from_secret(secret.as_bytes()),
             Algorithm::HS256,
         )?,
+        // HS256 with an RSA key configured → reject (algorithm confusion).
+        // RS256 with no RSA key configured → reject (cannot verify).
         _ => return Err(JwtError::Invalid),
     };
 

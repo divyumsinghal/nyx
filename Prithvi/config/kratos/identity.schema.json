@@ -28,10 +28,10 @@
         "nyx_id": {
           "type": "string",
           "title": "Nyx ID",
-          "description": "Your unique platform handle — visible across all Nyx apps unless privacy-linked. 3–30 characters: letters, digits, underscores, dots; no consecutive dots; cannot start or end with a dot.",
+          "description": "Your unique platform handle — visible across all Nyx apps unless privacy-linked. 3–32 characters: ASCII letters, digits, underscores. Must start with a letter. No dots, hyphens, or other special characters.",
           "minLength": 3,
-          "maxLength": 30,
-          "pattern": "^[a-zA-Z0-9_]([a-zA-Z0-9_]|\\.[a-zA-Z0-9_])*$",
+          "maxLength": 32,
+          "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
           "ory.sh/kratos": {
             "credentials": {
               "password": { "identifier": true }

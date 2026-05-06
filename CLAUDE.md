@@ -63,7 +63,7 @@ One instance, one connection pool. Schemas: `nyx` (aliases, links, push tokens),
 ```
 nyx/
 ├── Cargo.toml                 # Rust workspace (all platform + app crates)
-├── rust-toolchain.toml        # Rust 1.85, clippy, rustfmt, rust-analyzer
+├── rust-toolchain.toml        # Rust 1.94, clippy, rustfmt, rust-analyzer
 ├── justfile                   # Task runner
 ├── package.json               # Frontend workspace
 ├── pnpm-workspace.yaml        # Frontend workspace

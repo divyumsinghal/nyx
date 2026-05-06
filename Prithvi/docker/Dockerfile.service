@@ -1,6 +1,6 @@
 # =============================================================================
 # Dockerfile.service — Multi-stage Rust microservice image
-# Builder: rust:1.85 + cargo-chef (layer-cached dependency compilation)
+# Builder: rust:1.94 + cargo-chef (layer-cached dependency compilation)
 # Runtime: gcr.io/distroless/cc-debian12:nonroot (minimal attack surface)
 #
 # Build args:
@@ -22,15 +22,15 @@
 
 # ── Stage 0: Chef base ────────────────────────────────────────────────────────
 # Installs cargo-chef once; shared by planner and builder stages via BuildKit cache.
-FROM rust:1.85-slim-bookworm AS chef
+FROM rust:latest AS chef
 
 # Build-time dependencies: ssl headers (for reqwest rustls), pg headers (for sqlx)
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends \
-        pkg-config \
-        libssl-dev \
-        libpq-dev \
-        ca-certificates \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN cargo install cargo-chef --locked

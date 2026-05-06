@@ -2,7 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS nyx.revoked_jwts (
     jti TEXT PRIMARY KEY,
-    subject UUID NOT NULL,
+    subject TEXT NOT NULL,
     revoked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL
 );

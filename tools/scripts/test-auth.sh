@@ -59,7 +59,7 @@ trap cleanup EXIT
 
 # ── Start stack ───────────────────────────────────────────────────────────────
 if ! $NO_START; then
-  info "Starting auth stack (Postgres + Mailpit + Kratos)..."
+  info "Starting auth stack (Postgres + Kratos)..."
   docker compose -f "$COMPOSE_FILE" pull --quiet 2>/dev/null || true
   docker compose -f "$COMPOSE_FILE" up -d --wait --wait-timeout 600
   STACK_STARTED=true
@@ -78,11 +78,6 @@ if ! curl -sf http://localhost:4433/health/ready >/dev/null; then
   exit 1
 fi
 
-if ! curl -sf http://localhost:8025/api/v1/info >/dev/null; then
-  error "Mailpit is not reachable at http://localhost:8025"
-  exit 1
-fi
-
 success "All services reachable."
 
 # ── Build + run tests ─────────────────────────────────────────────────────────
@@ -93,7 +88,6 @@ cargo test --test auth_integration --no-run
 info "Running auth integration tests..."
 export KRATOS_PUBLIC_URL="http://localhost:4433"
 export KRATOS_ADMIN_URL="http://localhost:4434"
-export MAILPIT_API_URL="http://localhost:8025"
 export RUST_LOG="info"
 export RUST_BACKTRACE="1"
 

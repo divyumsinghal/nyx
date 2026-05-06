@@ -13,7 +13,6 @@
 //! ```bash
 //! KRATOS_PUBLIC_URL=http://localhost:4433 \
 //! KRATOS_ADMIN_URL=http://localhost:4434  \
-//! MAILPIT_API_URL=http://localhost:8025   \
 //! cargo test --test auth_integration -- --test-threads=4
 //! ```
 //!

@@ -86,7 +86,7 @@ Shared multi-stage Dockerfile for all Rust service binaries. Build arg selects w
 
 ```dockerfile
 # Stage 1: Build
-FROM rust:1.85-bookworm AS builder
+FROM rust:1.94-bookworm AS builder
 ARG BIN_NAME
 WORKDIR /app
 COPY Cargo.toml Cargo.lock rust-toolchain.toml ./

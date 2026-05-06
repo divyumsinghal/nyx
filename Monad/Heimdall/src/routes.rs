@@ -22,7 +22,7 @@ use axum::extract::{Extension, Json as ExtractJson, Query, Request, State};
 use axum::http::{header, HeaderValue, Method, StatusCode};
 use axum::middleware;
 use axum::response::{IntoResponse, Json, Response};
-use axum::routing::{any, get};
+use axum::routing::{any, get, post};
 use axum::Router;
 use heka::NyxIdStatus;
 use serde::{Deserialize, Serialize};
@@ -40,6 +40,7 @@ use crate::rate_limit::{
     auth_rate_limiter_with_db, default_rate_limiter_with_db, rate_limit_middleware,
 };
 use crate::state::AppState;
+use crate::token_exchange::token_exchange_handler;
 use crate::{health, websocket};
 
 /// Construct the complete Axum [`Router`] with all routes and middleware layers.
@@ -120,6 +121,9 @@ pub fn build_router(state: AppState) -> Router {
         ));
 
     let auth_routes = Router::new()
+        // ── Token exchange: Kratos session → Nyx JWT ─────────────────────────
+        // Must be declared before the wildcard so Axum matches it first.
+        .route("/api/nyx/auth/token", post(token_exchange_handler))
         // ── Nyx auth (public — no JWT enforcement, strict rate limit) ───────
         .route("/api/nyx/auth/{*path}", any(nyx_auth_proxy))
         .layer(middleware::from_fn_with_state(

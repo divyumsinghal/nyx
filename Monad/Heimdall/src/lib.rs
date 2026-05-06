@@ -12,4 +12,5 @@ pub mod proxy;
 pub mod rate_limit;
 pub mod routes;
 pub mod state;
+pub mod token_exchange;
 pub mod websocket;

@@ -26,7 +26,6 @@ Kratos uses Twilio for SMS/phone OTP verification. Twilio has no free tier — i
 | APNs | (a) Remove iOS push for now, use WebSockets/SSE. (b) Treat as opt-in for users who have a dev account |
 | FCM | Free to use, keep it |
 | DragonflyDB | Swap for Redis (identical API, truly open source) |
-| SMTP | Self-host with Mailpit for dev, Postfix for prod — both free |
 
 **Before we start the service-by-service audit:** What's your call on Twilio and APNs? These affect how Kratos (auth) and Ushas (notifications) are configured, which cascades to every service. I want to sort the paid-service issues first since fixing them changes the infrastructure config, then we do the service testing on a clean foundation.
 

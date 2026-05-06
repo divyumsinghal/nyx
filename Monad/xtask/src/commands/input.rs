@@ -10,9 +10,13 @@ pub fn prompt_line(prompt: &str) -> Result<String> {
     io::stdout().flush().context("failed to flush stdout")?;
 
     let mut value = String::new();
-    io::stdin()
+    let n = io::stdin()
         .read_line(&mut value)
         .context("failed to read from stdin")?;
+
+    if n == 0 {
+        anyhow::bail!("unexpected end of input — this command requires an interactive terminal");
+    }
 
     Ok(value.trim().to_string())
 }

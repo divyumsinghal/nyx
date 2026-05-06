@@ -11,13 +11,14 @@
 
 name: nyx
 
-# ── Shared environment ────────────────────────────────────────────────────────
+# ── Bootstrap environment ────────────────────────────────────────────────────
+# Only the secrets needed to start postgres, dragonfly, and Infisical itself.
+# All other secrets are managed by Infisical and injected via `infisical run --`.
+# See .secrets.example/bootstrap.env for the required variables.
 x-env: &env
   env_file:
-    - path: ../../.env
-      required: false
-    - path: ../../.env.local
-      required: false
+    - path: ../../.secrets/bootstrap.env
+      required: true
 
 # ── Shared logging driver ────────────────────────────────────────────────────
 x-logging: &logging
@@ -235,7 +236,7 @@ services:
     command: migrate sql -e --yes
     environment:
       KRATOS_DB_PASSWORD: "${KRATOS_DB_PASSWORD}"
-      DSN: "postgres://kratos_app:changeme_kratos_db@postgres:5432/kratos?sslmode=disable"
+      DSN: "postgres://kratos_app:${KRATOS_DB_PASSWORD}@postgres:5432/kratos?sslmode=disable"
     depends_on:
       postgres:
         condition: service_healthy
@@ -349,6 +350,64 @@ services:
       retries:  5
       start_period: 15s
     logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Redis — dedicated Redis instance for Infisical (BullMQ job queue).
+  # Infisical uses BullMQ with multi-key Lua scripts that are incompatible
+  # with DragonflyDB's Lua sandboxing. A standard Redis instance avoids this.
+  # ────────────────────────────────────────────────────────────────────────────
+  infisical-redis:
+    <<: *restart
+    image: redis:7-alpine
+    container_name: nyx-infisical-redis
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - nyx-infisical-redis-data:/data
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout:  3s
+      retries:  10
+      start_period: 5s
+    logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Infisical — self-hosted secrets manager (UI at http://localhost:8090)
+  # Bootstrap secrets (INFISICAL_ENCRYPTION_KEY, INFISICAL_AUTH_SECRET,
+  # INFISICAL_DB_PASSWORD) come from .secrets/bootstrap.env.
+  # All other Nyx secrets live here; injected via `infisical run --`.
+  # ────────────────────────────────────────────────────────────────────────────
+  infisical:
+    <<: [*env, *restart]
+    image: infisical/infisical:latest-postgres
+    container_name: nyx-infisical
+    environment:
+      NODE_ENV:         production
+      ENCRYPTION_KEY:   "${INFISICAL_ENCRYPTION_KEY}"
+      AUTH_SECRET:      "${INFISICAL_AUTH_SECRET}"
+      DB_CONNECTION_URI: "postgresql://infisical_app:${INFISICAL_DB_PASSWORD}@postgres:5432/infisical"
+      REDIS_URL:        "redis://infisical-redis:6379"
+      SITE_URL:         "http://localhost:8090"
+      TELEMETRY_ENABLED: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      infisical-redis:
+        condition: service_healthy
+    ports:
+      - "8090:8080"
+    networks:
+      - nyx
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/status | grep -q '\"message\"' || exit 1"]
+      interval: 15s
+      timeout:  5s
+      retries:  10
+      start_period: 60s
+    logging: *logging
+
 
   # ────────────────────────────────────────────────────────────────────────────
   # Prometheus — metrics collection
@@ -476,6 +535,8 @@ volumes:
   nyx-minio-data:
   nyx-meili-data:
   nyx-matrix-data:
+  nyx-infisical-data:
+  nyx-infisical-redis-data:
   nyx-prometheus-data:
   nyx-loki-data:
   nyx-loki-wal:

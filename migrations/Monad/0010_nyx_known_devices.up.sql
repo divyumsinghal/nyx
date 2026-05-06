@@ -1,7 +1,7 @@
 -- Migration: Track known client device fingerprints for auth alerts.
 
 CREATE TABLE IF NOT EXISTS nyx.known_devices (
-    identity_id UUID NOT NULL,
+    identity_id TEXT NOT NULL,
     device_fingerprint TEXT NOT NULL,
     user_agent TEXT,
     first_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -11,13 +11,6 @@
 
 name: nyx
 
-x-env: &env
-  env_file:
-    - path: ../../.env
-      required: false
-    - path: ../../.env.local
-      required: false
-
 x-logging: &logging
   driver: json-file
   options:
@@ -29,7 +22,7 @@ x-restart: &restart
 
 # ── Shared service template ───────────────────────────────────────────────────
 x-nyx-service: &nyx-service
-  <<: [*env, *restart]
+  <<: *restart
   image: "ghcr.io/divyumsinghal/nyx/${SERVICE_NAME:-unknown}:${NYX_VERSION:-latest}"
   # Images are built by CI: .github/workflows/release.yml
   # Build locally: just docker-build
@@ -47,21 +40,20 @@ services:
   # These probe-only containers verify that infra is up before starting platform
   # services. They exit immediately; they exist only for depends_on ordering.
   postgres-check:
-    <<: *env
     image: postgres:17.4-alpine
     command: ["sh", "-c", "until pg_isready -h postgres -U postgres; do sleep 1; done; echo ready"]
     networks:   [nyx]
     restart:    "no"
 
   dragonfly-check:
-    <<: *env
     image: redis:7-alpine
     command: ["sh", "-c", "until redis-cli -h dragonfly -a $${DRAGONFLY_PASSWORD} ping | grep -q PONG; do sleep 1; done; echo ready"]
+    environment:
+      DRAGONFLY_PASSWORD: "${DRAGONFLY_PASSWORD}"
     networks:   [nyx]
     restart:    "no"
 
   nats-check:
-    <<: *env
     image: curlimages/curl:latest
     command: ["sh", "-c", "until curl -sf http://nats:8222/healthz; do sleep 1; done; echo ready"]
     networks:   [nyx]
@@ -73,7 +65,7 @@ services:
   # See CLAUDE.md "Gateway routing" for full route table.
   # ────────────────────────────────────────────────────────────────────────────
   heimdall:
-    <<: [*env, *restart]
+    <<: *restart
     image: "ghcr.io/divyumsinghal/nyx/heimdall:${NYX_VERSION:-latest}"
     container_name: nyx-heimdall
     environment:
@@ -121,7 +113,7 @@ services:
   # Stores results in MinIO; emits Uzume.media.processed
   # ────────────────────────────────────────────────────────────────────────────
   oya:
-    <<: [*env, *restart]
+    <<: *restart
     image: "ghcr.io/divyumsinghal/nyx/oya:${NYX_VERSION:-latest}"
     container_name: nyx-oya
     environment:
@@ -152,7 +144,7 @@ services:
   # via Gorush, and stores in-app notifications in PostgreSQL.
   # ────────────────────────────────────────────────────────────────────────────
   ushas:
-    <<: [*env, *restart]
+    <<: *restart
     image: "ghcr.io/divyumsinghal/nyx/ushas:${NYX_VERSION:-latest}"
     container_name: nyx-ushas
     environment:
@@ -174,6 +166,42 @@ services:
       nats-check:
         condition: service_completed_successfully
     logging: *logging
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Caddy — HTTPS edge gateway (the ONLY public entry point)
+  # All traffic flows: Internet → Caddy → Heimdall → Services
+  # ────────────────────────────────────────────────────────────────────────────
+  caddy:
+    <<: *restart
+    image: caddy:2.8-alpine
+    container_name: nyx-caddy
+    environment:
+      EDGE_HOST: ${EDGE_HOST:-localhost}
+      EDGE_HTTPS_PORT: ${EDGE_HTTPS_PORT:-3443}
+      HEIMDALL_UPSTREAM: ${HEIMDALL_UPSTREAM:-heimdall:3000}
+    volumes:
+      - ../config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - nyx-caddy-data:/data
+      - nyx-caddy-config:/config
+    ports:
+      - "${EDGE_HTTPS_BIND_PORT:-3443}:443"
+    networks:
+      - nyx
+    depends_on:
+      heimdall:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:2019/health | grep -q ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging: *logging
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
+volumes:
+  nyx-caddy-data:
+  nyx-caddy-config:
 
 # ── External network (created by infra.yml) ───────────────────────────────────
 networks:

@@ -1,77 +1,108 @@
 import { useState } from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { TextInput, Button, Card } from "@nyx/ui";
-import { useAuth } from "../../src/context/AuthContext";
+import { TextInput, Button } from "@nyx/ui";
+import { useAuth, formatAuthError } from "../../src/context/AuthContext";
 
 export default function LoginScreen() {
-  const [identifier, setIdentifier] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { login } = useAuth();
   const router = useRouter();
 
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
   async function handleLogin() {
-    if (!identifier || !password) {
-      setError("Please fill in all fields");
+    const id = identifier.trim();
+    if (!id || !password) {
+      setError("Enter your email (or @username) and password.");
       return;
     }
     setError("");
-    setIsSubmitting(true);
+    setLoading(true);
     try {
-      await login(identifier, password);
-      router.replace("/");
-    } catch (e: any) {
-      setError(e.message || "Failed to login");
+      await login(id, password);
+      // AuthProvider session save → root nav redirects to "/"
+    } catch (e) {
+      setError(formatAuthError(e));
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   }
 
   return (
-    <View className="flex-1 items-center justify-center p-6 star-field">
-      <Card className="w-full max-w-sm p-8 glass-card">
-        <View className="items-center mb-8">
-          <Text className="text-4xl font-bold text-dawn-gradient mb-2">NYX</Text>
-          <Text className="text-gray-400 text-center">Account Portal</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      className="flex-1"
+    >
+      <View className="flex-1 items-center justify-center p-6">
+        {/* Logo */}
+        <View className="items-center mb-10">
+          <Text
+            className="text-5xl font-bold mb-2"
+            style={{ color: "#FFD93D", letterSpacing: 2 }}
+          >
+            nyx
+          </Text>
         </View>
 
-        {error ? (
-          <View className="bg-red-500/10 p-3 rounded-lg mb-4 border border-red-500/20">
-            <Text className="text-red-400 text-sm text-center">{error}</Text>
-          </View>
-        ) : null}
+        {/* Form */}
+        <View className="w-full max-w-xs">
+          {error ? (
+            <View className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-4">
+              <Text className="text-red-400 text-sm text-center">{error}</Text>
+            </View>
+          ) : null}
 
-        <View className="gap-4 mb-6">
           <TextInput
-            placeholder="Email or Username"
+            placeholder="Email or @username"
             value={identifier}
             onChangeText={setIdentifier}
             autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            returnKeyType="next"
+            variant="minimal"
+            className="mb-4"
           />
+
           <TextInput
             placeholder="Password"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            returnKeyType="done"
+            onSubmitEditing={handleLogin}
+            variant="minimal"
+            className="mb-8"
           />
+
+          <Button
+            label="Log in"
+            variant="dawn"
+            size="lg"
+            fullWidth
+            loading={loading}
+            onPress={handleLogin}
+          />
+
+          <View className="flex-row justify-center mt-4">
+            <Text className="text-star-400 text-sm">Don't have an account? </Text>
+            <TouchableOpacity onPress={() => router.replace("/register")}>
+              <Text className="text-dawn-400 text-sm font-semibold">
+                Sign up
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        <Button 
-          onPress={handleLogin} 
-          disabled={isSubmitting}
-          className="w-full bg-[#FF6B9D] mb-4"
-        >
-          {isSubmitting ? <ActivityIndicator color="white" /> : <Text className="text-white font-bold">Sign In</Text>}
-        </Button>
-
-        <TouchableOpacity onPress={() => router.push("/register")} className="items-center mt-4">
-          <Text className="text-gray-400">
-            Don't have an account? <Text className="text-[#FF6B9D]">Register</Text>
-          </Text>
-        </TouchableOpacity>
-      </Card>
-    </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }

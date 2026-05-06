@@ -1,189 +1,364 @@
 # =============================================================================
+
 # uzume.yml — Uzume social-media microservices
+
 # Requires infra.yml (and optionally platform.yml) to be running.
+
 #
+
 # Ports:
+
 #   uzume-profiles  3001   uzume-feed      3002
+
 #   uzume-stories   3003   uzume-reels     3004
+
 #   uzume-discover  3005
+
 #
+
 # Run all Uzume services:
+
 #   docker compose \
+
 #     -f Prithvi/compose/infra.yml \
+
 #     -f Prithvi/compose/platform.yml \
+
 #     -f Prithvi/compose/uzume.yml \
+
 #     up -d
+
 # =============================================================================
+
+
 
 name: nyx
 
-x-env: &env
-  env_file:
-    - path: ../../.env
-      required: false
-    - path: ../../.env.local
-      required: false
+
 
 x-logging: &logging
+
   driver: json-file
+
   options:
+
     max-size: "50m"
+
     max-file: "5"
 
+
+
 x-restart: &restart
+
   restart: "no"
 
+
+
 # ── Shared env for all Uzume services ─────────────────────────────────────────
+
 x-uzume-env: &uzume-env
+
   DATABASE_URL:              "postgres://nyx_app:${NYX_APP_DB_PASSWORD}@postgres:5432/nyx"
+
   REDIS_URL:                 "redis://:${DRAGONFLY_PASSWORD}@dragonfly:6379"
+
   NATS_URL:                  "nats://${NYX_NATS_USER}:${NYX_NATS_PASSWORD}@nats:4222"
+
   MINIO_ENDPOINT:            "http://minio:9000"
+
   MINIO_ACCESS_KEY:          "${MINIO_ROOT_USER}"
+
   MINIO_SECRET_KEY:          "${MINIO_ROOT_PASSWORD}"
+
   MINIO_BUCKET:              nyx-media
+
   MEILI_URL:                 "http://meilisearch:7700"
+
   MEILI_MASTER_KEY:          "${MEILI_MASTER_KEY}"
+
   KRATOS_ADMIN_URL:          "http://kratos:4434"
+
   JWT_SECRET:                "${JWT_SECRET}"
+
   RUST_LOG:                  "${RUST_LOG:-warn}"
+
   OTEL_EXPORTER_OTLP_ENDPOINT: "${OTEL_EXPORTER_OTLP_ENDPOINT:-http://localhost:4318}"
+
+
 
 services:
 
+
+
   # ────────────────────────────────────────────────────────────────────────────
+
   # Uzume-profiles — user profiles + follow graph + block/mute
+
   # ────────────────────────────────────────────────────────────────────────────
+
   uzume-profiles:
-    <<: [*env, *restart]
+
+    <<: *restart
+
     image: "ghcr.io/divyumsinghal/nyx/uzume-profiles:${NYX_VERSION:-latest}"
+
     container_name: uzume-profiles
+
     environment:
+
       <<: *uzume-env
+
       SERVICE_NAME:     uzume-profiles
+
       PORT:             3001
+
       OTEL_SERVICE_NAME: uzume-profiles
+
     ports:
+
       - "${UZUME_PROFILES_PORT:-3001}:3001"
+
     networks:
+
       - nyx
+
     healthcheck:
+
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/healthz | grep -q ok"]
+
       interval: 15s
+
       timeout:  5s
+
       retries:  5
+
       start_period: 10s
+
     logging: *logging
 
+
+
   # ────────────────────────────────────────────────────────────────────────────
+
   # Uzume-feed — posts, likes, comments, home timeline
+
   # ────────────────────────────────────────────────────────────────────────────
+
   uzume-feed:
-    <<: [*env, *restart]
+
+    <<: *restart
+
     image: "ghcr.io/divyumsinghal/nyx/uzume-feed:${NYX_VERSION:-latest}"
+
     container_name: uzume-feed
+
     environment:
+
       <<: *uzume-env
+
       SERVICE_NAME:     uzume-feed
+
       PORT:             3002
+
       OTEL_SERVICE_NAME: uzume-feed
+
     ports:
+
       - "${UZUME_FEED_PORT:-3002}:3002"
+
     networks:
+
       - nyx
+
     depends_on:
+
       uzume-profiles:
+
         condition: service_healthy
+
     healthcheck:
+
       test: ["CMD-SHELL", "wget -qO- http://localhost:3002/healthz | grep -q ok"]
+
       interval: 15s
+
       timeout:  5s
+
       retries:  5
+
       start_period: 10s
+
     logging: *logging
 
+
+
   # ────────────────────────────────────────────────────────────────────────────
+
   # Uzume-stories — stories, highlights, 24h TTL
+
   # ────────────────────────────────────────────────────────────────────────────
+
   uzume-stories:
-    <<: [*env, *restart]
+
+    <<: *restart
+
     image: "ghcr.io/divyumsinghal/nyx/uzume-stories:${NYX_VERSION:-latest}"
+
     container_name: uzume-stories
+
     environment:
+
       <<: *uzume-env
+
       SERVICE_NAME:     uzume-stories
+
       PORT:             3003
+
       OTEL_SERVICE_NAME: uzume-stories
+
     ports:
+
       - "${UZUME_STORIES_PORT:-3003}:3003"
+
     networks:
+
       - nyx
+
     depends_on:
+
       uzume-profiles:
+
         condition: service_healthy
+
     healthcheck:
+
       test: ["CMD-SHELL", "wget -qO- http://localhost:3003/healthz | grep -q ok"]
+
       interval: 15s
+
       timeout:  5s
+
       retries:  5
+
       start_period: 10s
+
     logging: *logging
 
+
+
   # ────────────────────────────────────────────────────────────────────────────
+
   # Uzume-reels — short-form video, algorithmic feed
-  # ────────────────────────────────────────────────────────────────────────────
-  uzume-reels:
-    <<: [*env, *restart]
-    image: "ghcr.io/divyumsinghal/nyx/uzume-reels:${NYX_VERSION:-latest}"
-    container_name: uzume-reels
-    environment:
-      <<: *uzume-env
-      SERVICE_NAME:     uzume-reels
-      PORT:             3004
-      OTEL_SERVICE_NAME: uzume-reels
-    ports:
-      - "${UZUME_REELS_PORT:-3004}:3004"
-    networks:
-      - nyx
-    depends_on:
-      uzume-profiles:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/healthz | grep -q ok"]
-      interval: 15s
-      timeout:  5s
-      retries:  5
-      start_period: 10s
-    logging: *logging
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Uzume-discover — explore page, trending, cross-entity search
-  # ────────────────────────────────────────────────────────────────────────────
-  uzume-discover:
-    <<: [*env, *restart]
-    image: "ghcr.io/divyumsinghal/nyx/uzume-discover:${NYX_VERSION:-latest}"
-    container_name: uzume-discover
+
+  uzume-reels:
+
+    <<: *restart
+
+    image: "ghcr.io/divyumsinghal/nyx/uzume-reels:${NYX_VERSION:-latest}"
+
+    container_name: uzume-reels
+
     environment:
+
       <<: *uzume-env
-      SERVICE_NAME:     uzume-discover
-      PORT:             3005
-      OTEL_SERVICE_NAME: uzume-discover
+
+      SERVICE_NAME:     uzume-reels
+
+      PORT:             3004
+
+      OTEL_SERVICE_NAME: uzume-reels
+
     ports:
-      - "${UZUME_DISCOVER_PORT:-3005}:3005"
+
+      - "${UZUME_REELS_PORT:-3004}:3004"
+
     networks:
+
       - nyx
+
     depends_on:
+
       uzume-profiles:
+
         condition: service_healthy
+
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/healthz | grep -q ok"]
+
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/healthz | grep -q ok"]
+
       interval: 15s
+
       timeout:  5s
+
       retries:  5
+
       start_period: 10s
+
     logging: *logging
+
+
+
+  # ────────────────────────────────────────────────────────────────────────────
+
+  # Uzume-discover — explore page, trending, cross-entity search
+
+  # ────────────────────────────────────────────────────────────────────────────
+
+  uzume-discover:
+
+    <<: *restart
+
+    image: "ghcr.io/divyumsinghal/nyx/uzume-discover:${NYX_VERSION:-latest}"
+
+    container_name: uzume-discover
+
+    environment:
+
+      <<: *uzume-env
+
+      SERVICE_NAME:     uzume-discover
+
+      PORT:             3005
+
+      OTEL_SERVICE_NAME: uzume-discover
+
+    ports:
+
+      - "${UZUME_DISCOVER_PORT:-3005}:3005"
+
+    networks:
+
+      - nyx
+
+    depends_on:
+
+      uzume-profiles:
+
+        condition: service_healthy
+
+    healthcheck:
+
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/healthz | grep -q ok"]
+
+      interval: 15s
+
+      timeout:  5s
+
+      retries:  5
+
+      start_period: 10s
+
+    logging: *logging
+
+
 
 # ── External network ──────────────────────────────────────────────────────────
+
 networks:
+
   nyx:
+
     external: true
+
